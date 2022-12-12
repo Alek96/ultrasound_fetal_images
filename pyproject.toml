@@ -4,7 +4,6 @@ version = "0.1.0"
 description = ""
 authors = ["Aleksander Zamojski <zamojski96@gmail.com>"]
 readme = "README.md"
-packages = [{ include = "ultrasound_fetal_images" }]
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -21,7 +20,8 @@ pyrootutils = "^1.0.4"     # standardizing the project root setup
 pre-commit = "^2.20.0"     # hooks for applying linters on commit
 rich = "^12.6.0"           # beautiful text formatting in terminal
 pytest = "^7.2.0"          # tests
-sh = "^1.14.3"             # for running bash commands in some tests (linux/macos only)
+pytest-cov = "^4.0.0"
+sh = { version = "^1.14.3", markers = "sys_platform == 'linux' or sys_platform == 'darwin'" }
 
 [build-system]
 requires = ["poetry-core"]
