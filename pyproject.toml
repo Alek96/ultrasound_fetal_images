@@ -1,3 +1,29 @@
+[tool.poetry]
+name = "ultrasound-fetal-images"
+version = "0.1.0"
+description = ""
+authors = ["Aleksander Zamojski <zamojski96@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+# --------- pytorch --------- #
+torch = "^1.13.0"
+torchvision = "^0.14.0"
+pytorch-lightning = "1.8.3"
+torchmetrics = "^0.11.0"
+# --------- hydra --------- #
+hydra-core = "1.2.0"
+hydra-colorlog = "^1.2.0"
+hydra-optuna-sweeper = "^1.2.0"
+# --------- others --------- #
+pyrootutils = "^1.0.4"     # standardizing the project root setup
+pre-commit = "^2.20.0"     # hooks for applying linters on commit
+rich = "^12.6.0"           # beautiful text formatting in terminal
+pytest = "^7.2.0"          # tests
+pytest-cov = "^4.0.0"
+sh = { version = "^1.14.3", markers = "sys_platform == 'linux' or sys_platform == 'darwin'" }
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

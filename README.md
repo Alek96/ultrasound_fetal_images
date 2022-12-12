@@ -17,22 +17,10 @@ What it does
 
 ## How to run
 
-Install dependencies
+Install dependencies with [poetry](https://python-poetry.org/)
 
 ```bash
-# clone project
-git clone https://github.com/YourGithubName/your-repo-name
-cd your-repo-name
-
-# [OPTIONAL] create conda environment
-conda create -n myenv python=3.9
-conda activate myenv
-
-# install pytorch according to instructions
-# https://pytorch.org/get-started/
-
-# install requirements
-pip install -r requirements.txt
+poetry install
 ```
 
 Train model with default configuration

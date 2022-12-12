@@ -32,7 +32,6 @@ def test_hydra_sweep(tmp_path):
         "model.optimizer.lr=0.005,0.01",
         "++trainer.fast_dev_run=true",
     ] + overrides
-
     run_sh_command(command)
 
 

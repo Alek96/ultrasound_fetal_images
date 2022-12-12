@@ -14,20 +14,20 @@ clean-logs: ## Clean logs
 	rm -rf logs/**
 
 format: ## Run pre-commit hooks
-	pre-commit run -a
+	poetry run pre-commit run -a
 
 sync: ## Merge changes from main branch to your current branch
 	git pull
 	git pull origin main
 
 test: ## Run not slow tests
-	pytest -k "not slow"
+	poetry run pytest -k "not slow"
 
 test-full: ## Run all tests
-	pytest
+	poetry run pytest
 
 train: ## Train the model
-	python src/train.py
+	poetry run python src/train.py
 
 debug: ## Enter debugging mode with pdb
 	#
@@ -39,4 +39,4 @@ debug: ## Enter debugging mode with pdb
 	# - use "l" to print src code around current line, "ll" for full function code
 	# - docs: https://docs.python.org/3/library/pdb.html
 	#
-	python -m pdb src/train.py debug=default
+	poetry run python -m pdb src/train.py debug=default
