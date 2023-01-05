@@ -4,35 +4,35 @@
 # python train.py experiment=example
 
 defaults:
-  - override /datamodule: mnist.yaml
-  - override /model: mnist.yaml
+  - override /datamodule: fetal_planes.yaml
+  - override /model: fetal.yaml
   - override /callbacks: default.yaml
+  - override /logger: many_loggers.yaml
   - override /trainer: default.yaml
 
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
 
-tags: ["mnist", "simple_dense_net"]
-
-seed: 12345
-
 trainer:
-  min_epochs: 10
-  max_epochs: 10
-  gradient_clip_val: 0.5
+  min_epochs: 5
+  max_epochs: 20
+
+callbacks:
+  early_stopping:
+    patience: 5
 
 model:
   optimizer:
-    lr: 0.002
+    lr: 0.02
+  #    weight_decay: 0.01
+  scheduler:
+    patience: 5
   net:
-    lin1_size: 128
-    lin2_size: 256
-    lin3_size: 64
+    lin1_size: 128 # 256 128
+    lin2_size: 64 # 256 64
+    lin3_size: 256 # 32 256
 
 datamodule:
-  batch_size: 64
-
-logger:
-  wandb:
-    tags: ${tags}
-    group: "mnist"
+  train_val_split: 0.1
+  train_val_split_seed: 390
+  batch_size: 32
