@@ -1,53 +1,13 @@
-import os
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Dict, Optional
 
-import pandas as pd
 import torch
+import torchvision.transforms as T
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset
-from torchvision.io import read_image
-from torchvision.transforms import transforms
 
-from src.datamodules.components.transforms import LabelEncoder
+from src.datamodules.components.dataset import FetalPlanesDataset, TransformDataset
+from src.datamodules.components.transforms import LabelEncoder, RandomPercentCrop
 from src.datamodules.utils import group_split
-
-
-class FetalPlanesDataset(Dataset):
-    def __init__(
-        self,
-        data_dir: str,
-        train: bool = True,
-        transform: Optional[Callable] = None,
-        target_transform: Optional[Callable] = None,
-    ):
-        data_dir = f"{data_dir}/FETAL_PLANES"
-        img_labels = pd.read_csv(f"{data_dir}/FETAL_PLANES_DB_data.csv", sep=";")
-        img_labels = img_labels[img_labels["Train "] == (1 if train else 0)]
-        img_labels = img_labels[["Image_name", "Patient_num", "Plane"]]
-        self.img_labels = img_labels.reset_index(drop=True)
-
-        self.img_dir = f"{data_dir}/Images"
-        self.transform = transform
-        self.target_transform = target_transform
-
-    def __len__(self):
-        return len(self.img_labels)
-
-    def __getitem__(self, idx):
-        if idx >= len(self):
-            raise IndexError("list index out of range")
-
-        img_path = os.path.join(self.img_dir, self.img_labels.Image_name[idx] + ".png")
-        image = read_image(img_path)
-        if image.shape[0] == 4:
-            image = image[:3, :, :]
-        if self.transform:
-            image = self.transform(image)
-
-        label = self.img_labels.Plane[idx]
-        if self.target_transform:
-            label = self.target_transform(label)
-        return image, label
 
 
 class FetalPlanesDataModule(LightningDataModule):
@@ -92,11 +52,27 @@ class FetalPlanesDataModule(LightningDataModule):
         self.save_hyperparameters(logger=False)
 
         # data transformations
-        self.transforms = transforms.Compose(
+        self.input_size = (55, 80)
+        self.train_transforms = T.Compose(
             [
-                transforms.Grayscale(),
-                transforms.ConvertImageDtype(torch.float32),
-                transforms.Resize((55, 80)),
+                T.Grayscale(),
+                # T.AutoAugment(T.AutoAugmentPolicy.IMAGENET),
+                # T.ConvertImageDtype(torch.float32),
+                # T.RandomHorizontalFlip(p=0.5),
+                # T.RandomAffine(degrees=15, translate=(0.1, 0.1)),
+                # RandomPercentCrop(max_percent=20),
+                # T.Resize(self.input_size),
+                T.Resize(self.input_size),
+                T.RandomHorizontalFlip(p=0.5),
+                T.RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(1.0, 1.2)),
+                T.ConvertImageDtype(torch.float32),
+            ]
+        )
+        self.test_transforms = T.Compose(
+            [
+                T.Grayscale(),
+                T.ConvertImageDtype(torch.float32),
+                T.Resize(self.input_size),
             ]
         )
         self.labels = [
@@ -135,20 +111,27 @@ class FetalPlanesDataModule(LightningDataModule):
             train = FetalPlanesDataset(
                 data_dir=self.hparams.data_dir,
                 train=True,
-                transform=self.transforms,
-                target_transform=self.target_transform,
             )
-            self.data_train, self.data_val, = group_split(
+            data_train, data_val, = group_split(
                 dataset=train,
                 test_size=self.hparams.train_val_split,
                 groups=train.img_labels["Patient_num"],
                 random_state=self.hparams.train_val_split_seed,
             )
-
+            self.data_train = TransformDataset(
+                dataset=data_train,
+                transform=self.train_transforms,
+                target_transform=self.target_transform,
+            )
+            self.data_val = TransformDataset(
+                dataset=data_val,
+                transform=self.test_transforms,
+                target_transform=self.target_transform,
+            )
             self.data_test = FetalPlanesDataset(
                 data_dir=self.hparams.data_dir,
                 train=False,
-                transform=self.transforms,
+                transform=self.test_transforms,
                 target_transform=self.target_transform,
             )
 
@@ -200,12 +183,4 @@ if __name__ == "__main__":
     root = pyrootutils.setup_root(__file__, pythonpath=True)
     cfg = omegaconf.OmegaConf.load(root / "configs" / "datamodule" / "fetal_planes.yaml")
     cfg.data_dir = str(root / "data")
-    datamodule: LightningDataModule = hydra.utils.instantiate(cfg)
-    datamodule.prepare_data()
-    datamodule.setup(stage="test")
-    for (x, y) in datamodule.test_dataloader():
-        print(x.shape)
-        print(y.shape)
-        print(x.dtype)
-        print(y.dtype)
-        break
+    _ = hydra.utils.instantiate(cfg)

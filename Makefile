@@ -27,4 +27,4 @@ test-full: ## Run all tests
 	poetry run pytest
 
 train: ## Train the model
-	poetry run python src/train.py
+	poetry run python src/train.py $(args)
