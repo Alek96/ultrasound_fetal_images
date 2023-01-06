@@ -4,8 +4,10 @@ import pytest
 import torch
 
 from src.datamodules.fetal_planes import FetalPlanesDataModule
+from tests.helpers.run_if import RunIf
 
 
+@RunIf(path="data/FETAL_PLANES")
 @pytest.mark.parametrize("batch_size", [32, 128])
 def test_mnist_datamodule(batch_size):
     data_dir = "data/"

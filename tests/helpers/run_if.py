@@ -2,7 +2,7 @@
 
 https://github.com/PyTorchLightning/pytorch-lightning/blob/master/tests/helpers/runif.py
 """
-
+import os
 import sys
 from typing import Optional
 
@@ -52,6 +52,7 @@ class RunIf:
         neptune: bool = False,
         comet: bool = False,
         mlflow: bool = False,
+        path: str = None,
         **kwargs,
     ):
         """
@@ -61,14 +62,15 @@ class RunIf:
             max_torch: maximum pytorch version to run test
             min_python: minimum python version required to run test
             skip_windows: skip test for Windows platform
-            tpu: if TPU is available
-            sh: if `sh` module is required to run the test
-            fairscale: if `fairscale` module is required to run the test
-            deepspeed: if `deepspeed` module is required to run the test
-            wandb: if `wandb` module is required to run the test
-            neptune: if `neptune` module is required to run the test
-            comet: if `comet` module is required to run the test
-            mlflow: if `mlflow` module is required to run the test
+            tpu: TPU is available
+            sh: `sh` module is required to run the test
+            fairscale: `fairscale` module is required to run the test
+            deepspeed: `deepspeed` module is required to run the test
+            wandb: `wandb` module is required to run the test
+            neptune: `neptune` module is required to run the test
+            comet: `comet` module is required to run the test
+            mlflow: `mlflow` module is required to run the test
+            path: `path` is present to run the test
             kwargs: native pytest.mark.skipif keyword arguments
         """
         conditions = []
@@ -130,6 +132,10 @@ class RunIf:
         if mlflow:
             conditions.append(not _MLFLOW_AVAILABLE)
             reasons.append("mlflow")
+
+        if path:
+            conditions.append(not os.path.exists(path))
+            reasons.append(f"path {path}")
 
         reasons = [rs for cond, rs in zip(conditions, reasons) if cond]
         return pytest.mark.skipif(
