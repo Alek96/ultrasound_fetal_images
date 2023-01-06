@@ -5,7 +5,7 @@
 
 defaults:
   - override /datamodule: fetal_planes.yaml
-  - override /model: fetal.yaml
+  - override /model: dense_net.yaml
   - override /callbacks: default.yaml
   - override /logger: many_loggers.yaml
   - override /trainer: default.yaml
@@ -28,9 +28,8 @@ model:
   scheduler:
     patience: 5
   net:
-    lin1_size: 128 # 256 128
-    lin2_size: 64 # 256 64
-    lin3_size: 256 # 32 256
+    densenet_name: densenet121
+    pretrain: true
 
 datamodule:
   train_val_split: 0.1

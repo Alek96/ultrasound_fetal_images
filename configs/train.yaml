@@ -5,7 +5,7 @@
 defaults:
   - _self_
   - datamodule: fetal_planes.yaml
-  - model: fetal.yaml
+  - model: simple_dense_net.yaml
   - callbacks: default.yaml
   - logger: null # set logger here or use command line (e.g. `python train.py logger=tensorboard`)
   - trainer: default.yaml
