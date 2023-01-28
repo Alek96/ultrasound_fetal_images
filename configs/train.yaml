@@ -44,6 +44,9 @@ train: True
 # lightning chooses best weights based on the metric specified in checkpoint callback
 test: True
 
+# provide checkpoint path to use the model for training
+model_path: null
+
 # simply provide checkpoint path to resume training
 ckpt_path: null
 

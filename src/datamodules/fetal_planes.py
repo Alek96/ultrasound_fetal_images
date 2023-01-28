@@ -3,9 +3,13 @@ from typing import Any, Dict, Optional
 import torch
 import torchvision.transforms as T
 from pytorch_lightning import LightningDataModule
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import ConcatDataset, DataLoader, Dataset
 
-from src.datamodules.components.dataset import FetalPlanesDataset, TransformDataset
+from src.datamodules.components.dataset import (
+    FetalPlanesDataset,
+    TransformDataset,
+    USVideosDataset,
+)
 from src.datamodules.components.transforms import LabelEncoder, RandomPercentCrop
 from src.datamodules.utils import group_split
 
@@ -41,6 +45,7 @@ class FetalPlanesDataModule(LightningDataModule):
         data_dir: str = "data/",
         train_val_split: float = 0.2,
         train_val_split_seed: float = 79,
+        extend_train: bool = False,
         batch_size: int = 64,
         num_workers: int = 0,
         pin_memory: bool = False,
@@ -123,6 +128,18 @@ class FetalPlanesDataModule(LightningDataModule):
                 transform=self.train_transforms,
                 target_transform=self.target_transform,
             )
+            if self.hparams.extend_train:
+                self.data_train = ConcatDataset(
+                    (
+                        self.data_train,
+                        USVideosDataset(
+                            data_dir=self.hparams.data_dir,
+                            max_images=5000,
+                            transform=self.train_transforms,
+                            target_transform=self.target_transform,
+                        ),
+                    )
+                )
             self.data_val = TransformDataset(
                 dataset=data_val,
                 transform=self.test_transforms,

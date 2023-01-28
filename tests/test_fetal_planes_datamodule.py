@@ -9,7 +9,7 @@ from tests.helpers.run_if import RunIf
 
 @RunIf(path="data/FETAL_PLANES")
 @pytest.mark.parametrize("batch_size", [32, 128])
-def test_mnist_datamodule(batch_size):
+def test_fetal_planes_datamodule(batch_size):
     data_dir = "data"
 
     dm = FetalPlanesDataModule(data_dir=data_dir, batch_size=batch_size)
