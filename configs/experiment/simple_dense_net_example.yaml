@@ -5,7 +5,7 @@
 
 defaults:
   - override /datamodule: fetal_planes.yaml
-  - override /model: dense_net.yaml
+  - override /model: simple_dense_net.yaml
   - override /callbacks: default.yaml
   - override /logger: many_loggers.yaml
   - override /trainer: default.yaml

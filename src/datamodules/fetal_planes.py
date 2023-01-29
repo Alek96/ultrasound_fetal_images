@@ -7,6 +7,7 @@ from torch.utils.data import ConcatDataset, DataLoader, Dataset
 
 from src.datamodules.components.dataset import (
     FetalPlanesDataset,
+    FetalPlanesSamplesDataset,
     TransformDataset,
     USVideosDataset,
 )
@@ -43,6 +44,7 @@ class FetalPlanesDataModule(LightningDataModule):
     def __init__(
         self,
         data_dir: str = "data/",
+        sample: bool = False,
         train_val_split: float = 0.2,
         train_val_split_seed: float = 79,
         extend_train: bool = False,
@@ -55,6 +57,8 @@ class FetalPlanesDataModule(LightningDataModule):
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
+
+        self.dataset = FetalPlanesSamplesDataset if sample else FetalPlanesDataset
 
         # data transformations
         self.input_size = (55, 80)
@@ -113,7 +117,7 @@ class FetalPlanesDataModule(LightningDataModule):
         """
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
-            train = FetalPlanesDataset(
+            train = self.dataset(
                 data_dir=self.hparams.data_dir,
                 train=True,
             )
@@ -145,7 +149,7 @@ class FetalPlanesDataModule(LightningDataModule):
                 transform=self.test_transforms,
                 target_transform=self.target_transform,
             )
-            self.data_test = FetalPlanesDataset(
+            self.data_test = self.dataset(
                 data_dir=self.hparams.data_dir,
                 train=False,
                 transform=self.test_transforms,

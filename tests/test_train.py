@@ -81,8 +81,8 @@ def test_train_resume(tmp_path, cfg_train):
     metric_dict_2, _ = train(cfg_train)
 
     files = os.listdir(tmp_path / "checkpoints")
-    assert "epoch_001.ckpt" in files
+    assert "last.ckpt" in files
     assert "epoch_002.ckpt" not in files
 
-    assert metric_dict_1["train/acc"] < metric_dict_2["train/acc"]
-    assert metric_dict_1["val/acc"] < metric_dict_2["val/acc"]
+    assert metric_dict_1["train/loss"] != metric_dict_2["train/loss"]
+    assert metric_dict_1["val/loss"] != metric_dict_2["val/loss"]

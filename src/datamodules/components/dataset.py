@@ -1,7 +1,9 @@
 import os
 from pathlib import Path
 from typing import Callable, Optional
+from zipfile import ZipFile
 
+import gdown
 import numpy as np
 import pandas as pd
 from torch.utils.data import Dataset
@@ -35,17 +37,18 @@ class FetalPlanesDataset(Dataset):
     def __init__(
         self,
         data_dir: str,
+        data_name: str = "FETAL_PLANES",
         train: bool = True,
         transform: Optional[Callable] = None,
         target_transform: Optional[Callable] = None,
     ):
-        data_dir = f"{data_dir}/FETAL_PLANES"
-        img_labels = pd.read_csv(f"{data_dir}/FETAL_PLANES_DB_data.csv", sep=";")
+        dataset_dir = f"{data_dir}/{data_name}"
+        img_labels = pd.read_csv(f"{dataset_dir}/FETAL_PLANES_DB_data.csv", sep=";")
         img_labels = img_labels[img_labels["Train "] == (1 if train else 0)]
         img_labels = img_labels[["Image_name", "Patient_num", "Plane"]]
         self.img_labels = img_labels.reset_index(drop=True)
 
-        self.img_dir = f"{data_dir}/Images"
+        self.img_dir = f"{dataset_dir}/Images"
         self.transform = transform
         self.target_transform = target_transform
 
@@ -67,6 +70,41 @@ class FetalPlanesDataset(Dataset):
         if self.target_transform:
             label = self.target_transform(label)
         return image, label
+
+
+class FetalPlanesSamplesDataset(FetalPlanesDataset):
+    google_file_id = "1Toy4M7BzGppjlQRURXdSVxgQI_jl3zA7"
+
+    def __init__(
+        self,
+        data_dir: str,
+        train: bool = True,
+        transform: Optional[Callable] = None,
+        target_transform: Optional[Callable] = None,
+    ):
+        data_name = "FETAL_PLANES_SAMPLES"
+        self.download(data_dir, data_name)
+        super().__init__(
+            data_dir=data_dir,
+            data_name=data_name,
+            train=train,
+            transform=transform,
+            target_transform=target_transform,
+        )
+
+    @staticmethod
+    def download(data_dir, data_name):
+        dataset_dir = f"{data_dir}/{data_name}"
+        if os.path.exists(dataset_dir):
+            return
+
+        zip_file = f"{data_dir}/{data_name}.zip"
+        gdown.download(id=FetalPlanesSamplesDataset.google_file_id, output=zip_file, quiet=False)
+
+        with ZipFile(zip_file, "r") as zObject:
+            zObject.extractall(path=data_dir)
+
+        os.remove(zip_file)
 
 
 class USVideosDataset(Dataset):

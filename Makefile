@@ -29,6 +29,9 @@ test-full: ## Run all tests
 train: ## Train the model
 	poetry run python src/train.py $(args)
 
+notebook:
+	poetry run jupyter notebook --notebook-dir=./notebooks
+
 logs?=logs
 tensorboard:
 	poetry run tensorboard --logdir $(logs)

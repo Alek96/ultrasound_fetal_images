@@ -7,7 +7,7 @@ startfile = "src/train.py"
 overrides = ["logger=[]"]
 
 
-@RunIf(sh=True)
+@RunIf(sh=True, path="data/FETAL_PLANES")
 @pytest.mark.slow
 def test_experiments(tmp_path):
     """Test running all available experiment configs with fast_dev_run=True."""
@@ -31,6 +31,11 @@ def test_hydra_sweep(tmp_path):
         "hydra.sweep.dir=" + str(tmp_path),
         "model.optimizer.lr=0.005,0.01",
         "++trainer.fast_dev_run=true",
+        "+trainer.limit_train_batches=1",
+        "+trainer.limit_val_batches=1",
+        "+trainer.limit_test_batches=1",
+        "+datamodule.sample=true",
+        "datamodule.batch_size=10",
     ] + overrides
     run_sh_command(command)
 
@@ -45,9 +50,11 @@ def test_hydra_sweep_ddp_sim(tmp_path):
         "hydra.sweep.dir=" + str(tmp_path),
         "trainer=ddp_sim",
         "trainer.max_epochs=3",
-        "+trainer.limit_train_batches=0.01",
-        "+trainer.limit_val_batches=0.1",
-        "+trainer.limit_test_batches=0.1",
+        "+trainer.limit_train_batches=1",
+        "+trainer.limit_val_batches=1",
+        "+trainer.limit_test_batches=1",
+        "+datamodule.sample=true",
+        "datamodule.batch_size=10",
         "model.optimizer.lr=0.005,0.01,0.02",
     ] + overrides
     run_sh_command(command)
@@ -60,11 +67,12 @@ def test_optuna_sweep(tmp_path):
     command = [
         startfile,
         "-m",
-        "hparams_search=mnist_optuna",
+        "hparams_search=fetal_optuna",
         "hydra.sweep.dir=" + str(tmp_path),
         "hydra.sweeper.n_trials=10",
         "hydra.sweeper.sampler.n_startup_trials=5",
         "++trainer.fast_dev_run=true",
+        "+datamodule.sample=true",
     ] + overrides
     run_sh_command(command)
 

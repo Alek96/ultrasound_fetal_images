@@ -2,8 +2,8 @@
 
 defaults:
   - _self_
-  - datamodule: mnist.yaml # choose datamodule with `test_dataloader()` for evaluation
-  - model: mnist.yaml
+  - datamodule: fetal_planes.yaml
+  - model: simple_dense_net.yaml
   - logger: null
   - trainer: default.yaml
   - paths: default.yaml
