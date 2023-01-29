@@ -148,10 +148,4 @@ class FetalLitModule(LightningModule):
 
 
 if __name__ == "__main__":
-    import hydra
-    import omegaconf
-    import pyrootutils
-
-    root = pyrootutils.setup_root(__file__, pythonpath=True)
-    cfg = omegaconf.OmegaConf.load(root / "configs" / "model" / "simple_dense_net.yaml")
-    _ = hydra.utils.instantiate(cfg)
+    _ = FetalLitModule(None, None, None)
