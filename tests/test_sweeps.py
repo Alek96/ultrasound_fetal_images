@@ -84,14 +84,16 @@ def test_optuna_sweep_ddp_sim_wandb(tmp_path):
     command = [
         startfile,
         "-m",
-        "hparams_search=mnist_optuna",
+        "hparams_search=fetal_optuna",
         "hydra.sweep.dir=" + str(tmp_path),
         "hydra.sweeper.n_trials=5",
         "trainer=ddp_sim",
         "trainer.max_epochs=3",
-        "+trainer.limit_train_batches=0.01",
-        "+trainer.limit_val_batches=0.1",
-        "+trainer.limit_test_batches=0.1",
+        "+trainer.limit_train_batches=1",
+        "+trainer.limit_val_batches=1",
+        "+trainer.limit_test_batches=1",
+        "+datamodule.sample=true",
+        "datamodule.batch_size=10",
         "logger=wandb",
     ]
     run_sh_command(command)
