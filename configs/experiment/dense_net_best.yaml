@@ -4,7 +4,7 @@
 # python train.py experiment=example
 
 defaults:
-  - override /datamodule: fetal_planes.yaml
+  - override /data: fetal_planes.yaml
   - override /model: dense_net.yaml
   - override /callbacks: default.yaml
   - override /logger: many_loggers.yaml
@@ -31,7 +31,7 @@ model:
     densenet_name: densenet121
     pretrain: true
 
-datamodule:
+data:
   train_val_split: 0.1
   train_val_split_seed: 390
   batch_size: 32

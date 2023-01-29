@@ -4,7 +4,7 @@
 # python train.py experiment=example
 
 defaults:
-  - override /datamodule: fetal_planes.yaml
+  - override /data: fetal_planes.yaml
   - override /model: simple_dense_net.yaml
   - override /callbacks: default.yaml
   - override /logger: many_loggers.yaml
@@ -32,7 +32,7 @@ model:
     lin2_size: 64 # 256 64
     lin3_size: 256 # 32 256
 
-datamodule:
+data:
   train_val_split: 0.1
   train_val_split_seed: 390
   batch_size: 32

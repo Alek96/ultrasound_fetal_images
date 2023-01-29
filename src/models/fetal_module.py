@@ -5,8 +5,6 @@ from pytorch_lightning import LightningModule
 from torchmetrics import MaxMetric, MeanMetric
 from torchmetrics.classification.accuracy import Accuracy
 
-from src.datamodules.fetal_planes import FetalPlanesDataModule
-
 
 class FetalLitModule(LightningModule):
     """Example of LightningModule for Fetal classification.
