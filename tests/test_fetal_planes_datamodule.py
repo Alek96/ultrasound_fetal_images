@@ -3,8 +3,7 @@ from pathlib import Path
 import pytest
 import torch
 
-from src.datamodules.fetal_planes import FetalPlanesDataModule
-from tests.helpers.run_if import RunIf
+from src.data.fetal_planes import FetalPlanesDataModule
 
 
 @pytest.mark.parametrize("batch_size", [16, 32])

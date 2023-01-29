@@ -1,4 +1,4 @@
-_target_: src.datamodules.fetal_planes.FetalPlanesDataModule
+_target_: src.data.fetal_planes.FetalPlanesDataModule
 data_dir: ${paths.data_dir}
 train_val_split: 0.2
 train_val_split_seed: 79

@@ -2,7 +2,7 @@
 
 defaults:
   - _self_
-  - datamodule: fetal_planes.yaml
+  - data: fetal_planes.yaml
   - model: simple_dense_net.yaml
   - logger: null
   - trainer: default.yaml

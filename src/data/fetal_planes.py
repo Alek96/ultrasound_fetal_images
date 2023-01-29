@@ -5,14 +5,14 @@ import torchvision.transforms as T
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import ConcatDataset, DataLoader, Dataset
 
-from src.datamodules.components.dataset import (
+from src.data.components.dataset import (
     FetalPlanesDataset,
     FetalPlanesSamplesDataset,
     TransformDataset,
     USVideosDataset,
 )
-from src.datamodules.components.transforms import LabelEncoder, RandomPercentCrop
-from src.datamodules.utils import group_split
+from src.data.components.transforms import LabelEncoder, RandomPercentCrop
+from src.data.utils import group_split
 
 
 class FetalPlanesDataModule(LightningDataModule):
