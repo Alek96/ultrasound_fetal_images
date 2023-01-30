@@ -34,7 +34,7 @@ model:
 
 data:
   train_val_split: 0.1
-  train_val_split_seed: 390
+  train_val_split_seed: 8166
   batch_size: 32
 
 logger:
