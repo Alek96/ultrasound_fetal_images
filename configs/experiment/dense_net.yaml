@@ -39,4 +39,4 @@ data:
 logger:
   wandb:
     tags: ${tags}
-    group: "dense_net_best"
+    group: "dense_net"
