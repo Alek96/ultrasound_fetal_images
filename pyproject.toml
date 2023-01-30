@@ -25,7 +25,7 @@ matplotlib = "^3.6.3"
 opencv-python = "^4.7.0.68"
 # --------- loggers --------- #
 tensorboard = "^2.11.2"
-# wandb
+wandb = "^0.13.9"
 # neptune-client
 # mlflow
 # comet-ml

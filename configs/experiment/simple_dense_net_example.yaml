@@ -36,3 +36,8 @@ data:
   train_val_split: 0.1
   train_val_split_seed: 390
   batch_size: 32
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "simple_dense_net"
