@@ -1,0 +1,2 @@
+[virtualenvs]
+create = false # do not create virtual environment as we are using conda environment

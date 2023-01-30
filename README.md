@@ -17,10 +17,16 @@ What it does
 
 ## How to run
 
-Install dependencies with [poetry](https://python-poetry.org/)
+Install dependencies with Makefile
 
 ```bash
-poetry install
+make install
+```
+
+Active conda environment
+
+```bash
+conda activate ultrasound_fetal_images_env
 ```
 
 Train model with default configuration
