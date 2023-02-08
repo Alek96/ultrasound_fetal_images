@@ -1,4 +1,5 @@
 defaults:
+  - stochastic_weight_averaging.yaml
   - model_checkpoint.yaml
   - early_stopping.yaml
   - model_summary.yaml

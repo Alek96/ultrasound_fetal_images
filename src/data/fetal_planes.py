@@ -45,9 +45,10 @@ class FetalPlanesDataModule(LightningDataModule):
         self,
         data_dir: str = "data/",
         sample: bool = False,
+        input_size: tuple[int, int] = (55, 80),
         train_val_split: float = 0.2,
         train_val_split_seed: float = 79,
-        extend_train: bool = False,
+        extend_train_size: int = None,
         batch_size: int = 64,
         num_workers: int = 0,
         pin_memory: bool = False,
@@ -61,27 +62,27 @@ class FetalPlanesDataModule(LightningDataModule):
         self.dataset = FetalPlanesSamplesDataset if sample else FetalPlanesDataset
 
         # data transformations
-        self.input_size = (55, 80)
         self.train_transforms = T.Compose(
             [
                 T.Grayscale(),
+                # RandomPercentCrop(max_percent=20),
+                T.Resize(input_size),
                 # T.AutoAugment(T.AutoAugmentPolicy.IMAGENET),
-                # T.ConvertImageDtype(torch.float32),
+                # T.RandAugment(),
+                # T.TrivialAugmentWide(),
+                # T.AugMix(),
                 # T.RandomHorizontalFlip(p=0.5),
                 # T.RandomAffine(degrees=15, translate=(0.1, 0.1)),
-                # RandomPercentCrop(max_percent=20),
-                # T.Resize(self.input_size),
-                T.Resize(self.input_size),
-                T.RandomHorizontalFlip(p=0.5),
                 T.RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(1.0, 1.2)),
                 T.ConvertImageDtype(torch.float32),
+                # T.Normalize(mean=0.17, std=0.19),
             ]
         )
         self.test_transforms = T.Compose(
             [
                 T.Grayscale(),
+                T.Resize(input_size),
                 T.ConvertImageDtype(torch.float32),
-                T.Resize(self.input_size),
             ]
         )
         self.labels = [
@@ -132,13 +133,13 @@ class FetalPlanesDataModule(LightningDataModule):
                 transform=self.train_transforms,
                 target_transform=self.target_transform,
             )
-            if self.hparams.extend_train:
+            if self.hparams.extend_train_size:
                 self.data_train = ConcatDataset(
                     (
                         self.data_train,
                         USVideosDataset(
                             data_dir=self.hparams.data_dir,
-                            max_images=5000,
+                            max_images=self.hparams.extend_train_size,
                             transform=self.train_transforms,
                             target_transform=self.target_transform,
                         ),

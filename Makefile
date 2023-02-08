@@ -69,7 +69,7 @@ train: ensure_conda_env
 
 ## Run jupyter notebook
 notebook: ensure_conda_env
-	jupyter notebook --notebook-dir=./notebooks
+	jupyter notebook --notebook-dir=./notebooks --no-browser
 
 ## Run tensorboard
 tensorboard: ensure_conda_env
