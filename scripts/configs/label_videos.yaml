@@ -1,0 +1,11 @@
+defaults:
+  - _self_
+  - paths: default.yaml
+  - hydra: default.yaml
+
+# task name, determines output directory path
+task_name: "label_videos"
+
+model_path: "logs/train/runs/2023-02-02_09-41-36/checkpoints/epoch_019.ckpt"
+image_height: 55
+image_width: 80
