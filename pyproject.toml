@@ -24,7 +24,7 @@ jupyter = "^1.0.0"
 matplotlib = "^3.6.3"
 opencv-python = "^4.7.0.68"
 # --------- loggers --------- #
-tensorboard = "^2.11.2"
+tensorboard = "^2.12.0"
 wandb = "^0.13.10"
 # neptune-client
 # mlflow
