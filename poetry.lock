@@ -1048,14 +1048,14 @@ tqdm = ["tqdm"]
 
 [[package]]
 name = "gdown"
-version = "4.6.0"
+version = "4.6.3"
 description = "Google Drive direct download of big files."
 category = "main"
 optional = false
 python-versions = "*"
 files = [
-    {file = "gdown-4.6.0-py3-none-any.whl", hash = "sha256:e75c5aa8be8ea1cac642d4793f884339d887ab5e07aaa57fafa16c8a56a0cde5"},
-    {file = "gdown-4.6.0.tar.gz", hash = "sha256:5ce3db0aeda54f46caacb2df86f31c3e3ecd17c355689e6456d85fb528ba9749"},
+    {file = "gdown-4.6.3-py3-none-any.whl", hash = "sha256:36bbb962b373f9634af1b9a10c73e231d3ad9b084659efd93bf3c62d57c25a97"},
+    {file = "gdown-4.6.3.tar.gz", hash = "sha256:ec6ea922ef4e3616a054073656d9aa2cdc717fbdbd0a94d2f77d52d323943307"},
 ]
 
 [package.dependencies]
@@ -4612,4 +4612,4 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "a0137ea62a5f068fce66029acc05b17daf240f2b66f3ffaca78a58e972335174"
+content-hash = "e4726d33b68cadd51018f727abfb64d24d6f18b25cc6673b1abe75c5f4a358cf"

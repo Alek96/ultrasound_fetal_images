@@ -36,7 +36,7 @@ rich = "^13.3.1"           # beautiful text formatting in terminal
 pytest = "^7.2.1"          # tests
 pytest-cov = "^4.0.0"
 sh = { version = "^1.14.3", markers = "sys_platform == 'linux' or sys_platform == 'darwin'" }
-gdown = "^4.6.0"
+gdown = "^4.6.3"
 
 [build-system]
 requires = ["poetry-core"]
