@@ -59,6 +59,7 @@ data:
 
 logger:
   wandb:
+    project: "brain_planes"
     tags: ${tags}
     group: "brain_planes"
 

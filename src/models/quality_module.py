@@ -52,8 +52,6 @@ class QualityLitModule(LightningModule):
         # for tracking best so far validation accuracy
         self.val_loss_best = MinMetric()
 
-        self.once = True
-
     def on_train_start(self):
         # by default lightning executes validation step sanity checks before training starts,
         # so we need to make sure val_loss_best doesn't store accuracy from these checks
@@ -119,7 +117,13 @@ class QualityLitModule(LightningModule):
         self.log("val/lost_best", self.val_loss_best.compute(), prog_bar=True)
 
     def test_step(self, batch: Any, batch_idx: int):
-        pass
+        loss = self.model_step(batch)
+
+        # update and log metrics
+        self.test_loss(loss)
+        self.log("test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)
+
+        return {"loss": loss}
 
     def test_epoch_end(self, outputs: List[Any]):
         pass

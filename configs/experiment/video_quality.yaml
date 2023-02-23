@@ -55,5 +55,6 @@ data:
 
 logger:
   wandb:
+    project: "brain_planes"
     tags: ${tags}
     group: "video_quality"

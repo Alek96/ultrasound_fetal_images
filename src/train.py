@@ -27,7 +27,7 @@ pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 # ------------------------------------------------------------------------------------ #
 
 from src import utils
-from src.utils.plots import PlotProbabilities
+from src.utils.plots import PlotVideosProbabilities, PlotExtras, log_to_wandb
 
 log = utils.get_pylogger(__name__)
 
@@ -74,7 +74,7 @@ def train(cfg: DictConfig) -> Tuple[dict, dict]:
         lr_finder = trainer.tuner.lr_find(model=model, datamodule=datamodule)
         # Plot results
         fig = lr_finder.plot(suggest=True)
-        model.log_to_wandb(lambda: {"trainer/samples": wandb.Image(fig)}, loggers=logger)
+        log_to_wandb(lambda: {"trainer/samples": wandb.Image(fig)}, loggers=logger)
         # Pick suggestion
         new_lr = lr_finder.suggestion()
         log.info(f"Suggested lr {new_lr}")
@@ -112,9 +112,9 @@ def train(cfg: DictConfig) -> Tuple[dict, dict]:
         trainer.test(model=model, datamodule=datamodule, ckpt_path=ckpt_path)
         log.info(f"Best ckpt path: {ckpt_path}")
 
-        log.info("Starting labeling video dataset")
-        plot_probabilities: PlotProbabilities = hydra.utils.instantiate(cfg.extras.plot_probabilities)
-        plot_probabilities.label_video_dataset(trainer=trainer, model=model)
+        if cfg.extras.get("after_test_plots"):
+            plot: PlotExtras = hydra.utils.instantiate(cfg.extras.after_test)
+            plot.run(trainer=trainer, model=model)
 
     test_metrics = trainer.callback_metrics
 

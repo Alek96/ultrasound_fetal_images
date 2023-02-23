@@ -128,13 +128,11 @@ class VideoQualityDataset(Dataset):
         transform: Optional[Callable] = None,
         target_transform: Optional[Callable] = None,
     ):
-        self.data_dir = Path(data_dir) / dataset_name / "data"
+        self.data_dir = Path(data_dir) / dataset_name / "data" / ("train" if train else "test")
         self.window_size = window_size
         self.clips = self.load_clips()
         self.transform = transform
         self.target_transform = target_transform
-
-        self.once = True
 
     def load_clips(self):
         clips = []
