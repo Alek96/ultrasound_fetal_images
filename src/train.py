@@ -113,7 +113,7 @@ def train(cfg: DictConfig) -> Tuple[dict, dict]:
         log.info(f"Best ckpt path: {ckpt_path}")
 
         if cfg.extras.get("after_test_plots"):
-            plot: PlotExtras = hydra.utils.instantiate(cfg.extras.after_test)
+            plot: PlotExtras = hydra.utils.instantiate(cfg.extras.after_test_plots)
             plot.run(trainer=trainer, model=model)
 
     test_metrics = trainer.callback_metrics
