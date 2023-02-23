@@ -4,4 +4,7 @@
 # https://pytorch.org/blog/pytorch-1.6-now-includes-stochastic-weight-averaging/
 stochastic_weight_averaging:
   _target_: pytorch_lightning.callbacks.StochasticWeightAveraging
-  swa_lrs: 0.01
+  swa_lrs: 0.01 # The SWA learning rate to use:
+  swa_epoch_start: 0.8 # When procedure will start
+  annealing_epochs: 10 # Number of epochs in the annealing phase
+  annealing_strategy: "cos" # Specifies the annealing strategy (cos, linear)

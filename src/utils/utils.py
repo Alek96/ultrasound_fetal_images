@@ -1,8 +1,6 @@
-import time
 import warnings
 from importlib.util import find_spec
-from pathlib import Path
-from typing import Any, Callable, Dict, List
+from typing import Callable, List
 
 import hydra
 from omegaconf import DictConfig
@@ -30,7 +28,6 @@ def task_wrapper(task_func: Callable) -> Callable:
     def wrap(cfg: DictConfig):
         # execute the task
         try:
-
             # apply extra utilities
             extras(cfg)
 
@@ -38,7 +35,6 @@ def task_wrapper(task_func: Callable) -> Callable:
 
         # things to do if exception occurs
         except Exception as ex:
-
             # save exception to `.log` file
             log.exception("")
 
@@ -48,7 +44,6 @@ def task_wrapper(task_func: Callable) -> Callable:
 
         # things to always do after either success or exception
         finally:
-
             # display output dir path in terminal
             log.info(f"Output dir: {cfg.paths.output_dir}")
 
@@ -101,12 +96,16 @@ def instantiate_callbacks(callbacks_cfg: DictConfig) -> List[Callback]:
     if not isinstance(callbacks_cfg, DictConfig):
         raise TypeError("Callbacks config must be a DictConfig!")
 
-    for _, cb_conf in callbacks_cfg.items():
-        if isinstance(cb_conf, DictConfig) and "_target_" in cb_conf:
+    for key, cb_conf in callbacks_cfg.items():
+        if isinstance(cb_conf, DictConfig) and "_target_" in cb_conf and not disabled_by_optuna(key, cb_conf):
             log.info(f"Instantiating callback <{cb_conf._target_}>")
             callbacks.append(hydra.utils.instantiate(cb_conf))
 
     return callbacks
+
+
+def disabled_by_optuna(key, cb_conf):
+    return key == "stochastic_weight_averaging" and cb_conf.swa_lrs is None
 
 
 def instantiate_loggers(logger_cfg: DictConfig) -> List[Logger]:
@@ -150,12 +149,8 @@ def log_hyperparameters(object_dict: dict) -> None:
 
     # save number of model parameters
     hparams["model/params/total"] = sum(p.numel() for p in model.parameters())
-    hparams["model/params/trainable"] = sum(
-        p.numel() for p in model.parameters() if p.requires_grad
-    )
-    hparams["model/params/non_trainable"] = sum(
-        p.numel() for p in model.parameters() if not p.requires_grad
-    )
+    hparams["model/params/trainable"] = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    hparams["model/params/non_trainable"] = sum(p.numel() for p in model.parameters() if not p.requires_grad)
 
     hparams["data"] = cfg["data"]
     hparams["trainer"] = cfg["trainer"]

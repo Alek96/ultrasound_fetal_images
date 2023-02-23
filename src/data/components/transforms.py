@@ -2,7 +2,8 @@ from math import floor
 from typing import List, Tuple
 
 import torch
-import torchvision.transforms.functional as F
+import torchvision.transforms as T
+import torchvision.transforms.functional as TF
 
 
 class RandomPercentCrop(torch.nn.Module):
@@ -30,7 +31,7 @@ class RandomPercentCrop(torch.nn.Module):
         Returns:
             tuple: params (top, left, height, width) to be passed to ``crop`` for random crop.
         """
-        _, height, width = F.get_dimensions(img)
+        _, height, width = TF.get_dimensions(img)
 
         percent = (torch.rand(1) * max_percent).item()
         crop_height = floor(height * (100 - percent) / 100)
@@ -52,10 +53,70 @@ class RandomPercentCrop(torch.nn.Module):
             PIL Image or Tensor: Cropped image.
         """
         top, left, crop_height, crop_weight = self.get_params(img, self.max_percent)
-        return F.crop(img, top, left, crop_height, crop_weight)
+        return TF.crop(img, top, left, crop_height, crop_weight)
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(max_percent={self.max_percent})"
+
+
+class HorizontalFlip(torch.nn.Module):
+    def __init__(self, flip: bool = True) -> None:
+        super().__init__()
+        self.flip = flip
+
+    def forward(self, img):
+        """
+        Args:
+            img (PIL Image or Tensor): Image to be flipped.
+
+        Returns:
+            PIL Image or Tensor: Horizontally flipped image.
+        """
+        return TF.hflip(img=img) if self.flip else img
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(flip={self.max_percent})"
+
+
+class Affine(torch.nn.Module):
+    def __init__(
+        self,
+        degrees: float = None,
+        translate: Tuple[float, float] = None,
+        scale: float = None,
+        shear: float = None,
+    ) -> None:
+        super().__init__()
+        self.degrees = degrees or 0.0
+        self.translate = translate or [0, 0]
+        self.scale = scale or 1.0
+        self.shear = shear or [0.0, 0.0]
+
+    def forward(self, img):
+        """
+        Args:
+            img (PIL Image or Tensor): Image to be transformed.
+
+        Returns:
+            PIL Image or Tensor: Transformed image.
+        """
+        _, height, width = TF.get_dimensions(img)
+        return TF.affine(
+            img=img,
+            angle=-self.degrees,
+            translate=[int(round(self.translate[0] * width)), int(round(self.translate[1] * height))],
+            scale=self.scale,
+            shear=self.shear,
+        )
+
+    def __repr__(self) -> str:
+        s = f"{self.__class__.__name__} ("
+        s += f"degrees={self.degrees}, "
+        s += f"translate={self.translate}, "
+        s += f"scale={self.scale}, "
+        s += f"shear={self.shear})"
+
+        return s
 
 
 class LabelEncoder(torch.nn.Module):

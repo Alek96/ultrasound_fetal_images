@@ -1,5 +1,7 @@
 import pathlib
 import shutil
+from math import ceil
+from typing import Callable
 
 import cv2
 import hydra
@@ -7,7 +9,9 @@ import PIL
 import pyrootutils
 import torch
 import torchvision.transforms as T
+import torchvision.transforms.functional as F
 from omegaconf import DictConfig
+from pytorch_lightning import LightningModule
 from tqdm import tqdm
 
 pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
@@ -29,121 +33,144 @@ pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 # ------------------------------------------------------------------------------------ #
 
 from src import utils
+from src.data.components.dataset import FetalBrainPlanesDataset
 from src.models.fetal_module import FetalLitModule
 
 log = utils.get_pylogger(__name__)
 
-labels = [
-    "Other",
-    "Maternal cervix",
-    "Fetal abdomen",
-    "Fetal brain",
-    "Fetal femur",
-    "Fetal thorax",
-]
+device = "cuda" if torch.cuda.is_available() else "cpu"
+label_def = FetalBrainPlanesDataset.labels
+batch_size: int
+min_prob: float
+prob_norm: float
+transforms: Callable
+model: LightningModule
 
 
-def label_videos(model, transforms, path: pathlib.Path):
-    videos_path = path / "videos"
+def label_videos(path: pathlib.Path):
+    selected_path = path / "selected"
     images_path = path / "labeled"
-    videos = len(list(videos_path.iterdir()))
-    for i, video_path in enumerate(videos_path.iterdir()):
-        label_video(model, transforms, video_path, images_path, i + 1, videos)
+    videos = list(selected_path.iterdir())
+    for i, frames_path in enumerate(tqdm(videos, desc="Label videos")):
+        label_video(frames_path, images_path)
 
 
-def label_video(
-    model, transforms, video_path: pathlib.Path, images_path: pathlib.Path, it: int, videos: int
-):
-    if not video_path.exists():
-        print(f"path {video_path} not exist")
+def label_video(frames_path: pathlib.Path, images_path: pathlib.Path):
+    imgs_path = images_path / frames_path.stem
+    shutil.rmtree(imgs_path, ignore_errors=True)
+    imgs_path.mkdir(parents=True)
 
-    vidcap = cv2.VideoCapture(str(video_path))
-    for i, frame in enumerate(frame_iter(vidcap, f"label video {it}/{videos}")):
-        label = label_frame(model, transforms, frame)
-        img_path = images_path / video_path.stem / label / ("frame%d.jpg" % i)
-        if not img_path.parent.exists():
-            img_path.parent.mkdir(parents=True)
-        cv2.imwrite(str(img_path), frame)
+    frames_paths = list(frames_path.iterdir())
 
-    count_images(images_path / video_path.stem)
+    epochs = ceil(len(frames_paths) / batch_size)
+    for i in tqdm(range(epochs), desc="Label video", leave=False):
+        frames = frames_paths[(i * batch_size) : ((i + 1) * batch_size)]
+        labels = label_frames(frames)
 
-
-def frame_iter(capture, description):
-    def iterator():
-        while capture.grab():
-            yield capture.retrieve()[1]
-
-    return tqdm(
-        iterator(),
-        desc=description,
-        total=int(capture.get(cv2.CAP_PROP_FRAME_COUNT)),
-    )
+        for frame_path, label in zip(frames, labels):
+            if label:
+                img_path = imgs_path / label / f"{frame_path.stem}.jpg"
+                if not img_path.parent.exists():
+                    img_path.parent.mkdir(parents=True)
+                shutil.copy(frame_path, img_path)
 
 
-def label_frame(model, transforms, frame):
+def label_frames(frames):
     with torch.no_grad():
+        frames = get_frames_tensor(frames)
+        frames = frames.to(device)
+        frames = transforms(frames)
+
+        y = torch.zeros(frames.shape[0], dtype=torch.int64, device=model.device)
+        y_hats, _, preds, _ = model.model_step((frames, y))
+        return [label_def[pred] if is_reliable(y_hat, pred) else None for y_hat, pred in zip(y_hats, preds)]
+
+
+def is_reliable(y_hat, pred):
+    prob = min_prob * prob_norm if pred < 3 else min_prob
+    return y_hat[pred] > prob
+
+
+def get_frames_tensor(frame_paths):
+    frames = []
+    for frame_path in frame_paths:
+        frame = cv2.imread(str(frame_path))
         frame = PIL.Image.fromarray(frame)
-        frame = transforms(frame)
+        frame = F.to_tensor(frame)
         frame = frame.unsqueeze(0)
-        y = model(frame)
-        pred = y.max(1).indices[0]
-        return labels[pred]
+        frames.append(frame)
+    return torch.cat(frames)
 
 
-def count_images(images_path: pathlib.Path):
-    count = {}
-    for label in labels:
-        count[label] = 0
-    for label_dir in images_path.iterdir():
-        count[label_dir.name] = len(list(label_dir.iterdir()))
-    print(count)
-
-
-def count_all_images(path: pathlib.Path):
+def count_labeled_images(path: pathlib.Path):
     images_path = path / "labeled"
 
     count = {}
-    for label in labels:
+    for label in label_def:
         count[label] = 0
     for video_dir in images_path.iterdir():
         for label_dir in video_dir.iterdir():
             count[label_dir.name] += len(list(label_dir.iterdir()))
 
     for key, item in count.items():
-        print(f"{key}: {item}")
+        log.info(f"{key}: {item}")
+    log.info(f"Total: {sum(count.values())} / {count_selected_images(path)}")
+
+
+def count_selected_images(path: pathlib.Path):
+    images_path = path / "selected"
+    count = 0
+    for video_dir in images_path.iterdir():
+        count += len(list(video_dir.iterdir()))
+    return count
+
+
+def find_latest_experiment(path: pathlib.Path):
+    experiments = path / "logs" / "train" / "runs"
+    experiment = sorted(experiments.iterdir())[-1]
+    return experiment
 
 
 @hydra.main(version_base="1.3", config_path="configs", config_name="label_videos.yaml")
 def main(cfg: DictConfig):
+    global batch_size, min_prob, prob_norm, model, transforms
+
     root = pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
-    log.info(f"Load model from <{cfg.model_path}>")
-    checkpoint_file = str(root / cfg.model_path)
+    model_path = cfg.model_path
+    if model_path is None or model_path == "":
+        model_path = find_latest_experiment(root)
+    else:
+        model_path = root / model_path
+
+    log.info(f"Load model from <{model_path}>")
+    checkpoint_file = sorted(model_path.glob("checkpoints/epoch_*.ckpt"))[-1]
     model = FetalLitModule.load_from_checkpoint(checkpoint_file)
     # disable randomness, dropout, etc...
     model.eval()
+    model.to(device)
 
-    log.info(
-        f"Instantiating transformations for image size <{cfg.image_height}/{cfg.image_width}>"
-    )
+    log.info(f"Instantiating transformations for image size <{cfg.image_height}/{cfg.image_width}>")
     transforms = T.Compose(
         [
-            T.ToTensor(),
             T.Grayscale(),
             T.Resize((cfg.image_height, cfg.image_width)),
             T.ConvertImageDtype(torch.float32),
         ]
     )
 
-    log.info("Delete old labeling")
-    path = root / "data" / "US_VIDEOS"
+    log.info(f"Delete old labeling from data/{cfg.video_dataset_dir}")
+    path = root / "data" / f"{cfg.video_dataset_dir}"
     shutil.rmtree(path / "labeled", ignore_errors=True)
 
-    log.info("Start labeling")
-    label_videos(model, transforms, path)
+    log.info(f"Start labeling with min_prob {cfg.min_prob} and prob_norm {cfg.prob_norm}")
+    batch_size = cfg.batch_size
+    min_prob = cfg.min_prob
+    prob_norm = cfg.prob_norm
+    label_videos(path)
 
     log.info("Count all images")
-    count_all_images(path)
+    count_labeled_images(path)
 
 
 if __name__ == "__main__":

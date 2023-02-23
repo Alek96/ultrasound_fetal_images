@@ -4,7 +4,6 @@ from typing import Callable, Optional
 from zipfile import ZipFile
 
 import gdown
-import numpy as np
 import pandas as pd
 from torch.utils.data import Dataset
 from torchvision.io import read_image
@@ -33,7 +32,15 @@ class TransformDataset(Dataset):
         return x, y
 
 
-class FetalPlanesDataset(Dataset):
+class FetalBrainPlanesDataset(Dataset):
+    labels = [
+        "Trans-ventricular",
+        "Trans-thalamic",
+        "Trans-cerebellum",
+        "Other",
+        "Not A Brain",
+    ]
+
     def __init__(
         self,
         data_dir: str,
@@ -42,15 +49,17 @@ class FetalPlanesDataset(Dataset):
         transform: Optional[Callable] = None,
         target_transform: Optional[Callable] = None,
     ):
-        dataset_dir = f"{data_dir}/{data_name}"
-        img_labels = pd.read_csv(f"{dataset_dir}/FETAL_PLANES_DB_data.csv", sep=";")
-        img_labels = img_labels[img_labels["Train "] == (1 if train else 0)]
-        img_labels = img_labels[["Image_name", "Patient_num", "Plane"]]
-        self.img_labels = img_labels.reset_index(drop=True)
-
-        self.img_dir = f"{dataset_dir}/Images"
+        self.dataset_dir = f"{data_dir}/{data_name}"
+        self.img_labels = self.load_img_labels(train)
+        self.img_dir = f"{self.dataset_dir}/Images"
         self.transform = transform
         self.target_transform = target_transform
+
+    def load_img_labels(self, train: bool):
+        img_labels = pd.read_csv(f"{self.dataset_dir}/FETAL_PLANES_DB_data.csv", sep=";")
+        img_labels = img_labels[img_labels["Train "] == (1 if train else 0)]
+        img_labels = img_labels[["Image_name", "Patient_num", "Brain_plane"]]
+        return img_labels.reset_index(drop=True)
 
     def __len__(self):
         return len(self.img_labels)
@@ -66,13 +75,14 @@ class FetalPlanesDataset(Dataset):
         if self.transform:
             image = self.transform(image)
 
-        label = self.img_labels.Plane[idx]
+        label = self.img_labels.Brain_plane[idx]
         if self.target_transform:
             label = self.target_transform(label)
+
         return image, label
 
 
-class FetalPlanesSamplesDataset(FetalPlanesDataset):
+class FetalBrainPlanesSamplesDataset(FetalBrainPlanesDataset):
     google_file_id = "1Toy4M7BzGppjlQRURXdSVxgQI_jl3zA7"
 
     def __init__(
@@ -99,7 +109,7 @@ class FetalPlanesSamplesDataset(FetalPlanesDataset):
             return
 
         zip_file = f"{data_dir}/{data_name}.zip"
-        gdown.download(id=FetalPlanesSamplesDataset.google_file_id, output=zip_file, quiet=False)
+        gdown.download(id=FetalBrainPlanesSamplesDataset.google_file_id, output=zip_file, quiet=False)
 
         with ZipFile(zip_file, "r") as zObject:
             zObject.extractall(path=data_dir)
@@ -111,16 +121,15 @@ class USVideosDataset(Dataset):
     def __init__(
         self,
         data_dir: str,
-        max_images: int,
+        dataset_dir: str = "US_VIDEOS",
         transform: Optional[Callable] = None,
         target_transform: Optional[Callable] = None,
     ):
-        data_dir = Path(data_dir) / "US_VIDEOS" / "labeled"
+        data_dir = Path(data_dir) / dataset_dir / "labeled"
         images = self.find_images(data_dir)
         self.items = []
-        for key, item in images.items():
-            idxs = np.random.permutation(len(item))[:max_images]
-            self.items.extend([(str(item[idx]), key) for idx in idxs])
+        for key, items in images.items():
+            self.items.extend([(str(item), key) for item in items])
 
         self.transform = transform
         self.target_transform = target_transform

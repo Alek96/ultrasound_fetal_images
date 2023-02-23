@@ -1,0 +1,3 @@
+class_image_sampler:
+  _target_: src.models.utils.callbacks.ClassImageSampler
+  class_names: []

@@ -1,0 +1,74 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=example
+
+defaults:
+  - override /data: fetal_planes.yaml
+  - override /model: pre_trained.yaml
+  - override /callbacks: default.yaml
+  - override /logger: many_loggers.yaml
+  - override /trainer: gpu.yaml
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+find_lr: False
+
+trainer:
+  min_epochs: 5
+  max_epochs: 50
+  val_check_interval: 0.25
+  # accumulate_grad_batches: 2
+
+callbacks:
+  stochastic_weight_averaging:
+    swa_lrs:
+    swa_epoch_start:
+  early_stopping:
+    patience: 40
+  class_image_sampler:
+    class_names:
+      - "Trans-thalamic"
+      - "Trans-cerebellum"
+      - "Trans-ventricular"
+      - "Other"
+      - "Not A Brain"
+
+model:
+  optimizer:
+    lr: 5e-04
+    weight_decay: 0.0
+  scheduler:
+    factor: 0.5
+    patience: 5
+  net_spec:
+    name: "efficientnet_v2_s"
+
+data:
+  input_size: [165, 240]
+  train_val_split: 0.2
+  train_val_split_seed: 5724
+  video_dataset: False
+  video_dataset_size:
+  video_dataset_dir: "US_VIDEOS"
+  batch_size: 32
+  num_workers: 8
+  pin_memory: True
+  sampler: "under"
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "brain_planes"
+
+extras:
+  plot_probabilities:
+    enabled: true
+    data_dir: ${paths.data_dir}
+    video_dataset_dir: "US_VIDEOS_0.3_ssl"
+    batch_size: ${data.batch_size}
+    input_size: ${data.input_size}
+    min_probabilities:
+      [0.0, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.96, 0.97, 0.98, 0.99, 0.995]
+    probability_norm: 1.0
