@@ -62,6 +62,10 @@ done
 
 #python src/train.py experiment=video_quality tags='["test"]'
 
+python src/train.py experiment=video_quality tags='["test"]' \
+  +logger.wandb.notes="delete it" \
+  trainer.min_epochs=0 trainer.max_epochs=1
+
 #python src/train.py experiment=brain_planes tags='["test"]' \
 #  model.net_spec.name="mobilenet_v3_small" \
 #  +logger.wandb.notes="delete it" \

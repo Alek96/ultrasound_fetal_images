@@ -157,27 +157,35 @@ class PlotVideoQuality(PlotExtras):
 
     def _run(self, trainer: pl.Trainer, model: pl.LightningModule) -> None:
         data = self.test_video_qualities(model)
-        self.plot(data, model)
+        self.plot_quality(data, model)
 
     def test_video_qualities(self, model: pl.LightningModule):
         data = []
         for i in range(len(self.dataset)):
-            x, y = self.dataset[i]
+            x, y, preds = self.dataset[i]
             x = x.to(device=model.device)
             y = y.to(device=model.device)
             with torch.no_grad():
                 y_hat = model(x.unsqueeze(0)).squeeze()
-            data.append((y.cpu(), y_hat.cpu()))
+            data.append((y.cpu(), y_hat.cpu(), preds))
         return data
 
-    def plot(self, data, model: pl.LightningModule):
+    def plot_quality(self, data, model: pl.LightningModule):
         nrows = len(data)
         fig, axes = plt.subplots(ncols=1, nrows=nrows, tight_layout=True, figsize=(10, 5 * nrows))
 
-        for i, (y, y_hat) in enumerate(data):
+        for i, (y, y_hat, preds) in enumerate(data):
             x = list(range(len(y)))
             axes[i].plot(x, y, label="true")
             axes[i].plot(x, y_hat, label="predicted")
+
+            for i in range(3):
+                label = FetalBrainPlanesDataset.labels[i]
+                mask = torch.eq(preds, i)
+                pred = torch.masked_fill(y_hat, mask, 0)
+                pred = torch.argmax(pred)
+                axes[i].plot(pred, y_hat[pred], "o", label=label)
+
             axes[i].legend()
 
         for ax in axes:
