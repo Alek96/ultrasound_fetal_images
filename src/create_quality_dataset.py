@@ -89,8 +89,9 @@ def label_videos(videos_path: Path, data_path: Path, plots_path: Path, sub_dir: 
     videos = sorted(videos_path.iterdir())
     for i, video_path in enumerate(tqdm(videos, desc="Label videos", position=0)):
         dense_logits, y_hats = label_video(video_path)
+        preds = torch.argmax(y_hats[0], dim=1)
         y_hats, quality = calculate_quality(y_hats)
-        save_processed_video(data_path, video_path.stem, dense_logits.cpu(), quality.cpu())
+        save_processed_video(data_path, video_path.stem, dense_logits.cpu(), quality.cpu(), preds.cpu())
         save_quality_plot(plots_path, video_path.stem, y_hats.cpu(), quality.cpu())
 
 
@@ -157,8 +158,8 @@ def calculate_quality(y_hats: Tensor):
     return y_hats, quality
 
 
-def save_processed_video(data_path: Path, video: str, dense_logits: Tensor, quality: Tensor):
-    torch.save([dense_logits, quality], f"{data_path}/{video}.pt")
+def save_processed_video(data_path: Path, video: str, dense_logits: Tensor, quality: Tensor, preds: Tensor):
+    torch.save([dense_logits, quality, preds], f"{data_path}/{video}.pt")
 
 
 def save_quality_plot(plots_path: Path, video: str, y_hats: Tensor, quality: Tensor):

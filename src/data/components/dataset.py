@@ -127,17 +127,19 @@ class VideoQualityDataset(Dataset):
         window_size: int = 32,
         transform: Optional[Callable] = None,
         target_transform: Optional[Callable] = None,
+        label_transform: Optional[Callable] = None,
     ):
         self.data_dir = Path(data_dir) / dataset_name / "data" / ("train" if train else "test")
         self.window_size = window_size
         self.clips = self.load_clips()
         self.transform = transform
         self.target_transform = target_transform
+        self.label_transform = label_transform
 
     def load_clips(self):
         clips = []
         for video in sorted(self.data_dir.iterdir()):
-            _, quality = torch.load(video)
+            _, quality, _ = torch.load(video)
             window_size = self.window_size or len(quality)
             for i in range(len(quality) - window_size + 1):
                 clips.append((video.name, i, i + window_size))
@@ -152,19 +154,22 @@ class VideoQualityDataset(Dataset):
             raise IndexError("list index out of range")
 
         video = self.data_dir / self.clips.Video[idx]
-        logits, quality = torch.load(video)
+        logits, quality, preds = torch.load(video)
 
         from_idx = self.clips.From[idx]
         to_idx = self.clips.To[idx]
         x = logits[from_idx:to_idx]
         y = quality[from_idx:to_idx]
+        p = preds[from_idx:to_idx]
 
         if self.transform:
             x = self.transform(x)
         if self.target_transform:
             y = self.target_transform(y)
+        if self.label_transform:
+            p = self.label_transform(p)
 
-        return x, y
+        return x, y, p
 
 
 class USVideosDataset(Dataset):
