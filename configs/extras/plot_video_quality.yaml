@@ -1,0 +1,9 @@
+defaults:
+  - default.yaml
+
+# log plot to wandb
+after_test_plots:
+  _target_: src.utils.plots.PlotVideoQuality
+  enabled: true
+  data_dir: null
+  dataset_name: null
