@@ -1,4 +1,4 @@
-_target_: src.models.fetal_module.FetalLitModule
+_target_: src.models.quality_module.QualityLitModule
 
 optimizer:
   _target_: torch.optim.Adam
@@ -12,13 +12,3 @@ scheduler:
   mode: min
   factor: 0.1
   patience: 10
-
-net_spec:
-  name: "densenet169"
-  output_size: ${model.num_classes}
-  pretrain: true
-
-masks:
-  - [0, 0, 0, 0, 0]
-
-num_classes: 5

@@ -78,7 +78,7 @@ def create_dataset(path: Path):
     for i, video_path in enumerate(tqdm(videos, desc="Label videos", position=0)):
         dense_logits, y_hats = label_video(video_path)
         y_hats, quality = calculate_quality(y_hats)
-        save_processed_video(data_path, video_path.stem, dense_logits, quality)
+        save_processed_video(data_path, video_path.stem, dense_logits.cpu(), quality.cpu())
         save_quality_plot(plots_path, video_path.stem, y_hats.cpu(), quality.cpu())
 
 

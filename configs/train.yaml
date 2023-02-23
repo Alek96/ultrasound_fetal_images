@@ -5,7 +5,7 @@
 defaults:
   - _self_
   - data: fetal_planes.yaml
-  - model: pre_trained.yaml
+  - model: fetal_module.yaml
   - callbacks: default.yaml
   - logger: null # set logger here or use command line (e.g. `python train.py logger=tensorboard`)
   - trainer: default.yaml

@@ -5,6 +5,7 @@ from zipfile import ZipFile
 
 import gdown
 import pandas as pd
+import torch
 from torch.utils.data import Dataset
 from torchvision.io import read_image
 
@@ -115,6 +116,56 @@ class FetalBrainPlanesSamplesDataset(FetalBrainPlanesDataset):
             zObject.extractall(path=data_dir)
 
         os.remove(zip_file)
+
+
+class VideoQualityDataset(Dataset):
+    def __init__(
+        self,
+        data_dir: str,
+        dataset_name: str = "US_VIDEOS",
+        train: bool = True,
+        window_size: int = 32,
+        transform: Optional[Callable] = None,
+        target_transform: Optional[Callable] = None,
+    ):
+        self.data_dir = Path(data_dir) / dataset_name / "data"
+        self.window_size = window_size
+        self.clips = self.load_clips()
+        self.transform = transform
+        self.target_transform = target_transform
+
+        self.once = True
+
+    def load_clips(self):
+        clips = []
+        for video in sorted(self.data_dir.iterdir()):
+            _, quality = torch.load(video, map_location=torch.device('cpu'))
+            for i in range(len(quality) - self.window_size):
+                clips.append((video.name, i, i + self.window_size))
+
+        return pd.DataFrame(clips, columns=["Video", "From", "To"])
+
+    def __len__(self):
+        return len(self.clips)
+
+    def __getitem__(self, idx):
+        if idx >= len(self):
+            raise IndexError("list index out of range")
+
+        video = self.data_dir / self.clips.Video[idx]
+        logits, quality = torch.load(video, map_location=torch.device('cpu'))
+
+        from_idx = self.clips.From[idx]
+        to_idx = self.clips.To[idx]
+        x = logits[from_idx:to_idx]
+        y = quality[from_idx:to_idx]
+
+        if self.transform:
+            x = self.transform(x)
+        if self.target_transform:
+            y = self.target_transform(y)
+
+        return x, y
 
 
 class USVideosDataset(Dataset):

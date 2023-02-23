@@ -3,7 +3,7 @@
 defaults:
   - _self_
   - data: fetal_planes.yaml
-  - model: pre_trained.yaml
+  - model: fetal_module.yaml
   - logger: null
   - trainer: default.yaml
   - paths: default.yaml

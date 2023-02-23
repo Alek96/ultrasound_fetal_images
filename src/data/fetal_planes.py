@@ -120,10 +120,7 @@ class FetalPlanesDataModule(LightningDataModule):
                 data_dir=self.hparams.data_dir,
                 train=True,
             )
-            (
-                data_train,
-                data_val,
-            ) = group_split(
+            data_train, data_val = group_split(
                 dataset=train,
                 test_size=self.hparams.train_val_split,
                 groups=train.img_labels["Patient_num"],
