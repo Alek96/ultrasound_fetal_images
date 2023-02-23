@@ -29,6 +29,7 @@ class FetalLitModule(LightningModule):
     def __init__(
         self,
         net_spec: Dict,
+        masks: List[List[int]],
         num_classes: int,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
