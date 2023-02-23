@@ -19,10 +19,20 @@ ensure_conda_env:
 
 ## Install project
 install:
-	conda create --name $(CONDA_ENV_NAME) --file conda-linux-64.lock
-	$(CONDA_ACTIVATE) $(CONDA_ENV_NAME)
-	echo "conda environment: $(CONDA_ENV_NAME)"
-	poetry install
+	@if [ $(CONDA_DEFAULT_ENV) != $(CONDA_ENV_NAME) ]; then \
+		# Create Conda environment based on generated lock file
+		conda create --name $(CONDA_ENV_NAME) --file conda-linux-64.lock; \
+		# Active conda environment
+		$(CONDA_ACTIVATE) $(CONDA_ENV_NAME); \
+		echo "conda environment: $(CONDA_ENV_NAME)"; \
+		poetry install; \
+	else \
+		# Update Conda packages based on generated lock file
+		mamba update --file conda-linux-64.lock; \
+		# Update Poetry packages based on poetry.lock
+		poetry install; \
+	fi
+
 
 ## Update project
 update: ensure_conda_env
