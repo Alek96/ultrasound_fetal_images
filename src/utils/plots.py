@@ -179,12 +179,12 @@ class PlotVideoQuality(PlotExtras):
             axes[i].plot(x, y, label="true")
             axes[i].plot(x, y_hat, label="predicted")
 
-            for i in range(3):
-                label = FetalBrainPlanesDataset.labels[i]
-                mask = torch.eq(preds, i)
+            for j in range(3):
+                label = FetalBrainPlanesDataset.labels[j]
+                mask = torch.ne(preds, j)
                 pred = torch.masked_fill(y_hat, mask, 0)
                 pred = torch.argmax(pred)
-                axes[i].plot(pred, y_hat[pred], "o", label=label)
+                axes[i].plot([pred], [y_hat[pred]], "o", label=label)
 
             axes[i].legend()
 
