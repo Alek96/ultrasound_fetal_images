@@ -32,13 +32,7 @@ class QualityLitModule(LightningModule):
         self.save_hyperparameters(logger=False)
 
         hidden_size = 64
-        self.net = torch.nn.LSTM(
-            input_size=1280,
-            hidden_size=hidden_size,
-            num_layers=1,
-            dropout=0.2,
-            batch_first=True
-        )
+        self.net = torch.nn.LSTM(input_size=1280, hidden_size=hidden_size, num_layers=1, dropout=0.2, batch_first=True)
         self.linear = torch.nn.Linear(hidden_size, 1)
 
         # loss function

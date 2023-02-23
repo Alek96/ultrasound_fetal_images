@@ -154,7 +154,7 @@ class FetalLitModule(LightningModule):
                     title=title,
                 )
             },
-            loggers=self.loggers
+            loggers=self.loggers,
         )
 
     @staticmethod
