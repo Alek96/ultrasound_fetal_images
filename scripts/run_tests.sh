@@ -57,13 +57,10 @@ for seed in "${arr[@]}"; do
   done
 done
 
+#python src/train.py experiment=brain_planes tags='["test"]' \
+#  model.net_spec.name="mobilenet_v3_small" \
 
-python src/train.py experiment=brain_planes tags='["test"]' \
-  model.net_spec.name="mobilenet_v3_small" \
-
-
-
-
+#python src/train.py experiment=video_quality tags='["test"]'
 
 #python src/train.py experiment=brain_planes tags='["test"]' \
 #  model.net_spec.name="mobilenet_v3_small" \
