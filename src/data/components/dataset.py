@@ -139,7 +139,7 @@ class VideoQualityDataset(Dataset):
     def load_clips(self):
         clips = []
         for video in sorted(self.data_dir.iterdir()):
-            _, quality = torch.load(video, map_location=torch.device('cpu'))
+            _, quality = torch.load(video)
             for i in range(len(quality) - self.window_size):
                 clips.append((video.name, i, i + self.window_size))
 
@@ -153,7 +153,7 @@ class VideoQualityDataset(Dataset):
             raise IndexError("list index out of range")
 
         video = self.data_dir / self.clips.Video[idx]
-        logits, quality = torch.load(video, map_location=torch.device('cpu'))
+        logits, quality = torch.load(video)
 
         from_idx = self.clips.From[idx]
         to_idx = self.clips.To[idx]
