@@ -1,6 +1,6 @@
 from math import ceil
 from pathlib import Path
-from typing import List, Callable, Dict, Any
+from typing import Any, Callable, Dict, List
 
 import cv2
 import matplotlib.pyplot as plt
@@ -19,8 +19,8 @@ from src.data.components.dataset import FetalBrainPlanesDataset, VideoQualityDat
 
 class PlotExtras:
     def __init__(
-            self,
-            enabled: bool,
+        self,
+        enabled: bool,
     ):
         super().__init__()
         self.enabled = enabled
@@ -41,14 +41,14 @@ class PlotExtras:
 
 class PlotVideosProbabilities(PlotExtras):
     def __init__(
-            self,
-            enabled: bool,
-            data_dir: str = "data/",
-            video_dataset_dir: str = "US_VIDEOS",
-            batch_size: int = 32,
-            input_size: tuple[int, int] = (55, 80),
-            min_probabilities: List[int] = (),
-            probability_norm: float = 1.0,
+        self,
+        enabled: bool,
+        data_dir: str = "data/",
+        video_dataset_dir: str = "US_VIDEOS",
+        batch_size: int = 32,
+        input_size: tuple[int, int] = (55, 80),
+        min_probabilities: List[int] = (),
+        probability_norm: float = 1.0,
     ):
         super().__init__(enabled)
         self.data_dir = data_dir
@@ -91,7 +91,7 @@ class PlotVideosProbabilities(PlotExtras):
         frames_paths = list(frames_path.iterdir())
         epochs = ceil(len(frames_paths) / self.batch_size)
         for i in range(epochs):
-            frames = frames_paths[(i * self.batch_size): ((i + 1) * self.batch_size)]
+            frames = frames_paths[(i * self.batch_size) : ((i + 1) * self.batch_size)]
             self._label_frames(model, frames)
 
     def _label_frames(self, model: pl.LightningModule, frames):
@@ -142,10 +142,10 @@ class PlotVideosProbabilities(PlotExtras):
 
 class PlotVideoQuality(PlotExtras):
     def __init__(
-            self,
-            enabled: bool,
-            data_dir: str,
-            dataset_name: str = "US_VIDEOS",
+        self,
+        enabled: bool,
+        data_dir: str,
+        dataset_name: str = "US_VIDEOS",
     ):
         super().__init__(enabled)
         self.dataset = VideoQualityDataset(

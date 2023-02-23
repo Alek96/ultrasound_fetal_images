@@ -14,8 +14,6 @@ defaults:
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
 
-test: False
-
 find_lr: False
 
 trainer:

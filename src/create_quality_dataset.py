@@ -75,6 +75,17 @@ def create_dataset(path: Path):
     data_path.mkdir()
     plots_path.mkdir()
 
+    label_videos(videos_path=videos_path, data_path=data_path, plots_path=plots_path, sub_dir="train")
+    label_videos(videos_path=videos_path, data_path=data_path, plots_path=plots_path, sub_dir="test")
+
+
+def label_videos(videos_path: Path, data_path: Path, plots_path: Path, sub_dir: str):
+    videos_path = videos_path / sub_dir
+    data_path = data_path / sub_dir
+    plots_path = plots_path / sub_dir
+    data_path.mkdir()
+    plots_path.mkdir()
+
     videos = sorted(videos_path.iterdir())
     for i, video_path in enumerate(tqdm(videos, desc="Label videos", position=0)):
         dense_logits, y_hats = label_video(video_path)
