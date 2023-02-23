@@ -14,7 +14,7 @@ defaults:
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
 
-find_lr: False
+find_lr: True
 
 trainer:
   min_epochs: 5
@@ -37,7 +37,7 @@ callbacks:
 
 model:
   optimizer:
-    lr: 5e-04
+    lr: 1e-04
     weight_decay: 0.0
   scheduler:
     factor: 0.5
@@ -45,10 +45,10 @@ model:
 
 data:
   dataset_name: "US_VIDEOS"
-  window_size: 32
+  window_size: 128
   train_val_split: 0.2
   train_val_split_seed: 42
-  batch_size: 64
+  batch_size: 516
   num_workers: 8
   pin_memory: True
 
@@ -61,4 +61,4 @@ logger:
 extras:
   after_test_plots:
     data_dir: ${paths.data_dir}
-    video_dataset_dir: ${data.dataset_name}
+    dataset_name: ${data.dataset_name}

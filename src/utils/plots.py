@@ -165,7 +165,8 @@ class PlotVideoQuality(PlotExtras):
             x, y = self.dataset[i]
             x = x.to(device=model.device)
             y = y.to(device=model.device)
-            y_hat = model(x.unsqueeze(0)).squeeze()
+            with torch.no_grad():
+                y_hat = model(x.unsqueeze(0)).squeeze()
             data.append((y.cpu(), y_hat.cpu()))
         return data
 
@@ -176,7 +177,7 @@ class PlotVideoQuality(PlotExtras):
         for i, (y, y_hat) in enumerate(data):
             x = list(range(len(y)))
             axes[i].plot(x, y, label="true")
-            axes[i].plot(x, y_hat="predicted")
+            axes[i].plot(x, y_hat, label="predicted")
             axes[i].legend()
 
         for ax in axes:
