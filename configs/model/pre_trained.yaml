@@ -13,10 +13,12 @@ scheduler:
   factor: 0.1
   patience: 10
 
-net:
-  _target_: src.models.components.simple_dense_net.SimpleDenseNet
-  input_size: 4400
-  lin1_size: 64
-  lin2_size: 128
-  lin3_size: 64
-  output_size: 6
+net_spec:
+  name: "densenet169"
+  output_size: ${model.num_classes}
+  pretrain: true
+
+masks:
+  - [0, 0, 0, 0, 0]
+
+num_classes: 5

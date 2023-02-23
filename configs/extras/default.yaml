@@ -6,3 +6,14 @@ enforce_tags: True
 
 # pretty print config tree at the start of the run using Rich library
 print_config: True
+
+# log plot to wandb
+plot_probabilities:
+  _target_: src.utils.plots.PlotProbabilities
+  enabled: false
+  data_dir: null
+  video_dataset_dir: null
+  batch_size: null
+  input_size: [55, 80]
+  min_probabilities: []
+  probability_norm: 1.0

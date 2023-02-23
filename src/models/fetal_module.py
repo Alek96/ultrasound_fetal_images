@@ -1,9 +1,14 @@
-from typing import Any, List
+from typing import Any, Dict, List, Optional
 
 import torch
 from pytorch_lightning import LightningModule
-from torchmetrics import MaxMetric, MeanMetric
+from pytorch_lightning.loggers import Logger, WandbLogger
+from torchmetrics import ConfusionMatrix, MaxMetric, MeanMetric
 from torchmetrics.classification.accuracy import Accuracy
+
+from src.data.components.dataset import FetalBrainPlanesDataset
+from src.models.components.utils import get_model
+from src.models.utils.wandb import wandb_confusion_matrix
 
 
 class FetalLitModule(LightningModule):
@@ -23,7 +28,9 @@ class FetalLitModule(LightningModule):
 
     def __init__(
         self,
-        net: torch.nn.Module,
+        net_spec: Dict,
+        masks: List[List[int]],
+        num_classes: int,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
     ):
@@ -33,15 +40,23 @@ class FetalLitModule(LightningModule):
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
 
-        self.net = net
+        # data information
+        self.other_class_idx = 3
+        self.register_buffer("masks", torch.tensor(masks, dtype=torch.bool))
+
+        nets = [get_model(**net_spec) for _ in range(len(self.masks))]
+        self.nets = torch.nn.ModuleList(nets)
 
         # loss function
         self.criterion = torch.nn.CrossEntropyLoss()
+        # for accumulating prediction
+        self.softmax = torch.nn.Softmax(dim=1)
 
         # metric objects for calculating and averaging accuracy across batches
-        self.train_acc = Accuracy(task="multiclass", num_classes=6)
-        self.val_acc = Accuracy(task="multiclass", num_classes=6)
-        self.test_acc = Accuracy(task="multiclass", num_classes=6)
+        self.train_acc = Accuracy(task="multiclass", num_classes=num_classes, average="macro")
+        self.val_acc = Accuracy(task="multiclass", num_classes=num_classes, average="macro")
+        self.test_acc = Accuracy(task="multiclass", num_classes=num_classes, average="macro")
+        self.test_acc_cm = ConfusionMatrix(task="multiclass", num_classes=num_classes, normalize="true")
 
         # for averaging loss across batches
         self.train_loss = MeanMetric()
@@ -51,27 +66,54 @@ class FetalLitModule(LightningModule):
         # for tracking best so far validation accuracy
         self.val_acc_best = MaxMetric()
 
-    def forward(self, x: torch.Tensor):
-        return self.net(x)
+        # for tracking confusion matrix
+        self.train_cm = ConfusionMatrix(task="multiclass", num_classes=num_classes, normalize="none")
+        self.test_cm = ConfusionMatrix(task="multiclass", num_classes=num_classes, normalize="none")
 
     def on_train_start(self):
         # by default lightning executes validation step sanity checks before training starts,
         # so we need to make sure val_acc_best doesn't store accuracy from these checks
         self.val_acc_best.reset()
+        # reset train_cm before every run
+        self.train_cm.reset()
 
     def model_step(self, batch: Any):
-        x, y = batch
-        logits = self.forward(x)
-        loss = self.criterion(logits, y)
-        preds = torch.argmax(logits, dim=1)
-        return loss, preds, y
+        x, targets = batch
+
+        y = None
+        losses = []
+        y_hats = []
+
+        idx = torch.randint(0, len(self.masks), (1,)) if self.training else range(len(self.masks))
+        for i in idx:
+            logits = self.nets[i](x)
+            logits.masked_fill_(self.masks[i], value=float("-inf"))
+
+            # loss
+            y = targets.clone()
+            for j, disabled_class in enumerate(self.masks[i]):
+                if disabled_class:
+                    y[y == j] = self.other_class_idx
+            loss = self.criterion(logits, y)
+            losses.append(loss.unsqueeze(0))
+
+            # prediction
+            y_hat = self.softmax(logits)
+            y_hats.append(y_hat.unsqueeze(0))
+
+        loss = torch.mean(torch.cat(losses))
+        y_hat = torch.mean(torch.cat(y_hats), dim=0)
+        preds = torch.argmax(y_hat, dim=1)
+        targets = y if self.training else targets
+        return y_hat, loss, preds, targets
 
     def training_step(self, batch: Any, batch_idx: int):
-        loss, preds, targets = self.model_step(batch)
+        _, loss, preds, targets = self.model_step(batch)
 
         # update and log metrics
         self.train_loss(loss)
         self.train_acc(preds, targets)
+        self.train_cm.update(preds, targets)
         self.log("train/loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("train/acc", self.train_acc, on_step=False, on_epoch=True, prog_bar=True)
 
@@ -92,7 +134,7 @@ class FetalLitModule(LightningModule):
         pass
 
     def validation_step(self, batch: Any, batch_idx: int):
-        loss, preds, targets = self.model_step(batch)
+        _, loss, preds, targets = self.model_step(batch)
 
         # update and log metrics
         self.val_loss(loss)
@@ -110,18 +152,45 @@ class FetalLitModule(LightningModule):
         self.log("val/acc_best", self.val_acc_best.compute(), prog_bar=True)
 
     def test_step(self, batch: Any, batch_idx: int):
-        loss, preds, targets = self.model_step(batch)
+        _, loss, preds, targets = self.model_step(batch)
 
         # update and log metrics
         self.test_loss(loss)
         self.test_acc(preds, targets)
+        self.test_acc_cm.update(preds, targets)
+        self.test_cm.update(preds, targets)
         self.log("test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("test/acc", self.test_acc, on_step=False, on_epoch=True, prog_bar=True)
 
         return {"loss": loss, "preds": preds, "targets": targets}
 
     def test_epoch_end(self, outputs: List[Any]):
-        pass
+        confusion_matrix = self.test_acc_cm.compute()
+        test_acc_brain_planes = self.confusion_matrix_acc(confusion_matrix, 3)
+        self.log("test/acc_brain_planes", test_acc_brain_planes, on_step=False, on_epoch=True, prog_bar=True)
+        self.log_confusion_matrix("train/conf", self.train_cm.compute())
+        self.log_confusion_matrix("test/conf", self.test_cm.compute())
+
+    def log_confusion_matrix(self, name: str, confusion_matrix: torch.Tensor, title: Optional[str] = None):
+        self.log_to_wandb(
+            {
+                name: wandb_confusion_matrix(
+                    cm=confusion_matrix,
+                    class_names=FetalBrainPlanesDataset.labels,
+                    title=title,
+                )
+            }
+        )
+
+    def log_to_wandb(self, data: Dict[str, Any], loggers: Optional[List[Logger]] = None) -> None:
+        for logger in loggers or self.loggers:
+            if isinstance(logger, WandbLogger):
+                logger.experiment.log(data)
+
+    @staticmethod
+    def confusion_matrix_acc(confusion_matrix, size):
+        true = torch.sum(torch.cat([confusion_matrix[i][i].view(1) for i in range(0, size)]))
+        return true / size
 
     def configure_optimizers(self):
         """Choose what optimizers and learning-rate schedulers to use in your optimization.
@@ -146,4 +215,4 @@ class FetalLitModule(LightningModule):
 
 
 if __name__ == "__main__":
-    _ = FetalLitModule(None, None, None)
+    _ = FetalLitModule(None, None, None, None)

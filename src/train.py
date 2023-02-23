@@ -3,6 +3,7 @@ from typing import List, Optional, Tuple
 import hydra
 import pyrootutils
 import pytorch_lightning as pl
+import wandb
 from omegaconf import DictConfig
 from pytorch_lightning import Callback, LightningDataModule, LightningModule, Trainer
 from pytorch_lightning.loggers import Logger
@@ -26,6 +27,7 @@ pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 # ------------------------------------------------------------------------------------ #
 
 from src import utils
+from src.utils.plots import PlotProbabilities
 
 log = utils.get_pylogger(__name__)
 
@@ -65,6 +67,20 @@ def train(cfg: DictConfig) -> Tuple[dict, dict]:
     log.info("Instantiating loggers...")
     logger: List[Logger] = utils.instantiate_loggers(cfg.get("logger"))
 
+    if cfg.get("find_lr"):
+        log.info("Run learning Rate Finder")
+        trainer: Trainer = hydra.utils.instantiate(cfg.trainer, auto_lr_find="optimizer.lr", min_epochs=None)
+        # Run learning rate finder
+        lr_finder = trainer.tuner.lr_find(model=model, datamodule=datamodule)
+        # Plot results
+        fig = lr_finder.plot(suggest=True)
+        model.log_to_wandb({"trainer/samples": wandb.Image(fig)}, loggers=logger)
+        # Pick suggestion
+        new_lr = lr_finder.suggestion()
+        log.info(f"Suggested lr {new_lr}")
+        # update hparams of the model
+        model.hparams.optimizer.lr = new_lr
+
     log.info(f"Instantiating trainer <{cfg.trainer._target_}>")
     trainer: Trainer = hydra.utils.instantiate(cfg.trainer, callbacks=callbacks, logger=logger)
 
@@ -96,6 +112,10 @@ def train(cfg: DictConfig) -> Tuple[dict, dict]:
         trainer.test(model=model, datamodule=datamodule, ckpt_path=ckpt_path)
         log.info(f"Best ckpt path: {ckpt_path}")
 
+        log.info("Starting labeling video dataset")
+        plot_probabilities: PlotProbabilities = hydra.utils.instantiate(cfg.extras.plot_probabilities)
+        plot_probabilities.label_video_dataset(trainer=trainer, model=model)
+
     test_metrics = trainer.callback_metrics
 
     # merge train and test metrics
@@ -110,9 +130,7 @@ def main(cfg: DictConfig) -> Optional[float]:
     metric_dict, _ = train(cfg)
 
     # safely retrieve metric value for hydra-based hyperparameter optimization
-    metric_value = utils.get_metric_value(
-        metric_dict=metric_dict, metric_name=cfg.get("optimized_metric")
-    )
+    metric_value = utils.get_metric_value(metric_dict=metric_dict, metric_name=cfg.get("optimized_metric"))
 
     # return optimized metric
     return metric_value

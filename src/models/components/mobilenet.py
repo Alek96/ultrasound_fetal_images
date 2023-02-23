@@ -3,12 +3,12 @@ from torch import nn
 from torchvision.models import get_model
 
 
-class DenseNet(nn.Module):
-    supported_models = ["densenet121", "densenet161", "densenet169", "densenet201"]
+class MobileNet(nn.Module):
+    supported_models = ["mobilenet_v2", "mobilenet_v3_small", "mobilenet_v3_large"]
 
     def __init__(
         self,
-        name: str = "densenet121",
+        name: str = "mobilenet_v2",
         output_size: int = 6,
         pretrain: bool = True,
     ):
@@ -18,7 +18,7 @@ class DenseNet(nn.Module):
         self.model = get_model(name=name, weights="DEFAULT" if pretrain else None)
 
         # input
-        old_conv = self.model.features.conv0
+        old_conv = self.model.features[0][0]
         conv = nn.Conv2d(
             in_channels=1,
             out_channels=old_conv.out_channels,
@@ -31,11 +31,11 @@ class DenseNet(nn.Module):
             padding_mode=old_conv.padding_mode,
         )
         conv.weight = nn.Parameter(torch.mean(old_conv.weight, dim=1, keepdim=True))
-        self.model.features.conv0 = conv
+        self.model.features[0][0] = conv
 
         # output
-        self.model.classifier = nn.Linear(
-            in_features=self.model.classifier.in_features,
+        self.model.classifier[-1] = nn.Linear(
+            in_features=self.model.classifier[-1].in_features,
             out_features=output_size,
         )
 
@@ -44,4 +44,4 @@ class DenseNet(nn.Module):
 
 
 if __name__ == "__main__":
-    _ = DenseNet()
+    _ = MobileNet()

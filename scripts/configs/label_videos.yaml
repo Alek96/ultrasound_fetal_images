@@ -6,6 +6,10 @@ defaults:
 # task name, determines output directory path
 task_name: "label_videos"
 
-model_path: "logs/train/runs/2023-02-02_09-41-36/checkpoints/epoch_019.ckpt"
-image_height: 55
-image_width: 80
+model_path: # "logs/train/runs/2023-02-02_09-41-36"
+image_height: 165
+image_width: 240
+video_dataset_dir: "US_VIDEOS"
+batch_size: 32
+min_prob: 0.6
+prob_norm: 1.0

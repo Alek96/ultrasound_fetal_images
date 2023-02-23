@@ -1,18 +1,20 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Literal, Optional
 
+import numpy as np
 import torch
 import torchvision.transforms as T
 from pytorch_lightning import LightningDataModule
-from torch.utils.data import ConcatDataset, DataLoader, Dataset
+from torch.utils.data import ConcatDataset, DataLoader, Dataset, Subset
 
 from src.data.components.dataset import (
-    FetalPlanesDataset,
-    FetalPlanesSamplesDataset,
+    FetalBrainPlanesDataset,
+    FetalBrainPlanesSamplesDataset,
     TransformDataset,
     USVideosDataset,
 )
-from src.data.components.transforms import LabelEncoder, RandomPercentCrop
+from src.data.components.transforms import LabelEncoder
 from src.data.utils import group_split
+from src.data.utils.utils import get_over_sampler, get_under_sampler
 
 
 class FetalPlanesDataModule(LightningDataModule):
@@ -48,10 +50,13 @@ class FetalPlanesDataModule(LightningDataModule):
         input_size: tuple[int, int] = (55, 80),
         train_val_split: float = 0.2,
         train_val_split_seed: float = 79,
-        extend_train_size: int = None,
+        video_dataset: bool = False,
+        video_dataset_size: int = None,
+        video_dataset_dir: str = "US_VIDEOS",
         batch_size: int = 64,
         num_workers: int = 0,
         pin_memory: bool = False,
+        sampler: Literal[None, "under", "over"] = None,
     ):
         super().__init__()
 
@@ -59,7 +64,7 @@ class FetalPlanesDataModule(LightningDataModule):
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
 
-        self.dataset = FetalPlanesSamplesDataset if sample else FetalPlanesDataset
+        self.dataset = FetalBrainPlanesSamplesDataset if sample else FetalBrainPlanesDataset
 
         # data transformations
         self.train_transforms = T.Compose(
@@ -67,13 +72,13 @@ class FetalPlanesDataModule(LightningDataModule):
                 T.Grayscale(),
                 # RandomPercentCrop(max_percent=20),
                 T.Resize(input_size),
-                # T.AutoAugment(T.AutoAugmentPolicy.IMAGENET),
+                T.AutoAugment(T.AutoAugmentPolicy.IMAGENET),
                 # T.RandAugment(),
                 # T.TrivialAugmentWide(),
                 # T.AugMix(),
                 # T.RandomHorizontalFlip(p=0.5),
                 # T.RandomAffine(degrees=15, translate=(0.1, 0.1)),
-                T.RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(1.0, 1.2)),
+                # T.RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(1.0, 1.2)),
                 T.ConvertImageDtype(torch.float32),
                 # T.Normalize(mean=0.17, std=0.19),
             ]
@@ -85,14 +90,7 @@ class FetalPlanesDataModule(LightningDataModule):
                 T.ConvertImageDtype(torch.float32),
             ]
         )
-        self.labels = [
-            "Other",
-            "Maternal cervix",
-            "Fetal abdomen",
-            "Fetal brain",
-            "Fetal femur",
-            "Fetal thorax",
-        ]
+        self.labels = FetalBrainPlanesDataset.labels
         self.target_transform = LabelEncoder(labels=self.labels)
 
         self.data_train: Optional[Dataset] = None
@@ -101,7 +99,7 @@ class FetalPlanesDataModule(LightningDataModule):
 
     @property
     def num_classes(self):
-        return 6
+        return len(self.labels)
 
     def prepare_data(self):
         """Download data if needed.
@@ -122,7 +120,10 @@ class FetalPlanesDataModule(LightningDataModule):
                 data_dir=self.hparams.data_dir,
                 train=True,
             )
-            data_train, data_val, = group_split(
+            (
+                data_train,
+                data_val,
+            ) = group_split(
                 dataset=train,
                 test_size=self.hparams.train_val_split,
                 groups=train.img_labels["Patient_num"],
@@ -133,18 +134,17 @@ class FetalPlanesDataModule(LightningDataModule):
                 transform=self.train_transforms,
                 target_transform=self.target_transform,
             )
-            if self.hparams.extend_train_size:
-                self.data_train = ConcatDataset(
-                    (
-                        self.data_train,
-                        USVideosDataset(
-                            data_dir=self.hparams.data_dir,
-                            max_images=self.hparams.extend_train_size,
-                            transform=self.train_transforms,
-                            target_transform=self.target_transform,
-                        ),
-                    )
+            if self.hparams.video_dataset:
+                video_dataset = USVideosDataset(
+                    data_dir=self.hparams.data_dir,
+                    dataset_dir=self.hparams.video_dataset_dir,
+                    transform=self.train_transforms,
+                    target_transform=self.target_transform,
                 )
+                if self.hparams.video_dataset_size:
+                    video_dataset_idx = np.random.permutation(len(video_dataset))[: self.hparams.video_dataset_size]
+                    video_dataset = Subset(video_dataset, video_dataset_idx)
+                self.data_train = ConcatDataset((self.data_train, video_dataset))
             self.data_val = TransformDataset(
                 dataset=data_val,
                 transform=self.test_transforms,
@@ -158,13 +158,30 @@ class FetalPlanesDataModule(LightningDataModule):
             )
 
     def train_dataloader(self):
-        return DataLoader(
-            dataset=self.data_train,
-            batch_size=self.hparams.batch_size,
-            num_workers=self.hparams.num_workers,
-            pin_memory=self.hparams.pin_memory,
-            shuffle=True,
-        )
+        if self.hparams.sampler == "under":
+            return DataLoader(
+                dataset=self.data_train,
+                batch_size=self.hparams.batch_size,
+                num_workers=self.hparams.num_workers,
+                pin_memory=self.hparams.pin_memory,
+                sampler=get_under_sampler(self.data_train),
+            )
+        elif self.hparams.sampler == "over":
+            return DataLoader(
+                dataset=self.data_train,
+                batch_size=self.hparams.batch_size,
+                num_workers=self.hparams.num_workers,
+                pin_memory=self.hparams.pin_memory,
+                sampler=get_over_sampler(self.data_train),
+            )
+        else:
+            return DataLoader(
+                dataset=self.data_train,
+                batch_size=self.hparams.batch_size,
+                num_workers=self.hparams.num_workers,
+                pin_memory=self.hparams.pin_memory,
+                shuffle=True,
+            )
 
     def val_dataloader(self):
         return DataLoader(
