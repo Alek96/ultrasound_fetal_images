@@ -7,10 +7,10 @@ import matplotlib.pyplot as plt
 import PIL
 import pytorch_lightning as pl
 import torch
+import torch.nn.functional as F
 import torchvision.transforms as T
 import torchvision.transforms.functional as TF
 import wandb
-from pytorch_lightning.loggers import WandbLogger
 from tqdm import tqdm
 
 from src.data.components.dataset import FetalBrainPlanesDataset
@@ -86,8 +86,9 @@ class PlotProbabilities:
             frames = frames.to(model.device)
             frames = self.transforms(frames)
 
-            y = torch.zeros(frames.shape[0], dtype=torch.int64, device=model.device)
-            y_hats, _, preds, _ = model.model_step((frames, y))
+            _, logits = model(frames)
+            y_hats = F.softmax(logits, dim=1)
+            preds = torch.argmax(logits, dim=1)
             self._count_labels(y_hats, preds)
 
     def _get_frames_tensor(self, frame_paths):
@@ -101,7 +102,7 @@ class PlotProbabilities:
         return torch.cat(frames)
 
     def _count_labels(self, y_hats, preds):
-        for y_hat, pred in zip(y_hats, preds):
+        for (y_hat, pred) in zip(y_hats, preds):
             for min_probability in self.min_probabilities:
                 if self._is_acceptable(y_hat, pred, min_probability):
                     self.counts[min_probability][self.label_names[pred]] += 1
@@ -122,4 +123,4 @@ class PlotProbabilities:
         ax.legend()
         ax.set_title("Probabilities on video dataset")
 
-        model.log_to_wandb({"test/probabilities": wandb.Image(fig)})
+        model.log_to_wandb(lambda: {"test/probabilities": wandb.Image(fig)})

@@ -1,0 +1,13 @@
+defaults:
+  - _self_
+  - paths: default.yaml
+  - hydra: default.yaml
+
+# task name, determines output directory path
+task_name: "create_quality_dataset"
+
+model_path: "logs/train/runs/2023-02-22_12-35-41"
+dataset_dir: "US_VIDEOS"
+image_height: 165
+image_width: 240
+window: 3

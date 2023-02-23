@@ -60,4 +60,4 @@ class ClassImageSampler(Callback):
             rows_names=FetalBrainPlanesDataset.labels,
         )
 
-        pl_module.log_to_wandb({"test/samples": wandb.Image(fig)})
+        pl_module.log_to_wandb(lambda: {"test/samples": wandb.Image(fig)})
