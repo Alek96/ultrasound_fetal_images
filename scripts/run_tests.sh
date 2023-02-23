@@ -3,22 +3,50 @@
 #python src/train.py -m hparams_search=dende_net_optuna experiment=dense_net model.net.densenet_name=densenet169 data.train_val_split_seed=9208 tags='["dense_net","optuna"]'
 #python src/train.py experiment=dense_net tags='["dense_net","_240_"]'
 
-python src/train.py experiment=brain_planes tags='["seed-0.1"]' data.train_val_split="0.1" data.train_val_split_seed="9959" +logger.wandb.notes="test 7"
-python src/train.py experiment=brain_planes tags='["seed-0.1"]' data.train_val_split="0.1" data.train_val_split_seed="9959" +logger.wandb.notes="test 8"
-python src/train.py experiment=brain_planes tags='["seed-0.1"]' data.train_val_split="0.1" data.train_val_split_seed="9959" +logger.wandb.notes="test 9"
+python src/train.py experiment=brain_planes tags='["seed-0.1"]' data.train_val_split="0.1" data.train_val_split_seed="9126" +logger.wandb.notes="test 6"
+python src/train.py experiment=brain_planes tags='["seed-0.1"]' data.train_val_split="0.1" data.train_val_split_seed="9126" +logger.wandb.notes="test 8"
 
-declare -a arr=(3084 9456 2696 2086 4063 9126)
+python src/train.py experiment=brain_planes tags='["seed-0.1"]' data.train_val_split="0.1" data.train_val_split_seed="8902" +logger.wandb.notes="test 6"
+python src/train.py experiment=brain_planes tags='["seed-0.1"]' data.train_val_split="0.1" data.train_val_split_seed="8902" +logger.wandb.notes="test 7"
 
-for seed in "${arr[@]}"; do
-  for i in {4..9}; do
-    echo "test seed ${i}"
-    python src/train.py experiment=brain_planes tags='["seed-0.1"]' \
-      data.train_val_split="0.1" data.train_val_split_seed="${seed}" \
-      +logger.wandb.notes="test ${i}"
-  done
+python src/train.py experiment=brain_planes tags='["seed-0.1"]' data.train_val_split="0.1" data.train_val_split_seed="1208" +logger.wandb.notes="test 8"
+
+python src/train.py experiment=brain_planes tags='["seed-0.1"]' data.train_val_split="0.1" data.train_val_split_seed="4063" +logger.wandb.notes="test 5"
+python src/train.py experiment=brain_planes tags='["seed-0.1"]' data.train_val_split="0.1" data.train_val_split_seed="4063" +logger.wandb.notes="test 7"
+
+for i in {4..9}; do
+  echo "test seed ${i}"
+  python src/train.py experiment=brain_planes tags='["seed-0.1"]' \
+    data.train_val_split="0.1" data.train_val_split_seed="3084" \
+    +logger.wandb.notes="test ${i}"
 done
 
-declare -a arr=(943 9787 4935 6588 6893 697 6347 5785 4 7765)
+for i in {4..9}; do
+  echo "test seed ${i}"
+  python src/train.py experiment=brain_planes tags='["seed-0.1"]' \
+    data.train_val_split="0.1" data.train_val_split_seed="9456" \
+    +logger.wandb.notes="test ${i}"
+done
+
+for i in {6..9}; do
+  echo "test seed ${i}"
+  python src/train.py experiment=brain_planes tags='["seed-0.1"]' \
+    data.train_val_split="0.1" data.train_val_split_seed="2696" \
+    +logger.wandb.notes="test ${i}"
+done
+
+for i in {5..9}; do
+  echo "test seed ${i}"
+  python src/train.py experiment=brain_planes tags='["seed-0.1"]' \
+    data.train_val_split="0.1" data.train_val_split_seed="9959" \
+    +logger.wandb.notes="test ${i}"
+done
+
+python src/train.py experiment=brain_planes tags='["seed-0.1", "seed-0.15"]' data.train_val_split="0.15" data.train_val_split_seed="943" +logger.wandb.notes="test 4"
+
+python src/train.py experiment=brain_planes tags='["seed-0.1", "seed-0.15"]' data.train_val_split="0.15" data.train_val_split_seed="9787" +logger.wandb.notes="test 9"
+
+declare -a arr=(4935 6588 6893 697 6347 5785 4 7765)
 
 for seed in "${arr[@]}"; do
   for i in {1..9}; do

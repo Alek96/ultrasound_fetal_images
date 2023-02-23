@@ -74,7 +74,7 @@ def train(cfg: DictConfig) -> Tuple[dict, dict]:
         lr_finder = trainer.tuner.lr_find(model=model, datamodule=datamodule)
         # Plot results
         fig = lr_finder.plot(suggest=True)
-        model.log_to_wandb({"trainer/samples": wandb.Image(fig)}, loggers=logger)
+        model.log_to_wandb(lambda: {"trainer/samples": wandb.Image(fig)}, loggers=logger)
         # Pick suggestion
         new_lr = lr_finder.suggestion()
         log.info(f"Suggested lr {new_lr}")

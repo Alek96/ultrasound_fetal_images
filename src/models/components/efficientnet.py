@@ -36,13 +36,15 @@ class EfficientNet(nn.Module):
         self.model.features[0][0] = conv
 
         # output
-        self.model.classifier[-1] = nn.Linear(
+        self.classifier = nn.Linear(
             in_features=self.model.classifier[-1].in_features,
             out_features=output_size,
         )
+        self.model.classifier = self.model.classifier[:-1]
 
     def forward(self, x):
-        return self.model(x)
+        dense_logits = self.model(x)
+        return dense_logits, self.classifier(dense_logits)
 
 
 if __name__ == "__main__":

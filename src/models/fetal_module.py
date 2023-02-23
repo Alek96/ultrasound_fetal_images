@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import torch
 from pytorch_lightning import LightningModule
@@ -40,17 +40,10 @@ class FetalLitModule(LightningModule):
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
 
-        # data information
-        self.other_class_idx = 3
-        self.register_buffer("masks", torch.tensor(masks, dtype=torch.bool))
-
-        nets = [get_model(**net_spec) for _ in range(len(self.masks))]
-        self.nets = torch.nn.ModuleList(nets)
+        self.net = get_model(**net_spec)
 
         # loss function
         self.criterion = torch.nn.CrossEntropyLoss()
-        # for accumulating prediction
-        self.softmax = torch.nn.Softmax(dim=1)
 
         # metric objects for calculating and averaging accuracy across batches
         self.train_acc = Accuracy(task="multiclass", num_classes=num_classes, average="macro")
@@ -77,38 +70,18 @@ class FetalLitModule(LightningModule):
         # reset train_cm before every run
         self.train_cm.reset()
 
+    def forward(self, x: torch.Tensor):
+        return self.net(x)
+
     def model_step(self, batch: Any):
-        x, targets = batch
-
-        y = None
-        losses = []
-        y_hats = []
-
-        idx = torch.randint(0, len(self.masks), (1,)) if self.training else range(len(self.masks))
-        for i in idx:
-            logits = self.nets[i](x)
-            logits.masked_fill_(self.masks[i], value=float("-inf"))
-
-            # loss
-            y = targets.clone()
-            for j, disabled_class in enumerate(self.masks[i]):
-                if disabled_class:
-                    y[y == j] = self.other_class_idx
-            loss = self.criterion(logits, y)
-            losses.append(loss.unsqueeze(0))
-
-            # prediction
-            y_hat = self.softmax(logits)
-            y_hats.append(y_hat.unsqueeze(0))
-
-        loss = torch.mean(torch.cat(losses))
-        y_hat = torch.mean(torch.cat(y_hats), dim=0)
-        preds = torch.argmax(y_hat, dim=1)
-        targets = y if self.training else targets
-        return y_hat, loss, preds, targets
+        x, y = batch
+        _, logits = self.forward(x)
+        loss = self.criterion(logits, y)
+        preds = torch.argmax(logits, dim=1)
+        return loss, preds, y
 
     def training_step(self, batch: Any, batch_idx: int):
-        _, loss, preds, targets = self.model_step(batch)
+        loss, preds, targets = self.model_step(batch)
 
         # update and log metrics
         self.train_loss(loss)
@@ -134,7 +107,7 @@ class FetalLitModule(LightningModule):
         pass
 
     def validation_step(self, batch: Any, batch_idx: int):
-        _, loss, preds, targets = self.model_step(batch)
+        loss, preds, targets = self.model_step(batch)
 
         # update and log metrics
         self.val_loss(loss)
@@ -152,7 +125,7 @@ class FetalLitModule(LightningModule):
         self.log("val/acc_best", self.val_acc_best.compute(), prog_bar=True)
 
     def test_step(self, batch: Any, batch_idx: int):
-        _, loss, preds, targets = self.model_step(batch)
+        loss, preds, targets = self.model_step(batch)
 
         # update and log metrics
         self.test_loss(loss)
@@ -173,7 +146,7 @@ class FetalLitModule(LightningModule):
 
     def log_confusion_matrix(self, name: str, confusion_matrix: torch.Tensor, title: Optional[str] = None):
         self.log_to_wandb(
-            {
+            lambda: {
                 name: wandb_confusion_matrix(
                     cm=confusion_matrix,
                     class_names=FetalBrainPlanesDataset.labels,
@@ -182,10 +155,10 @@ class FetalLitModule(LightningModule):
             }
         )
 
-    def log_to_wandb(self, data: Dict[str, Any], loggers: Optional[List[Logger]] = None) -> None:
+    def log_to_wandb(self, get_date: Callable[[], Dict[str, Any]], loggers: Optional[List[Logger]] = None) -> None:
         for logger in loggers or self.loggers:
             if isinstance(logger, WandbLogger):
-                logger.experiment.log(data)
+                logger.experiment.log(get_date())
 
     @staticmethod
     def confusion_matrix_acc(confusion_matrix, size):

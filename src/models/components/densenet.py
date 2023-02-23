@@ -34,13 +34,15 @@ class DenseNet(nn.Module):
         self.model.features.conv0 = conv
 
         # output
-        self.model.classifier = nn.Linear(
+        self.classifier = nn.Linear(
             in_features=self.model.classifier.in_features,
             out_features=output_size,
         )
+        self.model.classifier = nn.Identity()
 
     def forward(self, x):
-        return self.model(x)
+        dense_logits = self.model(x)
+        return dense_logits, self.classifier(dense_logits)
 
 
 if __name__ == "__main__":
