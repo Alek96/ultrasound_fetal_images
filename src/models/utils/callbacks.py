@@ -8,6 +8,7 @@ from torch import Tensor
 
 from src.data.components.dataset import FetalBrainPlanesDataset
 from src.data.utils.utils import show_pytorch_images
+from src.utils.plots import log_to_wandb
 
 
 class ClassImageSampler(Callback):
@@ -60,4 +61,4 @@ class ClassImageSampler(Callback):
             rows_names=FetalBrainPlanesDataset.labels,
         )
 
-        pl_module.log_to_wandb(lambda: {"test/samples": wandb.Image(fig)})
+        log_to_wandb(lambda: {"test/samples": wandb.Image(fig)}, loggers=pl_module.loggers)

@@ -63,6 +63,7 @@ scales = [1.0, 1.2]
 label_def = FetalBrainPlanesDataset.labels
 model: LightningModule
 window: int
+temperature: float
 
 
 def create_dataset(path: Path):
@@ -95,7 +96,7 @@ def label_video(video_path: Path):
 
         with torch.no_grad():
             dense_logits, logits = model(frames)
-            y_hat = F.softmax(logits, dim=1)
+            y_hat = F.softmax(logits / temperature, dim=1)
             y_hats.append(y_hat)
             base_dense_logits.append(dense_logits[0])
 
@@ -179,7 +180,7 @@ def extract_nonzero_values(y_hats):
 
 @hydra.main(version_base="1.3", config_path="../configs", config_name="create_quality_dataset.yaml")
 def main(cfg: DictConfig):
-    global model, transforms, window
+    global model, transforms, window, temperature
 
     root = pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
@@ -209,6 +210,7 @@ def main(cfg: DictConfig):
     log.info(f"Start creating dataset {cfg.dataset_dir}")
     path = root / "data" / f"{cfg.dataset_dir}"
     window = cfg.window
+    temperature = cfg.temperature
     create_dataset(path)
 
 

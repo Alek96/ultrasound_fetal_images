@@ -1,20 +1,10 @@
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Dict, Optional
 
-import numpy as np
-import torch
-import torchvision.transforms as T
 from pytorch_lightning import LightningDataModule
-from torch.utils.data import ConcatDataset, DataLoader, Dataset, Subset
+from torch.utils.data import DataLoader, Dataset
 
-from src.data.components.dataset import (
-    FetalBrainPlanesDataset,
-    FetalBrainPlanesSamplesDataset,
-    TransformDataset,
-    USVideosDataset, VideoQualityDataset,
-)
-from src.data.components.transforms import LabelEncoder
+from src.data.components.dataset import VideoQualityDataset
 from src.data.utils import group_split
-from src.data.utils.utils import get_over_sampler, get_under_sampler
 
 
 class VideoQualityDataModule(LightningDataModule):
@@ -91,6 +81,12 @@ class VideoQualityDataModule(LightningDataModule):
                 groups=train.clips.Video,
                 random_state=self.hparams.train_val_split_seed,
             )
+            self.data_test = VideoQualityDataset(
+                data_dir=self.hparams.data_dir,
+                dataset_name=self.hparams.dataset_name,
+                train=False,
+                window_size=self.hparams.window_size
+            )
 
     def train_dataloader(self):
         return DataLoader(
@@ -104,6 +100,15 @@ class VideoQualityDataModule(LightningDataModule):
     def val_dataloader(self):
         return DataLoader(
             dataset=self.data_val,
+            batch_size=self.hparams.batch_size,
+            num_workers=self.hparams.num_workers,
+            pin_memory=self.hparams.pin_memory,
+            shuffle=False,
+        )
+
+    def test_dataloader(self):
+        return DataLoader(
+            dataset=self.data_test,
             batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,

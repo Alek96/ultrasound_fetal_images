@@ -9,6 +9,7 @@ from torchmetrics.classification.accuracy import Accuracy
 from src.data.components.dataset import FetalBrainPlanesDataset
 from src.models.components.utils import get_model
 from src.models.utils.wandb import wandb_confusion_matrix
+from src.utils.plots import log_to_wandb
 
 
 class FetalLitModule(LightningModule):
@@ -145,20 +146,16 @@ class FetalLitModule(LightningModule):
         self.log_confusion_matrix("test/conf", self.test_cm.compute())
 
     def log_confusion_matrix(self, name: str, confusion_matrix: torch.Tensor, title: Optional[str] = None):
-        self.log_to_wandb(
+        log_to_wandb(
             lambda: {
                 name: wandb_confusion_matrix(
                     cm=confusion_matrix,
                     class_names=FetalBrainPlanesDataset.labels,
                     title=title,
                 )
-            }
+            },
+            loggers=self.loggers
         )
-
-    def log_to_wandb(self, get_date: Callable[[], Dict[str, Any]], loggers: Optional[List[Logger]] = None) -> None:
-        for logger in loggers or self.loggers:
-            if isinstance(logger, WandbLogger):
-                logger.experiment.log(get_date())
 
     @staticmethod
     def confusion_matrix_acc(confusion_matrix, size):

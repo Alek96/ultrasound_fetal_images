@@ -1,6 +1,6 @@
 from math import ceil
 from pathlib import Path
-from typing import List
+from typing import List, Callable, Dict, Any
 
 import cv2
 import matplotlib.pyplot as plt
@@ -11,24 +11,46 @@ import torch.nn.functional as F
 import torchvision.transforms as T
 import torchvision.transforms.functional as TF
 import wandb
+from pytorch_lightning.loggers import Logger, WandbLogger
 from tqdm import tqdm
 
-from src.data.components.dataset import FetalBrainPlanesDataset
+from src.data.components.dataset import FetalBrainPlanesDataset, VideoQualityDataset
 
 
-class PlotProbabilities:
+class PlotExtras:
     def __init__(
-        self,
-        enabled: bool = False,
-        data_dir: str = "data/",
-        video_dataset_dir: str = "US_VIDEOS",
-        batch_size: int = 32,
-        input_size: tuple[int, int] = (55, 80),
-        min_probabilities: List[int] = (),
-        probability_norm: float = 1.0,
+            self,
+            enabled: bool,
     ):
         super().__init__()
         self.enabled = enabled
+
+    def run(self, trainer: pl.Trainer, model: pl.LightningModule) -> None:
+        if not self._skip(trainer):
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            model.to(device)
+            model.eval()
+            self._run(trainer, model)
+
+    def _skip(self, trainer: pl.Trainer) -> bool:
+        return not self.enabled or bool(trainer.fast_dev_run)
+
+    def _run(self, trainer: pl.Trainer, model: pl.LightningModule) -> None:
+        pass
+
+
+class PlotVideosProbabilities(PlotExtras):
+    def __init__(
+            self,
+            enabled: bool,
+            data_dir: str = "data/",
+            video_dataset_dir: str = "US_VIDEOS",
+            batch_size: int = 32,
+            input_size: tuple[int, int] = (55, 80),
+            min_probabilities: List[int] = (),
+            probability_norm: float = 1.0,
+    ):
+        super().__init__(enabled)
         self.data_dir = data_dir
         self.video_dataset_dir = video_dataset_dir
         self.batch_size = batch_size
@@ -55,17 +77,9 @@ class PlotProbabilities:
             counts[min_probability] = count
         return counts
 
-    def label_video_dataset(self, trainer: pl.Trainer, model: pl.LightningModule) -> None:
-        if not self._skip(trainer):
-            device = "cuda" if torch.cuda.is_available() else "cpu"
-            model.eval()
-            model.to(device)
-
-            self._label_videos(model)
-            self._log_probabilities(model)
-
-    def _skip(self, trainer: pl.Trainer) -> bool:
-        return not self.enabled or bool(trainer.fast_dev_run)
+    def _run(self, trainer: pl.Trainer, model: pl.LightningModule) -> None:
+        self._label_videos(model)
+        self._log_probabilities(model)
 
     def _label_videos(self, model: pl.LightningModule):
         selected_path = Path(self.data_dir) / self.video_dataset_dir / "selected"
@@ -77,7 +91,7 @@ class PlotProbabilities:
         frames_paths = list(frames_path.iterdir())
         epochs = ceil(len(frames_paths) / self.batch_size)
         for i in range(epochs):
-            frames = frames_paths[(i * self.batch_size) : ((i + 1) * self.batch_size)]
+            frames = frames_paths[(i * self.batch_size): ((i + 1) * self.batch_size)]
             self._label_frames(model, frames)
 
     def _label_frames(self, model: pl.LightningModule, frames):
@@ -123,4 +137,55 @@ class PlotProbabilities:
         ax.legend()
         ax.set_title("Probabilities on video dataset")
 
-        model.log_to_wandb(lambda: {"test/probabilities": wandb.Image(fig)})
+        log_to_wandb(lambda: {"test/probabilities": wandb.Image(fig)}, loggers=model.loggers)
+
+
+class PlotQualityVideo(PlotExtras):
+    def __init__(
+            self,
+            enabled: bool,
+            data_dir: str,
+            dataset_name: str = "US_VIDEOS",
+    ):
+        super().__init__(enabled)
+        self.dataset = VideoQualityDataset(
+            data_dir=data_dir,
+            dataset_name=dataset_name,
+            train=False,
+            window_size=int(1e10),
+        )
+
+    def _run(self, trainer: pl.Trainer, model: pl.LightningModule) -> None:
+        data = self.test_video_qualities(model)
+        self.plot(data, model)
+
+    def test_video_qualities(self, model: pl.LightningModule):
+        data = []
+        for i in range(len(self.dataset)):
+            x, y = self.dataset[i]
+            x = x.to(device=model.device)
+            y = y.to(device=model.device)
+            y_hat = model(x.unsqueeze(0)).squeeze()
+            data.append((y.cpu(), y_hat.cpu()))
+        return data
+
+    def plot(self, data, model: pl.LightningModule):
+        nrows = len(data)
+        fig, axes = plt.subplots(ncols=1, nrows=nrows, tight_layout=True, figsize=(10, 5 * nrows))
+
+        for i, (y, y_hat) in enumerate(data):
+            x = list(range(len(y)))
+            axes[i].plot(x, y, label="true")
+            axes[i].plot(x, y_hat="predicted")
+            axes[i].legend()
+
+        for ax in axes:
+            ax.set_ylim(bottom=0, top=1)
+
+        log_to_wandb(lambda: {"test/quality": wandb.Image(fig)}, loggers=model.loggers)
+
+
+def log_to_wandb(get_date: Callable[[], Dict[str, Any]], loggers: List[Logger]) -> None:
+    for logger in loggers:
+        if isinstance(logger, WandbLogger):
+            logger.experiment.log(get_date())
