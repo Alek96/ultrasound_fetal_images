@@ -138,7 +138,7 @@ class VideoQualityDataset(Dataset):
         clips = []
         for video in sorted(self.data_dir.iterdir()):
             _, quality = torch.load(video)
-            for i in range(len(quality) - self.window_size):
+            for i in range(len(quality) - (self.window_size or len(quality)) + 1):
                 clips.append((video.name, i, i + self.window_size))
 
         return pd.DataFrame(clips, columns=["Video", "From", "To"])
