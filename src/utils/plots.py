@@ -102,7 +102,7 @@ class PlotProbabilities:
         return torch.cat(frames)
 
     def _count_labels(self, y_hats, preds):
-        for (y_hat, pred) in zip(y_hats, preds):
+        for y_hat, pred in zip(y_hats, preds):
             for min_probability in self.min_probabilities:
                 if self._is_acceptable(y_hat, pred, min_probability):
                     self.counts[min_probability][self.label_names[pred]] += 1

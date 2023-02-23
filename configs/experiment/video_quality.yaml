@@ -1,0 +1,59 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=example
+
+defaults:
+  - override /data: video_quality.yaml
+  - override /model: quality_module.yaml
+  - override /callbacks: default.yaml
+  - override /logger: many_loggers.yaml
+  - override /trainer: cpu.yaml
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+test: False
+
+find_lr: False
+
+trainer:
+  min_epochs: 5
+  max_epochs: 50
+  # val_check_interval: 0.25
+  # accumulate_grad_batches: 2
+
+callbacks:
+  stochastic_weight_averaging:
+    swa_lrs:
+    swa_epoch_start:
+  model_checkpoint:
+    monitor: "val/loss"
+    mode: "min"
+  early_stopping:
+    monitor: "val/loss"
+    mode: "min"
+    patience: 5
+  class_image_sampler:
+
+model:
+  optimizer:
+    lr: 5e-04
+    weight_decay: 0.0
+  scheduler:
+    factor: 0.5
+    patience: 5
+
+data:
+  dataset_name: "US_VIDEOS"
+  window_size: 32
+  train_val_split: 0.2
+  train_val_split_seed: 42
+  batch_size: 64
+  num_workers: 8
+  pin_memory: True
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "video_quality"

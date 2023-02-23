@@ -5,7 +5,7 @@
 
 defaults:
   - override /data: fetal_planes.yaml
-  - override /model: pre_trained.yaml
+  - override /model: fetal_module.yaml
   - override /callbacks: default.yaml
   - override /logger: many_loggers.yaml
   - override /trainer: gpu.yaml
