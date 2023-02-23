@@ -152,7 +152,7 @@ class PlotVideoQuality(PlotExtras):
             data_dir=data_dir,
             dataset_name=dataset_name,
             train=False,
-            window_size=int(1e10),
+            window_size=0,
         )
 
     def _run(self, trainer: pl.Trainer, model: pl.LightningModule) -> None:
