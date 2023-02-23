@@ -8,7 +8,8 @@ defaults:
   - override /model: quality_module.yaml
   - override /callbacks: default.yaml
   - override /logger: many_loggers.yaml
-  - override /trainer: cpu.yaml
+  - override /trainer: gpu.yaml
+  - override /extras: plot_video_quality.yaml
 
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
@@ -58,3 +59,8 @@ logger:
     project: "video_quality"
     tags: ${tags}
     group: "video_quality"
+
+extras:
+  after_test_plots:
+    data_dir: ${paths.data_dir}
+    video_dataset_dir: ${data.dataset_name}

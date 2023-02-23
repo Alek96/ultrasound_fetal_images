@@ -140,7 +140,7 @@ class PlotVideosProbabilities(PlotExtras):
         log_to_wandb(lambda: {"test/probabilities": wandb.Image(fig)}, loggers=model.loggers)
 
 
-class PlotQualityVideo(PlotExtras):
+class PlotVideoQuality(PlotExtras):
     def __init__(
             self,
             enabled: bool,
