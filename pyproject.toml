@@ -22,7 +22,7 @@ numpy = "^1.24.2"
 scikit-learn = "^1.2.1"
 jupyter = "^1.0.0"
 matplotlib = "^3.7.0"
-plotly = "^5.13.0"
+plotly = "^5.13.1"
 opencv-python = "^4.7.0.72"
 scikit-image = "^0.19.3"
 # --------- loggers --------- #
