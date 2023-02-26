@@ -43,14 +43,13 @@ from src.models.fetal_module import FetalLitModule
 
 log = utils.get_pylogger(__name__)
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
 horizontal_flips: List[bool]
 rotate_degrees: List[float]
 translates: List[Tuple[float, float]]
 scales: List[float]
 transforms: List[Callable]
 
-# horizontal_flips = [False, True]
+# horizontal_flips = [False]
 # rotate_degrees = [0]
 # translates = [(0.0, 0.0)]
 # scales = [1.0]
@@ -78,6 +77,9 @@ def create_dataset(path: Path):
     label_videos(videos_path=videos_path, data_path=data_path, plots_path=plots_path, sub_dir="train")
     label_videos(videos_path=videos_path, data_path=data_path, plots_path=plots_path, sub_dir="test")
 
+    logits = load_logits(data_path=data_path / "train")
+    save_std_mean(data_path=data_path, logits=logits)
+
 
 def label_videos(videos_path: Path, data_path: Path, plots_path: Path, sub_dir: str):
     videos_path = videos_path / sub_dir
@@ -97,7 +99,7 @@ def label_videos(videos_path: Path, data_path: Path, plots_path: Path, sub_dir: 
 
 def label_video(video_path: Path):
     y_hats = []
-    base_dense_logits = []
+    dense = []
 
     vidcap = cv2.VideoCapture(str(video_path))
     for frame in frame_iter(vidcap, "Label frames"):
@@ -110,9 +112,9 @@ def label_video(video_path: Path):
             dense_logits, logits = model(frames)
             y_hat = F.softmax(logits / temperature, dim=1)
             y_hats.append(y_hat)
-            base_dense_logits.append(dense_logits[0])
+            dense.append(dense_logits[0])
 
-    return torch.stack(base_dense_logits, dim=0), torch.stack(y_hats, dim=1)
+    return torch.stack(dense, dim=0), torch.stack(y_hats, dim=1)
 
 
 def frame_iter(capture, description):
@@ -132,8 +134,7 @@ def frame_iter(capture, description):
 def calculate_quality(y_hats: Tensor):
     # select highest prediction
     pred = torch.argmax(y_hats, dim=2)
-    pred_mask = F.one_hot(pred, num_classes=y_hats.shape[2]) == 0
-    y_hats.masked_fill_(pred_mask, 0.0)
+    y_hats = y_hats * F.one_hot(pred, num_classes=y_hats.shape[2])
 
     # remove predictions that are inconsistent
     for i in range(pred.shape[0]):
@@ -147,11 +148,10 @@ def calculate_quality(y_hats: Tensor):
     # average of all transformations
     y_hats = torch.mean(y_hats, dim=0)
 
-    # (sum planes' prediction - sum no planes' prediction) / (number of planes' prediction greater than 0)
+    # (the best prediction - sum of the rest prediction)
     plates = y_hats[:, :3]
-    other = y_hats[:, 3:]
-    quality = torch.sum(plates, dim=1) - torch.sum(other, dim=1)
-    quality = quality / torch.sum(plates > 0, dim=1)
+    quality = torch.amax(plates, dim=1)
+    quality = (quality * 2) - torch.sum(y_hats, dim=1)
     zaro_mask = torch.eq(quality > 0, False)
     quality.masked_fill_(zaro_mask, 0.0)
 
@@ -190,6 +190,19 @@ def extract_nonzero_values(y_hats):
     return x, y
 
 
+def load_logits(data_path: Path):
+    dense = []
+    for path in sorted(data_path.iterdir()):
+        logits, _, _ = torch.load(path)
+        dense.append(logits)
+    return torch.cat(dense)
+
+
+def save_std_mean(data_path: Path, logits):
+    std_mean = torch.std_mean(logits, unbiased=False, dim=0)
+    torch.save(std_mean, f"{data_path}/std_mean.pt")
+
+
 @hydra.main(version_base="1.3", config_path="../configs", config_name="create_quality_dataset.yaml")
 def main(cfg: DictConfig):
     global model, transforms, window, temperature
@@ -201,6 +214,7 @@ def main(cfg: DictConfig):
     model = FetalLitModule.load_from_checkpoint(checkpoint_file)
     # disable randomness, dropout, etc...
     model.eval()
+    device = cfg.device if (cfg.device != "auto") else ("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
     log.info(f"Instantiating transformations for image size <{cfg.image_height}/{cfg.image_width}>")

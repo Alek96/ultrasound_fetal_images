@@ -30,7 +30,6 @@ class FetalLitModule(LightningModule):
     def __init__(
         self,
         net_spec: Dict,
-        masks: List[List[int]],
         num_classes: int,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
@@ -140,10 +139,15 @@ class FetalLitModule(LightningModule):
 
     def test_epoch_end(self, outputs: List[Any]):
         confusion_matrix = self.test_acc_cm.compute()
-        test_acc_brain_planes = self.confusion_matrix_acc(confusion_matrix, 3)
+        test_acc_brain_planes = self.confusion_matrix_acc(confusion_matrix, [0, 1, 2])
         self.log("test/acc_brain_planes", test_acc_brain_planes, on_step=False, on_epoch=True, prog_bar=True)
         self.log_confusion_matrix("train/conf", self.train_cm.compute())
         self.log_confusion_matrix("test/conf", self.test_cm.compute())
+
+    @staticmethod
+    def confusion_matrix_acc(confusion_matrix, class_idx):
+        true = torch.sum(torch.cat([confusion_matrix[i][i].view(1) for i in class_idx]))
+        return true / len(class_idx)
 
     def log_confusion_matrix(self, name: str, confusion_matrix: torch.Tensor, title: Optional[str] = None):
         log_to_wandb(
@@ -156,11 +160,6 @@ class FetalLitModule(LightningModule):
             },
             loggers=self.loggers,
         )
-
-    @staticmethod
-    def confusion_matrix_acc(confusion_matrix, size):
-        true = torch.sum(torch.cat([confusion_matrix[i][i].view(1) for i in range(0, size)]))
-        return true / size
 
     def configure_optimizers(self):
         """Choose what optimizers and learning-rate schedulers to use in your optimization.

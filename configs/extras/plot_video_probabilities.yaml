@@ -3,7 +3,7 @@ defaults:
 
 # log plot to wandb
 after_test_plots:
-  _target_: src.utils.plots.PlotProbabilities
+  _target_: src.utils.plots.PlotVideosProbabilities
   enabled: true
   data_dir: null
   video_dataset_dir: null

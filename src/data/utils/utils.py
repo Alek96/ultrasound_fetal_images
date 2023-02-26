@@ -33,6 +33,7 @@ def get_under_sampler(dataset: Dataset) -> UnderSampler:
     log.info("Instantiating UnderSampler")
     classes = torch.tensor([dataset[i][1].item() for i in range(len(dataset))])
     classes_indices = [torch.nonzero(classes == class_id).flatten() for class_id in torch.unique(classes)]
+    # classes_indices[3] = torch.cat([classes_indices[3], classes_indices[3]])
     classes_num_samples = [len(indices) for indices in classes_indices]
     classes_num_samples[-1] = 500
 

@@ -6,8 +6,9 @@ defaults:
 # task name, determines output directory path
 task_name: "create_quality_dataset"
 
-model_path: "logs/train/runs/2023-02-23_10-41-08"
-dataset_dir: "US_VIDEOS"
+model_path: "logs/train/runs/2023-02-25_19-43-37"
+device: "auto" # cpu, cuda, auto
+dataset_dir: "US_VIDEOS_2"
 image_height: 165
 image_width: 240
 window: 3
