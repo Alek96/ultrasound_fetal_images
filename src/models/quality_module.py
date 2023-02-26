@@ -32,8 +32,13 @@ class QualityLitModule(LightningModule):
         self.save_hyperparameters(logger=False)
 
         hidden_size = 1024
-        self.net = torch.nn.LSTM(input_size=1280, hidden_size=hidden_size, num_layers=2, dropout=0.1, batch_first=True)
-        self.linear = torch.nn.Linear(hidden_size, 1)
+        self.rnn = torch.nn.GRU(input_size=1280, hidden_size=hidden_size, num_layers=2, dropout=0.1, batch_first=True)
+
+        self.fn = torch.nn.Sequential(
+            torch.nn.Dropout(p=0.2, inplace=True),
+            torch.nn.Linear(hidden_size, 1),
+            torch.nn.Sigmoid(),
+        )
 
         # loss function
         self.criterion = torch.nn.MSELoss()
@@ -54,20 +59,19 @@ class QualityLitModule(LightningModule):
 
     def forward(self, x: torch.Tensor):
         # x of (batch_size, seq_len, n_features) shape
-        output, (h_n, c_n) = self.net(x)
+        output, h_n = self.rnn(x)
         # output of (batch_size, seq_len, hidden_size) shape
         # h_n of (num_layers, batch_size, hidden_size) shape
-        # c_n of (num_layers, batch_size, hidden_size) shape
         batch_size, seq_len, hidden_size = output.shape
         output = output.reshape(-1, hidden_size)
 
-        y_hat = self.linear(output)
+        y_hat = self.fn(output)
         y_hat = y_hat.reshape(batch_size, seq_len)
 
         return y_hat
 
     def model_step(self, batch: Any):
-        x, y = batch
+        x, y, _ = batch
         y_hat = self.forward(x)
         loss = self.criterion(y_hat, y)
         return loss

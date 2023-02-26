@@ -6,6 +6,7 @@ from zipfile import ZipFile
 import gdown
 import pandas as pd
 import torch
+import torchvision.transforms as T
 from torch.utils.data import Dataset
 from torchvision.io import read_image
 
@@ -67,7 +68,10 @@ class FetalBrainPlanesDataset(Dataset):
 
     def __getitem__(self, idx):
         if idx >= len(self):
-            raise IndexError("list index out of range")
+            raise IndexError(f"list index {idx} out of range")
+
+        if isinstance(idx, torch.Tensor):
+            idx = idx.item()
 
         img_path = os.path.join(self.img_dir, self.img_labels.Image_name[idx] + ".png")
         image = read_image(img_path)
@@ -125,13 +129,18 @@ class VideoQualityDataset(Dataset):
         dataset_name: str = "US_VIDEOS",
         train: bool = True,
         window_size: int = 32,
+        normalize: bool = False,
         transform: Optional[Callable] = None,
         target_transform: Optional[Callable] = None,
         label_transform: Optional[Callable] = None,
     ):
-        self.data_dir = Path(data_dir) / dataset_name / "data" / ("train" if train else "test")
+        self.dataset_dir = Path(data_dir) / dataset_name / "data"
+        self.data_dir = self.dataset_dir / ("train" if train else "test")
         self.window_size = window_size
         self.clips = self.load_clips()
+        self.normalize = normalize
+        self.std_mean = torch.load(f"{self.dataset_dir}/std_mean.pt")
+
         self.transform = transform
         self.target_transform = target_transform
         self.label_transform = label_transform
@@ -151,7 +160,10 @@ class VideoQualityDataset(Dataset):
 
     def __getitem__(self, idx):
         if idx >= len(self):
-            raise IndexError("list index out of range")
+            raise IndexError(f"list index {idx} out of range")
+
+        if isinstance(idx, torch.Tensor):
+            idx = idx.item()
 
         video = self.data_dir / self.clips.Video[idx]
         logits, quality, preds = torch.load(video)
@@ -161,6 +173,9 @@ class VideoQualityDataset(Dataset):
         x = logits[from_idx:to_idx]
         y = quality[from_idx:to_idx]
         p = preds[from_idx:to_idx]
+
+        if self.normalize is not None:
+            x = (x - self.std_mean[1]) / self.std_mean[0]
 
         if self.transform:
             x = self.transform(x)
@@ -205,7 +220,7 @@ class USVideosDataset(Dataset):
 
     def __getitem__(self, idx):
         if idx >= len(self):
-            raise IndexError("list index out of range")
+            raise IndexError(f"list index {idx} out of range")
 
         img_path, label = self.items[idx]
         image = read_image(img_path)

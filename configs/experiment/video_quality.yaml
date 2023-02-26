@@ -14,7 +14,7 @@ defaults:
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
 
-find_lr: True
+find_lr: False
 
 trainer:
   min_epochs: 5
@@ -37,18 +37,18 @@ callbacks:
 
 model:
   optimizer:
-    lr: 1e-04
-    weight_decay: 0.0
+    lr: 5e-05
+    weight_decay: 1e-06
   scheduler:
     factor: 0.5
     patience: 5
 
 data:
-  dataset_name: "US_VIDEOS"
-  window_size: 128
-  train_val_split: 0.2
+  dataset_name: "US_VIDEOS_2" # US_VIDEOS, US_VIDEOS_temp_2.0, US_VIDEOS_window_5
+  window_size: 64
+  train_val_split: 0.1
   train_val_split_seed: 42
-  batch_size: 516
+  batch_size: 64
   num_workers: 8
   pin_memory: True
 

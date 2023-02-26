@@ -74,6 +74,7 @@ class VideoQualityDataModule(LightningDataModule):
                 dataset_name=self.hparams.dataset_name,
                 train=True,
                 window_size=self.hparams.window_size,
+                normalize=True,
             )
             self.data_train, self.data_val = group_split(
                 dataset=train,
@@ -86,6 +87,7 @@ class VideoQualityDataModule(LightningDataModule):
                 dataset_name=self.hparams.dataset_name,
                 train=False,
                 window_size=self.hparams.window_size,
+                normalize=True,
             )
 
     def train_dataloader(self):

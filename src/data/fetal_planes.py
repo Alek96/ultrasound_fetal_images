@@ -12,7 +12,7 @@ from src.data.components.dataset import (
     TransformDataset,
     USVideosDataset,
 )
-from src.data.components.transforms import LabelEncoder
+from src.data.components.transforms import LabelEncoder, RandomPercentCrop
 from src.data.utils import group_split
 from src.data.utils.utils import get_over_sampler, get_under_sampler
 
@@ -72,13 +72,17 @@ class FetalPlanesDataModule(LightningDataModule):
                 T.Grayscale(),
                 # RandomPercentCrop(max_percent=20),
                 T.Resize(input_size),
-                T.AutoAugment(T.AutoAugmentPolicy.IMAGENET),
+                # T.AutoAugment(T.AutoAugmentPolicy.IMAGENET),
                 # T.RandAugment(),
                 # T.TrivialAugmentWide(),
                 # T.AugMix(),
-                # T.RandomHorizontalFlip(p=0.5),
+                T.RandomHorizontalFlip(p=0.5),
+                T.RandomVerticalFlip(p=0.5),
+                # T.RandomAffine(degrees=0, translate=(0, 0), scale=(1.0, 1.2)),
                 # T.RandomAffine(degrees=15, translate=(0.1, 0.1)),
-                # T.RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(1.0, 1.2)),
+                T.RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(1.0, 1.2)),
+                # T.RandomAffine(degrees=30, translate=(0.2, 0.2), scale=(1.0, 1.2)),
+                # T.RandomAffine(degrees=45, translate=(0.3, 0.3), scale=(1.0, 1.2)),
                 T.ConvertImageDtype(torch.float32),
                 # T.Normalize(mean=0.17, std=0.19),
             ]
@@ -116,37 +120,39 @@ class FetalPlanesDataModule(LightningDataModule):
         """
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
-            train = self.dataset(
+            self.data_train = self.dataset(
                 data_dir=self.hparams.data_dir,
                 train=True,
-            )
-            data_train, data_val = group_split(
-                dataset=train,
-                test_size=self.hparams.train_val_split,
-                groups=train.img_labels["Patient_num"],
-                random_state=self.hparams.train_val_split_seed,
-            )
-            self.data_train = TransformDataset(
-                dataset=data_train,
                 transform=self.train_transforms,
                 target_transform=self.target_transform,
             )
-            if self.hparams.video_dataset:
-                video_dataset = USVideosDataset(
-                    data_dir=self.hparams.data_dir,
-                    dataset_dir=self.hparams.video_dataset_dir,
-                    transform=self.train_transforms,
-                    target_transform=self.target_transform,
-                )
-                if self.hparams.video_dataset_size:
-                    video_dataset_idx = np.random.permutation(len(video_dataset))[: self.hparams.video_dataset_size]
-                    video_dataset = Subset(video_dataset, video_dataset_idx)
-                self.data_train = ConcatDataset((self.data_train, video_dataset))
-            self.data_val = TransformDataset(
-                dataset=data_val,
-                transform=self.test_transforms,
-                target_transform=self.target_transform,
-            )
+            # data_train, data_val = group_split(
+            #     dataset=train,
+            #     test_size=self.hparams.train_val_split,
+            #     groups=train.img_labels["Patient_num"],
+            #     random_state=self.hparams.train_val_split_seed,
+            # )
+            # self.data_train = TransformDataset(
+            #     dataset=data_train,
+            #     transform=self.train_transforms,
+            #     target_transform=self.target_transform,
+            # )
+            # if self.hparams.video_dataset:
+            #     video_dataset = USVideosDataset(
+            #         data_dir=self.hparams.data_dir,
+            #         dataset_dir=self.hparams.video_dataset_dir,
+            #         transform=self.train_transforms,
+            #         target_transform=self.target_transform,
+            #     )
+            #     if self.hparams.video_dataset_size:
+            #         video_dataset_idx = np.random.permutation(len(video_dataset))[: self.hparams.video_dataset_size]
+            #         video_dataset = Subset(video_dataset, video_dataset_idx)
+            #     self.data_train = ConcatDataset((self.data_train, video_dataset))
+            # self.data_val = TransformDataset(
+            #     dataset=data_val,
+            #     transform=self.test_transforms,
+            #     target_transform=self.target_transform,
+            # )
             self.data_test = self.dataset(
                 data_dir=self.hparams.data_dir,
                 train=False,
@@ -182,7 +188,7 @@ class FetalPlanesDataModule(LightningDataModule):
 
     def val_dataloader(self):
         return DataLoader(
-            dataset=self.data_val,
+            dataset=self.data_test,
             batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
