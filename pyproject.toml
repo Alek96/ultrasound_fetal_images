@@ -24,7 +24,7 @@ jupyter = "^1.0.0"
 matplotlib = "^3.7.0"
 plotly = "^5.13.0"
 opencv-python = "^4.7.0.72"
-scikit-image = "^0.19.3"
+scikit-image = "^0.20.0"
 # --------- loggers --------- #
 tensorboard = "^2.12.0"
 wandb = "^0.13.10"
