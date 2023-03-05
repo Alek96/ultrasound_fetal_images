@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
-import torchvision.transforms.functional as F
+import torchvision.transforms.functional as TF
 from sklearn.model_selection import GroupShuffleSplit
 from torch import Tensor
 from torch.utils.data import Dataset, Subset, WeightedRandomSampler
@@ -89,8 +89,8 @@ def show_pytorch_images(
             if isinstance(img, Tuple):
                 img, label = img
             img = img.detach()
-            img = F.to_pil_image(img)
-            img = F.to_grayscale(img)
+            img = TF.to_pil_image(img)
+            img = TF.to_grayscale(img)
             axes[i, j].imshow(np.asarray(img), cmap="gray")
             if label is not None:
                 axes[i, j].set_xlabel(label)

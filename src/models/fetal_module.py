@@ -44,6 +44,8 @@ class FetalLitModule(LightningModule):
 
         # loss function
         self.criterion = torch.nn.CrossEntropyLoss()
+        # self.criterion_fn = torch.nn.CrossEntropyLoss(weight=torch.tensor([1., 1., 1., 4., 1.]))
+        # self.test_criterion_fn = torch.nn.CrossEntropyLoss()
 
         # metric objects for calculating and averaging accuracy across batches
         self.train_acc = Accuracy(task="multiclass", num_classes=num_classes, average="macro")
@@ -79,6 +81,12 @@ class FetalLitModule(LightningModule):
         loss = self.criterion(logits, y)
         preds = torch.argmax(logits, dim=1)
         return loss, preds, y
+
+    # def criterion(self, logits, y):
+    #     if self.training:
+    #         return self.criterion_fn(logits, y)
+    #     else:
+    #         return self.test_criterion_fn(logits, y)
 
     def training_step(self, batch: Any, batch_idx: int):
         loss, preds, targets = self.model_step(batch)

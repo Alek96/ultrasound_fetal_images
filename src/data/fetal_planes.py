@@ -72,7 +72,7 @@ class FetalPlanesDataModule(LightningDataModule):
                 T.Grayscale(),
                 # RandomPercentCrop(max_percent=20),
                 T.Resize(input_size),
-                # T.AutoAugment(T.AutoAugmentPolicy.IMAGENET),
+                T.AutoAugment(T.AutoAugmentPolicy.IMAGENET),
                 # T.RandAugment(),
                 # T.TrivialAugmentWide(),
                 # T.AugMix(),

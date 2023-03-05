@@ -18,8 +18,9 @@ find_lr: False
 
 trainer:
   min_epochs: 5
-  max_epochs: 50
-  # val_check_interval: 0.25
+  max_epochs: 60
+  val_check_interval: 1.0
+  limit_train_batches: 0.05
   # accumulate_grad_batches: 2
 
 callbacks:
@@ -32,23 +33,23 @@ callbacks:
   early_stopping:
     monitor: "val/loss"
     mode: "min"
-    patience: 5
+    patience: 20
   class_image_sampler:
 
 model:
   optimizer:
     lr: 5e-05
-    weight_decay: 1e-06
+    weight_decay: 1e-05
   scheduler:
     factor: 0.5
-    patience: 5
+    patience: 10
 
 data:
-  dataset_name: "US_VIDEOS_2" # US_VIDEOS, US_VIDEOS_temp_2.0, US_VIDEOS_window_5
-  window_size: 64
+  dataset_name: "US_VIDEOS_tran_" # US_VIDEOS, US_VIDEOS_temp_2.0, US_VIDEOS_window_5
+  seq_len: 0
   train_val_split: 0.1
   train_val_split_seed: 42
-  batch_size: 64
+  batch_size: 1
   num_workers: 8
   pin_memory: True
 
@@ -62,3 +63,6 @@ extras:
   after_test_plots:
     data_dir: ${paths.data_dir}
     dataset_name: ${data.dataset_name}
+    samples: 5
+    beans: 10
+    img_size: [165, 240]

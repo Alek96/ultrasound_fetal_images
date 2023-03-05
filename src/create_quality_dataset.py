@@ -112,9 +112,9 @@ def label_video(video_path: Path):
             dense_logits, logits = model(frames)
             y_hat = F.softmax(logits / temperature, dim=1)
             y_hats.append(y_hat)
-            dense.append(dense_logits[0])
+            dense.append(dense_logits)
 
-    return torch.stack(dense, dim=0), torch.stack(y_hats, dim=1)
+    return torch.stack(dense, dim=1), torch.stack(y_hats, dim=1)
 
 
 def frame_iter(capture, description):
@@ -159,7 +159,11 @@ def calculate_quality(y_hats: Tensor):
 
 
 def save_processed_video(data_path: Path, video: str, dense_logits: Tensor, quality: Tensor, preds: Tensor):
-    torch.save([dense_logits, quality, preds], f"{data_path}/{video}.pt")
+    video_path = data_path / video
+    video_path.mkdir()
+
+    for i in range(len(dense_logits)):
+        torch.save([dense_logits[i].clone(), quality, preds], f"{video_path}/{i:03d}.pt")
 
 
 def save_quality_plot(plots_path: Path, video: str, y_hats: Tensor, quality: Tensor):
@@ -192,9 +196,10 @@ def extract_nonzero_values(y_hats):
 
 def load_logits(data_path: Path):
     dense = []
-    for path in sorted(data_path.iterdir()):
-        logits, _, _ = torch.load(path)
-        dense.append(logits)
+    for video_path in sorted(data_path.iterdir()):
+        for path in sorted(video_path.iterdir()):
+            logits, _, _ = torch.load(path)
+            dense.append(logits)
     return torch.cat(dense)
 
 

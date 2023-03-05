@@ -37,7 +37,7 @@ class VideoQualityDataModule(LightningDataModule):
         self,
         data_dir: str = "data/",
         dataset_name: str = "US_VIDEOS",
-        window_size: int = 32,
+        seq_len: int = 32,
         train_val_split: float = 0.2,
         train_val_split_seed: float = 42,
         batch_size: int = 64,
@@ -69,24 +69,24 @@ class VideoQualityDataModule(LightningDataModule):
         """
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
-            train = VideoQualityDataset(
+            self.data_train = VideoQualityDataset(
                 data_dir=self.hparams.data_dir,
                 dataset_name=self.hparams.dataset_name,
                 train=True,
-                window_size=self.hparams.window_size,
+                seq_len=self.hparams.seq_len,
                 normalize=True,
             )
-            self.data_train, self.data_val = group_split(
-                dataset=train,
-                test_size=self.hparams.train_val_split,
-                groups=train.clips.Video,
-                random_state=self.hparams.train_val_split_seed,
-            )
+            # self.data_train, self.data_val = group_split(
+            #     dataset=train,
+            #     test_size=self.hparams.train_val_split,
+            #     groups=train.clips.Video,
+            #     random_state=self.hparams.train_val_split_seed,
+            # )
             self.data_test = VideoQualityDataset(
                 data_dir=self.hparams.data_dir,
                 dataset_name=self.hparams.dataset_name,
                 train=False,
-                window_size=self.hparams.window_size,
+                seq_len=0,
                 normalize=True,
             )
 
@@ -101,7 +101,7 @@ class VideoQualityDataModule(LightningDataModule):
 
     def val_dataloader(self):
         return DataLoader(
-            dataset=self.data_val,
+            dataset=self.data_test,
             batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,

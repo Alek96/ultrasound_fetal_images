@@ -3,10 +3,13 @@ from pathlib import Path
 from typing import Callable, Optional
 from zipfile import ZipFile
 
+import cv2
 import gdown
 import pandas as pd
+import PIL
 import torch
 import torchvision.transforms as T
+import torchvision.transforms.functional as TF
 from torch.utils.data import Dataset
 from torchvision.io import read_image
 
@@ -128,32 +131,36 @@ class VideoQualityDataset(Dataset):
         data_dir: str,
         dataset_name: str = "US_VIDEOS",
         train: bool = True,
-        window_size: int = 32,
+        all_transforms: bool = True,
+        seq_len: int = 32,
         normalize: bool = False,
-        transform: Optional[Callable] = None,
         target_transform: Optional[Callable] = None,
         label_transform: Optional[Callable] = None,
     ):
         self.dataset_dir = Path(data_dir) / dataset_name / "data"
         self.data_dir = self.dataset_dir / ("train" if train else "test")
-        self.window_size = window_size
+        self.all_transforms = all_transforms
+        self.seq_len = seq_len
         self.clips = self.load_clips()
         self.normalize = normalize
         self.std_mean = torch.load(f"{self.dataset_dir}/std_mean.pt")
 
-        self.transform = transform
         self.target_transform = target_transform
         self.label_transform = label_transform
 
     def load_clips(self):
         clips = []
-        for video in sorted(self.data_dir.iterdir()):
-            _, quality, _ = torch.load(video)
-            window_size = self.window_size or len(quality)
-            for i in range(len(quality) - window_size + 1):
-                clips.append((video.name, i, i + window_size))
+        for video_path in sorted(self.data_dir.iterdir()):
+            for transform_path in sorted(video_path.iterdir()):
+                logits, quality, _ = torch.load(transform_path)
+                seq_len = self.seq_len or len(quality)
+                for i in range(len(quality) - seq_len + 1):
+                    clips.append((video_path.name, transform_path.name, i, i + seq_len))
+                # for the testing we only need base transformation and base transformation
+                if not self.all_transforms:
+                    break
 
-        return pd.DataFrame(clips, columns=["Video", "From", "To"])
+        return pd.DataFrame(clips, columns=["Video", "Transform", "From", "To"])
 
     def __len__(self):
         return len(self.clips)
@@ -165,7 +172,7 @@ class VideoQualityDataset(Dataset):
         if isinstance(idx, torch.Tensor):
             idx = idx.item()
 
-        video = self.data_dir / self.clips.Video[idx]
+        video = self.data_dir / self.clips.Video[idx] / self.clips.Transform[idx]
         logits, quality, preds = torch.load(video)
 
         from_idx = self.clips.From[idx]
@@ -177,14 +184,141 @@ class VideoQualityDataset(Dataset):
         if self.normalize is not None:
             x = (x - self.std_mean[1]) / self.std_mean[0]
 
-        if self.transform:
-            x = self.transform(x)
         if self.target_transform:
             y = self.target_transform(y)
         if self.label_transform:
             p = self.label_transform(p)
 
         return x, y, p
+
+
+class VideoQualityMemoryDataset(Dataset):
+    def __init__(
+        self,
+        data_dir: str,
+        dataset_name: str = "US_VIDEOS",
+        train: bool = True,
+        all_transforms: bool = True,
+        seq_len: int = 32,
+        normalize: bool = False,
+        target_transform: Optional[Callable] = None,
+        label_transform: Optional[Callable] = None,
+    ):
+        self.dataset_dir = Path(data_dir) / dataset_name / "data"
+        self.data_dir = self.dataset_dir / ("train" if train else "test")
+        self.all_transforms = all_transforms
+        self.seq_len = seq_len
+        self.data = {}
+        self.clips = self.load_clips()
+        self.normalize = normalize
+        self.std_mean = torch.load(f"{self.dataset_dir}/std_mean.pt")
+
+        self.target_transform = target_transform
+        self.label_transform = label_transform
+
+    def load_clips(self):
+        clips = []
+        for video_path in sorted(self.data_dir.iterdir()):
+            for transform_path in sorted(video_path.iterdir()):
+                logits, quality, pred = torch.load(transform_path)
+                self.add_data(video_path.name, transform_path.name, logits, quality, pred)
+
+                seq_len = self.seq_len or len(quality)
+                for i in range(len(quality) - seq_len + 1):
+                    clips.append((video_path.name, transform_path.name, i, i + seq_len))
+
+                # for the testing we only need base transformation and base transformation
+                if not self.all_transforms:
+                    break
+
+        return pd.DataFrame(clips, columns=["Video", "Transform", "From", "To"])
+
+    def add_data(self, video, transform, logits, quality, pred):
+        if video not in self.data:
+            self.data[video] = {}
+            self.data[video]["quality"] = quality
+            self.data[video]["pred"] = pred
+
+        self.data[video][transform] = logits
+
+    def __len__(self):
+        return len(self.clips)
+
+    def __getitem__(self, idx):
+        if idx >= len(self):
+            raise IndexError(f"list index {idx} out of range")
+
+        if isinstance(idx, torch.Tensor):
+            idx = idx.item()
+
+        video = self.clips.Video[idx]
+        logits = self.data[video][self.clips.Transform[idx]]
+        quality = self.data[video]["quality"]
+        preds = self.data[video]["pred"]
+
+        from_idx = self.clips.From[idx]
+        to_idx = self.clips.To[idx]
+        x = logits[from_idx:to_idx]
+        y = quality[from_idx:to_idx]
+        p = preds[from_idx:to_idx]
+
+        if self.normalize is not None:
+            x = (x - self.std_mean[1]) / self.std_mean[0]
+
+        if self.target_transform:
+            y = self.target_transform(y)
+        if self.label_transform:
+            p = self.label_transform(p)
+
+        return x, y, p
+
+
+class USVideosFrameDataset(Dataset):
+    def __init__(
+        self,
+        data_dir: str,
+        dataset_name: str = "US_VIDEOS",
+        train: bool = True,
+        transform: Optional[Callable] = None,
+    ):
+        videos_dir = Path(data_dir) / dataset_name / "videos" / ("train" if train else "test")
+        self.videos = sorted(videos_dir.iterdir())
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.videos)
+
+    def __getitem__(self, idx):
+        video_idx, frame_idx = idx
+
+        if video_idx >= len(self):
+            raise IndexError(f"Video index {idx} out of range")
+
+        frame = self.read_frame(self.videos[video_idx], frame_idx)
+        if self.transform:
+            frame = self.transform(frame)
+        return frame
+
+    @staticmethod
+    def read_frame(video_path: Path, frame_idx: int):
+        cap = cv2.VideoCapture(str(video_path))
+
+        # get total number of frames
+        total_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+
+        # check for valid frame number
+        if frame_idx < 0 or frame_idx >= total_frames:
+            raise IndexError(f"Frame index {frame_idx} out of range for video {video_path.name}")
+
+        # set frame position
+        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+        _, frame = cap.read()
+
+        cap.release()
+
+        frame = PIL.Image.fromarray(frame)
+        frame = TF.to_tensor(frame)
+        return frame
 
 
 class USVideosDataset(Dataset):

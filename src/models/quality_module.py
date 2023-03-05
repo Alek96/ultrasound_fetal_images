@@ -31,18 +31,19 @@ class QualityLitModule(LightningModule):
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
 
-        hidden_size = 1024
+        hidden_size = 512
         self.rnn = torch.nn.GRU(input_size=1280, hidden_size=hidden_size, num_layers=2, dropout=0.1, batch_first=True)
 
         self.fn = torch.nn.Sequential(
-            torch.nn.Dropout(p=0.2, inplace=True),
+            torch.nn.Dropout(p=0.2, inplace=False),
             torch.nn.Linear(hidden_size, 1),
             torch.nn.Sigmoid(),
         )
 
         # loss function
-        self.criterion = torch.nn.MSELoss()
-        # self.criterion = torch.nn.L1Loss()
+        self.criterion_fn = torch.nn.MSELoss()
+        # self.criterion_fn = torch.nn.L1Loss()
+        self.test_criterion_fn = torch.nn.MSELoss()
 
         # for averaging loss across batches
         self.train_loss = MeanMetric()
@@ -63,10 +64,10 @@ class QualityLitModule(LightningModule):
         # output of (batch_size, seq_len, hidden_size) shape
         # h_n of (num_layers, batch_size, hidden_size) shape
         batch_size, seq_len, hidden_size = output.shape
-        output = output.reshape(-1, hidden_size)
+        output = output.contiguous().view(-1, hidden_size)
 
         y_hat = self.fn(output)
-        y_hat = y_hat.reshape(batch_size, seq_len)
+        y_hat = y_hat.contiguous().view(batch_size, seq_len)
 
         return y_hat
 
@@ -75,6 +76,12 @@ class QualityLitModule(LightningModule):
         y_hat = self.forward(x)
         loss = self.criterion(y_hat, y)
         return loss
+
+    def criterion(self, y_hat: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        if self.training:
+            return self.criterion_fn(y_hat, y)
+        else:
+            return self.test_criterion_fn(y_hat, y)
 
     def training_step(self, batch: Any, batch_idx: int):
         loss = self.model_step(batch)

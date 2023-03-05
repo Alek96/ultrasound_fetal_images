@@ -8,7 +8,7 @@ task_name: "create_quality_dataset"
 
 model_path: "logs/train/runs/2023-02-25_19-43-37"
 device: "auto" # cpu, cuda, auto
-dataset_dir: "US_VIDEOS_2"
+dataset_dir: "US_VIDEOS_tran_"
 image_height: 165
 image_width: 240
 window: 3
