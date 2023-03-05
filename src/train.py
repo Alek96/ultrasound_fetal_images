@@ -69,9 +69,13 @@ def train(cfg: DictConfig) -> Tuple[dict, dict]:
 
     if cfg.get("find_lr"):
         log.info("Run learning Rate Finder")
-        trainer: Trainer = hydra.utils.instantiate(cfg.trainer, auto_lr_find="optimizer.lr", min_epochs=None)
+        trainer: Trainer = pl.Trainer(
+            auto_lr_find="optimizer.lr",
+            max_epochs=1,
+            accelerator=cfg.trainer.accelerator if cfg.trainer.get("accelerator") else None,
+        )
         # Run learning rate finder
-        lr_finder = trainer.tuner.lr_find(model=model, datamodule=datamodule)
+        lr_finder = trainer.tuner.lr_find(model=model, datamodule=datamodule, min_lr=1e-10, num_training=200)
         # Plot results
         fig = lr_finder.plot(suggest=True)
         log_to_wandb(lambda: {"trainer/samples": wandb.Image(fig)}, loggers=logger)

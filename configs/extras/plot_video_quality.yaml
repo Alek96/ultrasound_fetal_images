@@ -7,3 +7,6 @@ after_test_plots:
   enabled: true
   data_dir: null
   dataset_name: null
+  samples: 5
+  beans: 10
+  img_size: [165, 240]

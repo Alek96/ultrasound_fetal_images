@@ -4,6 +4,7 @@ from typing import Any, Callable, Dict, List
 
 import cv2
 import matplotlib.pyplot as plt
+import numpy as np
 import PIL
 import pytorch_lightning as pl
 import torch
@@ -14,7 +15,11 @@ import wandb
 from pytorch_lightning.loggers import Logger, WandbLogger
 from tqdm import tqdm
 
-from src.data.components.dataset import FetalBrainPlanesDataset, VideoQualityDataset
+from src.data.components.dataset import (
+    FetalBrainPlanesDataset,
+    USVideosFrameDataset,
+    VideoQualityDataset,
+)
 
 
 class PlotExtras:
@@ -146,18 +151,37 @@ class PlotVideoQuality(PlotExtras):
         enabled: bool,
         data_dir: str,
         dataset_name: str = "US_VIDEOS",
+        samples: int = 5,
+        beans: int = 10,
+        img_size: List[int] = (165, 240),
     ):
         super().__init__(enabled)
+        self.samples = samples
+        self.beans = beans
+        self.img_size = img_size
+
         self.dataset = VideoQualityDataset(
             data_dir=data_dir,
             dataset_name=dataset_name,
             train=False,
-            window_size=0,
+            all_transforms=False,
+            seq_len=0,
         )
+        self.videos = USVideosFrameDataset(
+            data_dir=data_dir,
+            dataset_name=dataset_name,
+            train=False,
+            transform=torch.nn.Sequential(
+                T.Grayscale(),
+                T.Resize(self.img_size),
+            ),
+        )
+        self.labels = FetalBrainPlanesDataset.labels
 
     def _run(self, trainer: pl.Trainer, model: pl.LightningModule) -> None:
         data = self.test_video_qualities(model)
         self.plot_quality(data, model)
+        self.plot_best_planes(data, model)
 
     def test_video_qualities(self, model: pl.LightningModule):
         data = []
@@ -176,15 +200,21 @@ class PlotVideoQuality(PlotExtras):
 
         for i, (y, y_hat, preds) in enumerate(data):
             x = list(range(len(y)))
-            axes[i].plot(x, y, label="true")
-            axes[i].plot(x, y_hat, label="predicted")
+            axes[i].plot(x, y, label="true", color="tab:gray")
+            axes[i].plot(x, y_hat, label="predicted", color="tab:cyan")
 
-            for j in range(3):
-                label = FetalBrainPlanesDataset.labels[j]
-                mask = torch.ne(preds, j)
-                pred = torch.masked_fill(y_hat, mask, 0)
-                pred = torch.argmax(pred)
-                axes[i].plot([pred], [y_hat[pred]], "o", label=label)
+            # for j in range(3):
+            #     label = self.labels[j]
+            #     mask = torch.ne(preds, j)
+            #     y_hat_label = torch.masked_fill(y_hat, mask, 0)
+            #     best_idx = torch.argmax(y_hat_label)
+            #     axes[i].plot([best_idx], [y_hat_label[best_idx]], "o", label=label)
+
+            for j, (label, color) in enumerate(zip(self.labels[:3], ["tab:blue", "tab:orange", "tab:green"])):
+                y = preds.double().numpy()
+                y[y != j] = np.nan
+                y[y == j] = 0.002
+                axes[i].plot(x, y, label=label, color=color)
 
             axes[i].legend()
 
@@ -192,6 +222,67 @@ class PlotVideoQuality(PlotExtras):
             ax.set_ylim(bottom=0, top=1)
 
         log_to_wandb(lambda: {"test/quality": wandb.Image(fig)}, loggers=model.loggers)
+
+    def plot_best_planes(self, data, model: pl.LightningModule):
+        nrows = len(data)
+        figsize = 3
+        scale = self.img_size[0] / self.img_size[1]
+        fig, axes = plt.subplots(
+            ncols=1,
+            nrows=nrows,
+            squeeze=True,
+            tight_layout=True,
+            figsize=(figsize * self.samples, figsize * scale * nrows * 3),
+        )
+
+        # For each test video
+        for i, (y, y_hat, preds) in enumerate(data):
+            rows = []
+            # For each label
+            for j in range(3):
+                mask = torch.ne(preds, j)
+                y_hat_label = torch.masked_fill(y_hat, mask, 0)
+                y_hat_label[:25] = 0  # omit first 50 frames
+                best = torch.argsort(y_hat_label, descending=True)
+                best = [idx for idx in best if y_hat_label[idx] != 0]
+
+                bean_size = int(len(best) / self.beans) + 1
+                samples = [idx for i, idx in enumerate(best) if i % bean_size == 0][: self.samples]
+
+                # for each sample
+                frames = [self.videos[i, idx.item()] for idx in reversed(samples)]
+                row = torch.cat(frames, dim=2)
+                rows.append(row)
+
+            img = torch.cat(rows, dim=1)
+            img = TF.to_pil_image(img)
+            img = TF.to_grayscale(img)
+            img = np.asarray(img)
+            axes[i].imshow(img, cmap="gray")
+            axes[i].set(xticklabels=[], yticklabels=[], xticks=[], yticks=[])
+
+        for col_idx in range(self.samples):
+            axes[0].text(
+                self.img_size[1] * col_idx + self.img_size[1] / 2,
+                -10,
+                self.beans - self.samples + col_idx,
+                size="large",
+                horizontalalignment="center",
+                verticalalignment="center",
+            )
+        for row_idx in range(nrows):
+            for label_idx in range(3):
+                axes[row_idx].text(
+                    -10,
+                    self.img_size[0] * label_idx + self.img_size[0] / 2,
+                    self.labels[label_idx],
+                    rotation=90,
+                    size="large",
+                    horizontalalignment="center",
+                    verticalalignment="center",
+                )
+
+        log_to_wandb(lambda: {"test/samples": wandb.Image(fig)}, loggers=model.loggers)
 
 
 def log_to_wandb(get_date: Callable[[], Dict[str, Any]], loggers: List[Logger]) -> None:
