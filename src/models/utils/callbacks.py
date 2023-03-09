@@ -1,10 +1,9 @@
 from collections.abc import Sequence
-from typing import Any, Dict, List
+from typing import Any
 
 import torch
 import wandb
 from pytorch_lightning import Callback, LightningModule, Trainer
-from pytorch_lightning.loggers import WandbLogger
 from torch import Tensor
 
 from src.data.components.dataset import FetalBrainPlanesDataset

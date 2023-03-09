@@ -1,7 +1,6 @@
 import warnings
 from collections.abc import Callable
 from importlib.util import find_spec
-from typing import List
 
 import hydra
 from omegaconf import DictConfig
