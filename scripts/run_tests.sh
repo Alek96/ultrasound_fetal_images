@@ -1,70 +1,59 @@
 #!/bin/bash
 
-#python src/train.py -m hparams_search=dende_net_optuna experiment=dense_net model.net.densenet_name=densenet169 data.train_val_split_seed=9208 tags='["dense_net","optuna"]'
-#python src/train.py experiment=dense_net tags='["dense_net","_240_"]'
+#for seed in {37..100}; do
+#  echo "test seed ${seed}"
+#  python src/train.py experiment=brain_planes tags='["benchmark"]' \
+#    seed="${seed}" trainer.deterministic=True
+#done
 
-python src/train.py experiment=brain_planes tags='["seed-0.1"]' data.train_val_split="0.1" data.train_val_split_seed="9126" +logger.wandb.notes="test 6"
-python src/train.py experiment=brain_planes tags='["seed-0.1"]' data.train_val_split="0.1" data.train_val_split_seed="9126" +logger.wandb.notes="test 8"
+#for seed in {70..99}; do
+#  echo "test seed ${seed}"
+#  python src/train.py experiment=video_quality tags='["test"]' \
+#    data.train_val_split="0.1" data.train_val_split_seed="${seed}" \
+#    +logger.wandb.notes="t ${seed}"
+#done
 
-python src/train.py experiment=brain_planes tags='["seed-0.1"]' data.train_val_split="0.1" data.train_val_split_seed="8902" +logger.wandb.notes="test 6"
-python src/train.py experiment=brain_planes tags='["seed-0.1"]' data.train_val_split="0.1" data.train_val_split_seed="8902" +logger.wandb.notes="test 7"
+#declare -a arr=(65)
+#
+#for seed in "${arr[@]}"; do
+#  for i in {10..14}; do
+#    echo "test seed ${i}"
+#    python src/train.py experiment=video_quality tags='["test"]' \
+#      data.train_val_split="0.1" data.train_val_split_seed="${seed}" \
+#      +logger.wandb.notes="t ${seed} ${i}"
+#  done
+#done
 
-python src/train.py experiment=brain_planes tags='["seed-0.1"]' data.train_val_split="0.1" data.train_val_split_seed="1208" +logger.wandb.notes="test 8"
+# densenet169
+# mobilenet_v3_small mobilenet_v3_large
+# efficientnet_v2_s efficientnet_v2_m
+# resnet18 resnet34 resnet50 resnet101 resnet152
+# resnext50_32x4d resnext101_32x8d resnext101_64x4d
 
-python src/train.py experiment=brain_planes tags='["seed-0.1"]' data.train_val_split="0.1" data.train_val_split_seed="4063" +logger.wandb.notes="test 5"
-python src/train.py experiment=brain_planes tags='["seed-0.1"]' data.train_val_split="0.1" data.train_val_split_seed="4063" +logger.wandb.notes="test 7"
+#python src/train.py experiment=brain_planes tags='["nets"]' \
+#  model.net_spec.name="densenet169"
 
-for i in {4..9}; do
-  echo "test seed ${i}"
-  python src/train.py experiment=brain_planes tags='["seed-0.1"]' \
-    data.train_val_split="0.1" data.train_val_split_seed="3084" \
-    +logger.wandb.notes="test ${i}"
-done
+python src/train.py experiment=brain_planes tags='["nets"]' model.net_spec.name="efficientnet_v2_s" +logger.wandb.notes="t 5"
+python src/train.py experiment=brain_planes tags='["nets"]' model.net_spec.name="efficientnet_v2_m" +logger.wandb.notes="t 5"
+python src/train.py experiment=brain_planes tags='["nets"]' model.net_spec.name="resnet101" +logger.wandb.notes="t 5"
+python src/train.py experiment=brain_planes tags='["nets"]' model.net_spec.name="resnext50_32x4d" +logger.wandb.notes="t 4"
 
-for i in {4..9}; do
-  echo "test seed ${i}"
-  python src/train.py experiment=brain_planes tags='["seed-0.1"]' \
-    data.train_val_split="0.1" data.train_val_split_seed="9456" \
-    +logger.wandb.notes="test ${i}"
-done
+declare -a arr=("mobilenet_v3_small" "mobilenet_v3_large" "efficientnet_v2_s" "efficientnet_v2_m" "resnet18" "resnet34" "resnet50" "resnet101" "resnet152" "resnext50_32x4d" "resnext101_32x8d" "resnext101_64x4d")
 
-for i in {6..9}; do
-  echo "test seed ${i}"
-  python src/train.py experiment=brain_planes tags='["seed-0.1"]' \
-    data.train_val_split="0.1" data.train_val_split_seed="2696" \
-    +logger.wandb.notes="test ${i}"
-done
-
-for i in {5..9}; do
-  echo "test seed ${i}"
-  python src/train.py experiment=brain_planes tags='["seed-0.1"]' \
-    data.train_val_split="0.1" data.train_val_split_seed="9959" \
-    +logger.wandb.notes="test ${i}"
-done
-
-python src/train.py experiment=brain_planes tags='["seed-0.1", "seed-0.15"]' data.train_val_split="0.15" data.train_val_split_seed="943" +logger.wandb.notes="test 4"
-
-python src/train.py experiment=brain_planes tags='["seed-0.1", "seed-0.15"]' data.train_val_split="0.15" data.train_val_split_seed="9787" +logger.wandb.notes="test 9"
-
-declare -a arr=(4935 6588 6893 697 6347 5785 4 7765)
-
-for seed in "${arr[@]}"; do
-  for i in {1..9}; do
-    echo "test seed ${i}"
-    python src/train.py experiment=brain_planes tags='["seed-0.1", "seed-0.15"]' \
-      data.train_val_split="0.15" data.train_val_split_seed="${seed}" \
-      +logger.wandb.notes="test ${i}"
+for model in "${arr[@]}"; do
+  for i in {6..15}; do
+    echo "test model ${model} ${i}"
+    python src/train.py experiment=brain_planes tags='["nets"]' \
+      model.net_spec.name="${model}" \
+      +logger.wandb.notes="t ${i}"
   done
 done
 
-#python src/train.py experiment=brain_planes tags='["test"]' \
-#  model.net_spec.name="mobilenet_v3_small" \
-
 #python src/train.py experiment=video_quality tags='["test"]'
 
-python src/train.py experiment=video_quality tags='["test"]' \
-  +logger.wandb.notes="delete it" \
-  trainer.min_epochs=0 trainer.max_epochs=1
+#python src/train.py experiment=video_quality tags='["test"]' \
+#  +logger.wandb.notes="delete it" \
+#  trainer.min_epochs=0 trainer.max_epochs=1
 
 #python src/train.py experiment=brain_planes tags='["test"]' \
 #  model.net_spec.name="mobilenet_v3_small" \

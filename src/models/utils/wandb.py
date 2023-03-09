@@ -1,4 +1,5 @@
-from typing import Optional, Sequence
+from collections.abc import Sequence
+from typing import Optional
 
 import torch
 import wandb
@@ -7,7 +8,7 @@ import wandb
 def wandb_confusion_matrix(
     cm: torch.Tensor,
     class_names: Sequence[str],
-    title: Optional[str] = None,
+    title: str | None = None,
 ):
     cm = cm.cpu().numpy()
     data = []

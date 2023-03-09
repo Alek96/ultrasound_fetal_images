@@ -22,7 +22,7 @@ def group_split(
     test_size: float,
     groups: pd.Series,
     random_state: int = None,
-) -> Tuple[Subset, Subset]:
+) -> tuple[Subset, Subset]:
     splitter = GroupShuffleSplit(test_size=test_size, n_splits=1, random_state=random_state)
     split = splitter.split(dataset, groups=groups)
     train_idx, test_idx = next(split)
@@ -60,7 +60,7 @@ def get_over_sampler(dataset: Dataset) -> WeightedRandomSampler:
 
 
 def show_pytorch_images(
-    images: List[Tuple[Tensor, str]],
+    images: list[tuple[Tensor, str]],
     tick_labels: bool = False,
     cols_names=None,
     rows_names=None,
@@ -86,7 +86,7 @@ def show_pytorch_images(
             if img is None:
                 continue
 
-            if isinstance(img, Tuple):
+            if isinstance(img, tuple):
                 img, label = img
             img = img.detach()
             img = TF.to_pil_image(img)
@@ -114,7 +114,7 @@ def show_pytorch_images(
     return fig
 
 
-def show_numpy_images(images: List[Tuple[np.ndarray, str]]):
+def show_numpy_images(images: list[tuple[np.ndarray, str]]):
     n = ceil(sqrt(len(images)))
 
     fig, axes = plt.subplots(ncols=n, nrows=n, squeeze=False, figsize=(20, 15))

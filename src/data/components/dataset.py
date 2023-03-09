@@ -1,6 +1,8 @@
 import os
+from collections.abc import Callable
+from math import ceil, floor
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Optional
 from zipfile import ZipFile
 
 import cv2
@@ -18,8 +20,8 @@ class TransformDataset(Dataset):
     def __init__(
         self,
         dataset: Dataset,
-        transform: Optional[Callable] = None,
-        target_transform: Optional[Callable] = None,
+        transform: Callable | None = None,
+        target_transform: Callable | None = None,
     ):
         self.dataset = dataset
         self.transform = transform
@@ -51,8 +53,8 @@ class FetalBrainPlanesDataset(Dataset):
         data_dir: str,
         data_name: str = "FETAL_PLANES",
         train: bool = True,
-        transform: Optional[Callable] = None,
-        target_transform: Optional[Callable] = None,
+        transform: Callable | None = None,
+        target_transform: Callable | None = None,
     ):
         self.dataset_dir = f"{data_dir}/{data_name}"
         self.img_labels = self.load_img_labels(train)
@@ -97,8 +99,8 @@ class FetalBrainPlanesSamplesDataset(FetalBrainPlanesDataset):
         self,
         data_dir: str,
         train: bool = True,
-        transform: Optional[Callable] = None,
-        target_transform: Optional[Callable] = None,
+        transform: Callable | None = None,
+        target_transform: Callable | None = None,
     ):
         data_name = "FETAL_PLANES_SAMPLES"
         self.download(data_dir, data_name)
@@ -131,16 +133,21 @@ class VideoQualityDataset(Dataset):
         data_dir: str,
         dataset_name: str = "US_VIDEOS",
         train: bool = True,
-        all_transforms: bool = True,
         seq_len: int = 32,
+        seq_step: int = None,
+        reverse: bool = False,
+        transform: bool = False,
         normalize: bool = False,
-        target_transform: Optional[Callable] = None,
-        label_transform: Optional[Callable] = None,
+        target_transform: Callable | None = None,
+        label_transform: Callable | None = None,
     ):
+        self.train = train
         self.dataset_dir = Path(data_dir) / dataset_name / "data"
-        self.data_dir = self.dataset_dir / ("train" if train else "test")
-        self.all_transforms = all_transforms
+        self.data_dir = self.dataset_dir / ("train" if self.train else "test")
         self.seq_len = seq_len
+        self.seq_step = seq_step
+        self.reverse = reverse
+        self.transform = transform
         self.clips = self.load_clips()
         self.normalize = normalize
         self.std_mean = torch.load(f"{self.dataset_dir}/std_mean.pt")
@@ -151,16 +158,23 @@ class VideoQualityDataset(Dataset):
     def load_clips(self):
         clips = []
         for video_path in sorted(self.data_dir.iterdir()):
-            for transform_path in sorted(video_path.iterdir()):
-                logits, quality, _ = torch.load(transform_path)
-                seq_len = self.seq_len or len(quality)
-                for i in range(len(quality) - seq_len + 1):
-                    clips.append((video_path.name, transform_path.name, i, i + seq_len))
-                # for the testing we only need base transformation and base transformation
-                if not self.all_transforms:
-                    break
+            transforms = [transform_path.name for transform_path in sorted(video_path.iterdir())]
 
-        return pd.DataFrame(clips, columns=["Video", "Transform", "From", "To"])
+            transform_path = sorted(video_path.iterdir())[0]
+            logits, quality, _ = torch.load(transform_path)
+
+            seq_len = self.seq_len or len(quality)
+            seq_step = self.seq_step or max(1.0, seq_len / 2)
+            n = ceil((len(quality) - seq_len + 1) / seq_step)
+
+            for i in range(n):
+                from_idx = ceil(i * seq_step)
+                to_idx = from_idx + seq_len
+                clips.append((video_path.name, transforms, from_idx, to_idx, False))
+                if self.train and self.reverse:
+                    clips.append((video_path.name, transforms, from_idx, to_idx, True))
+
+        return pd.DataFrame(clips, columns=["Video", "Transforms", "From", "To", "Flip"])
 
     def __len__(self):
         return len(self.clips)
@@ -172,7 +186,10 @@ class VideoQualityDataset(Dataset):
         if isinstance(idx, torch.Tensor):
             idx = idx.item()
 
-        video = self.data_dir / self.clips.Video[idx] / self.clips.Transform[idx]
+        transforms = self.clips.Transforms[idx]
+        transform_idx = torch.randint(0, len(transforms), ()) if (self.train and self.transform) else 0
+
+        video = self.data_dir / self.clips.Video[idx] / transforms[transform_idx]
         logits, quality, preds = torch.load(video)
 
         from_idx = self.clips.From[idx]
@@ -180,6 +197,11 @@ class VideoQualityDataset(Dataset):
         x = logits[from_idx:to_idx]
         y = quality[from_idx:to_idx]
         p = preds[from_idx:to_idx]
+
+        if self.clips.Flip[idx]:
+            x = torch.flip(x, dims=[0])
+            y = torch.flip(y, dims=[0])
+            p = torch.flip(p, dims=[0])
 
         if self.normalize is not None:
             x = (x - self.std_mean[1]) / self.std_mean[0]
@@ -201,8 +223,8 @@ class VideoQualityMemoryDataset(Dataset):
         all_transforms: bool = True,
         seq_len: int = 32,
         normalize: bool = False,
-        target_transform: Optional[Callable] = None,
-        label_transform: Optional[Callable] = None,
+        target_transform: Callable | None = None,
+        label_transform: Callable | None = None,
     ):
         self.dataset_dir = Path(data_dir) / dataset_name / "data"
         self.data_dir = self.dataset_dir / ("train" if train else "test")
@@ -279,7 +301,7 @@ class USVideosFrameDataset(Dataset):
         data_dir: str,
         dataset_name: str = "US_VIDEOS",
         train: bool = True,
-        transform: Optional[Callable] = None,
+        transform: Callable | None = None,
     ):
         videos_dir = Path(data_dir) / dataset_name / "videos" / ("train" if train else "test")
         self.videos = sorted(videos_dir.iterdir())
@@ -321,15 +343,47 @@ class USVideosFrameDataset(Dataset):
         return frame
 
 
+class USVideosSsimFrameDataset(Dataset):
+    def __init__(
+        self,
+        data_dir: str,
+        dataset_name: str = "US_VIDEOS",
+        transform: Callable | None = None,
+    ):
+        data_dir = Path(data_dir) / dataset_name / "selected"
+        self.items = self.find_images(data_dir)
+        self.transform = transform
+
+    @staticmethod
+    def find_images(images_path: Path):
+        images = []
+        for video_dir in sorted(images_path.iterdir()):
+            images.extend(sorted(video_dir.iterdir()))
+        return images
+
+    def __len__(self):
+        return len(self.items)
+
+    def __getitem__(self, idx):
+        if idx >= len(self):
+            raise IndexError(f"list index {idx} out of range")
+
+        img_path = self.items[idx]
+        image = read_image(str(img_path))
+        if self.transform:
+            image = self.transform(image)
+        return image
+
+
 class USVideosDataset(Dataset):
     def __init__(
         self,
         data_dir: str,
-        dataset_dir: str = "US_VIDEOS",
-        transform: Optional[Callable] = None,
-        target_transform: Optional[Callable] = None,
+        dataset_name: str = "US_VIDEOS",
+        transform: Callable | None = None,
+        target_transform: Callable | None = None,
     ):
-        data_dir = Path(data_dir) / dataset_dir / "labeled"
+        data_dir = Path(data_dir) / dataset_name / "labeled"
         images = self.find_images(data_dir)
         self.items = []
         for key, items in images.items():

@@ -1,8 +1,10 @@
 import csv
 import itertools
 import shutil
+from collections.abc import Callable
+from math import ceil, sqrt
 from pathlib import Path
-from typing import Callable, List, Tuple
+from typing import List, Tuple
 
 import cv2
 import hydra
@@ -43,11 +45,11 @@ from src.models.fetal_module import FetalLitModule
 
 log = utils.get_pylogger(__name__)
 
-horizontal_flips: List[bool]
-rotate_degrees: List[float]
-translates: List[Tuple[float, float]]
-scales: List[float]
-transforms: List[Callable]
+horizontal_flips: list[bool]
+rotate_degrees: list[float]
+translates: list[tuple[float, float]]
+scales: list[float]
+transforms: list[Callable]
 
 # horizontal_flips = [False]
 # rotate_degrees = [0]
@@ -55,12 +57,13 @@ transforms: List[Callable]
 # scales = [1.0]
 
 horizontal_flips = [False, True]
-rotate_degrees = [0, -15, 15]
-translates = [(0.0, 0.0), (0.1, 0.1), (-0.1, 0.1), (-0.1, -0.1), (0.1, -0.1)]
-scales = [1.0, 1.2]
+rotate_degrees = [0, -5, -10, -15, 5, 10, 15]
+translates = list(itertools.product([0.0, 0.1, -0.1], [0.0, 0.1, -0.1]))
+scales = [1.0, 1.05, 1.1, 1.15, 1.2]
 
 label_def = FetalBrainPlanesDataset.labels
 model: LightningModule
+batch_size: int
 window: int
 temperature: float
 
@@ -90,31 +93,41 @@ def label_videos(videos_path: Path, data_path: Path, plots_path: Path, sub_dir: 
 
     videos = sorted(videos_path.iterdir())
     for i, video_path in enumerate(tqdm(videos, desc="Label videos", position=0)):
-        dense_logits, y_hats = label_video(video_path)
+        dense, y_hats = label_video(video_path)
         preds = torch.argmax(y_hats[0], dim=1)
         y_hats, quality = calculate_quality(y_hats)
-        save_processed_video(data_path, video_path.stem, dense_logits.cpu(), quality.cpu(), preds.cpu())
-        save_quality_plot(plots_path, video_path.stem, y_hats.cpu(), quality.cpu())
+        save_processed_video(data_path, video_path.stem, dense, quality, preds)
+        save_quality_plot(plots_path, video_path.stem, y_hats, quality)
 
 
 def label_video(video_path: Path):
-    y_hats = []
-    dense = []
+    video_dense = []
+    video_y_hats = []
 
     vidcap = cv2.VideoCapture(str(video_path))
     for frame in frame_iter(vidcap, "Label frames"):
         frame = PIL.Image.fromarray(frame)
         frame = TF.to_tensor(frame)
         frame = frame.to(model.device)
-        frames = torch.stack([transform(frame) for transform in transforms])
 
-        with torch.no_grad():
-            dense_logits, logits = model(frames)
-            y_hat = F.softmax(logits / temperature, dim=1)
-            y_hats.append(y_hat)
-            dense.append(dense_logits)
+        batches = ceil(len(transforms) / batch_size)
+        batch_dense = []
+        batch_y_hats = []
+        for i in range(batches):
+            batch_transforms = transforms[i * batch_size : (i + 1) * batch_size]
+            frames = torch.stack([transform(frame) for transform in batch_transforms])
 
-    return torch.stack(dense, dim=1), torch.stack(y_hats, dim=1)
+            with torch.no_grad():
+                dense, logits = model(frames)
+                y_hats = F.softmax(logits, dim=1)
+
+            batch_dense.append(dense.cpu())
+            batch_y_hats.append(y_hats.cpu())
+
+        video_dense.append(torch.cat(batch_dense, dim=0))
+        video_y_hats.append(torch.cat(batch_y_hats, dim=0))
+
+    return torch.stack(video_dense, dim=1), torch.stack(video_y_hats, dim=1)
 
 
 def frame_iter(capture, description):
@@ -158,12 +171,12 @@ def calculate_quality(y_hats: Tensor):
     return y_hats, quality
 
 
-def save_processed_video(data_path: Path, video: str, dense_logits: Tensor, quality: Tensor, preds: Tensor):
+def save_processed_video(data_path: Path, video: str, dense: Tensor, quality: Tensor, preds: Tensor):
     video_path = data_path / video
     video_path.mkdir()
 
-    for i in range(len(dense_logits)):
-        torch.save([dense_logits[i].clone(), quality, preds], f"{video_path}/{i:03d}.pt")
+    for i in range(len(dense)):
+        torch.save([dense[i].clone(), quality, preds], f"{video_path}/{i:05d}.pt")
 
 
 def save_quality_plot(plots_path: Path, video: str, y_hats: Tensor, quality: Tensor):
@@ -197,9 +210,9 @@ def extract_nonzero_values(y_hats):
 def load_logits(data_path: Path):
     dense = []
     for video_path in sorted(data_path.iterdir()):
-        for path in sorted(video_path.iterdir()):
-            logits, _, _ = torch.load(path)
-            dense.append(logits)
+        path = sorted(video_path.iterdir())[0]
+        logits, _, _ = torch.load(path)
+        dense.append(logits)
     return torch.cat(dense)
 
 
@@ -210,7 +223,7 @@ def save_std_mean(data_path: Path, logits):
 
 @hydra.main(version_base="1.3", config_path="../configs", config_name="create_quality_dataset.yaml")
 def main(cfg: DictConfig):
-    global model, transforms, window, temperature
+    global model, transforms, batch_size, window, temperature
 
     root = pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
@@ -240,6 +253,7 @@ def main(cfg: DictConfig):
 
     log.info(f"Start creating dataset {cfg.dataset_dir}")
     path = root / "data" / f"{cfg.dataset_dir}"
+    batch_size = cfg.batch_size
     window = cfg.window
     temperature = cfg.temperature
     create_dataset(path)

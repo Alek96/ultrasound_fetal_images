@@ -1,6 +1,7 @@
 import warnings
+from collections.abc import Callable
 from importlib.util import find_spec
-from typing import Callable, List
+from typing import List
 
 import hydra
 from omegaconf import DictConfig
@@ -85,9 +86,9 @@ def extras(cfg: DictConfig) -> None:
         rich_utils.print_config_tree(cfg, resolve=True, save_to_file=True)
 
 
-def instantiate_callbacks(callbacks_cfg: DictConfig) -> List[Callback]:
+def instantiate_callbacks(callbacks_cfg: DictConfig) -> list[Callback]:
     """Instantiates callbacks from config."""
-    callbacks: List[Callback] = []
+    callbacks: list[Callback] = []
 
     if not callbacks_cfg:
         log.warning("No callback configs found! Skipping...")
@@ -108,9 +109,9 @@ def disabled_by_optuna(key, cb_conf):
     return key == "stochastic_weight_averaging" and cb_conf.swa_lrs is None
 
 
-def instantiate_loggers(logger_cfg: DictConfig) -> List[Logger]:
+def instantiate_loggers(logger_cfg: DictConfig) -> list[Logger]:
     """Instantiates loggers from config."""
-    logger: List[Logger] = []
+    logger: list[Logger] = []
 
     if not logger_cfg:
         log.warning("No logger configs found! Skipping...")

@@ -1,7 +1,7 @@
 import pathlib
 import shutil
+from collections.abc import Callable
 from math import ceil
-from typing import Callable
 
 import cv2
 import hydra

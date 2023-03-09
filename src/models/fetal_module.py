@@ -1,4 +1,5 @@
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any, Dict, List, Optional
 
 import torch
 from pytorch_lightning import LightningModule
@@ -29,7 +30,7 @@ class FetalLitModule(LightningModule):
 
     def __init__(
         self,
-        net_spec: Dict,
+        net_spec: dict,
         num_classes: int,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
@@ -44,8 +45,6 @@ class FetalLitModule(LightningModule):
 
         # loss function
         self.criterion = torch.nn.CrossEntropyLoss()
-        # self.criterion_fn = torch.nn.CrossEntropyLoss(weight=torch.tensor([1., 1., 1., 4., 1.]))
-        # self.test_criterion_fn = torch.nn.CrossEntropyLoss()
 
         # metric objects for calculating and averaging accuracy across batches
         self.train_acc = Accuracy(task="multiclass", num_classes=num_classes, average="macro")
@@ -82,12 +81,6 @@ class FetalLitModule(LightningModule):
         preds = torch.argmax(logits, dim=1)
         return loss, preds, y
 
-    # def criterion(self, logits, y):
-    #     if self.training:
-    #         return self.criterion_fn(logits, y)
-    #     else:
-    #         return self.test_criterion_fn(logits, y)
-
     def training_step(self, batch: Any, batch_idx: int):
         loss, preds, targets = self.model_step(batch)
 
@@ -103,7 +96,7 @@ class FetalLitModule(LightningModule):
         # remember to always return loss from `training_step()` or backpropagation will fail!
         return {"loss": loss, "preds": preds, "targets": targets}
 
-    def training_epoch_end(self, outputs: List[Any]):
+    def training_epoch_end(self, outputs: list[Any]):
         # `outputs` is a list of dicts returned from `training_step()`
 
         # Warning: when overriding `training_epoch_end()`, lightning accumulates outputs from all batches of the epoch
@@ -125,7 +118,7 @@ class FetalLitModule(LightningModule):
 
         return {"loss": loss, "preds": preds, "targets": targets}
 
-    def validation_epoch_end(self, outputs: List[Any]):
+    def validation_epoch_end(self, outputs: list[Any]):
         acc = self.val_acc.compute()  # get current val acc
         self.val_acc_best(acc)  # update best so far val acc
         # log `val_acc_best` as a value through `.compute()` method, instead of as a metric object
@@ -145,7 +138,7 @@ class FetalLitModule(LightningModule):
 
         return {"loss": loss, "preds": preds, "targets": targets}
 
-    def test_epoch_end(self, outputs: List[Any]):
+    def test_epoch_end(self, outputs: list[Any]):
         confusion_matrix = self.test_acc_cm.compute()
         test_acc_brain_planes = self.confusion_matrix_acc(confusion_matrix, [0, 1, 2])
         self.log("test/acc_brain_planes", test_acc_brain_planes, on_step=False, on_epoch=True, prog_bar=True)
@@ -157,7 +150,7 @@ class FetalLitModule(LightningModule):
         true = torch.sum(torch.cat([confusion_matrix[i][i].view(1) for i in class_idx]))
         return true / len(class_idx)
 
-    def log_confusion_matrix(self, name: str, confusion_matrix: torch.Tensor, title: Optional[str] = None):
+    def log_confusion_matrix(self, name: str, confusion_matrix: torch.Tensor, title: str | None = None):
         log_to_wandb(
             lambda: {
                 name: wandb_confusion_matrix(

@@ -2,6 +2,9 @@ _target_: src.data.video_quality.VideoQualityDataModule
 data_dir: ${paths.data_dir}
 dataset_name: "US_VIDEOS"
 seq_len: 32
+seq_step:
+reverse: False
+transform: False
 train_val_split: 0.2
 train_val_split_seed: 42
 batch_size: 64

@@ -55,9 +55,6 @@ data:
   input_size: [165, 240]
   train_val_split: 0.2
   train_val_split_seed: 5724
-  video_dataset: False
-  video_dataset_size:
-  video_dataset_dir: "US_VIDEOS"
   batch_size: 32
   num_workers: 8
   pin_memory: True

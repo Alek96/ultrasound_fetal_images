@@ -50,9 +50,6 @@ class FetalPlanesDataModule(LightningDataModule):
         input_size: tuple[int, int] = (55, 80),
         train_val_split: float = 0.2,
         train_val_split_seed: float = 79,
-        video_dataset: bool = False,
-        video_dataset_size: int = None,
-        video_dataset_dir: str = "US_VIDEOS",
         batch_size: int = 64,
         num_workers: int = 0,
         pin_memory: bool = False,
@@ -84,7 +81,8 @@ class FetalPlanesDataModule(LightningDataModule):
                 # T.RandomAffine(degrees=30, translate=(0.2, 0.2), scale=(1.0, 1.2)),
                 # T.RandomAffine(degrees=45, translate=(0.3, 0.3), scale=(1.0, 1.2)),
                 T.ConvertImageDtype(torch.float32),
-                # T.Normalize(mean=0.17, std=0.19),
+                # T.Normalize(mean=0.17, std=0.19),  # FetalBrain
+                # T.Normalize(mean=0.449, std=0.226),  # ImageNet
             ]
         )
         self.test_transforms = T.Compose(
@@ -92,14 +90,16 @@ class FetalPlanesDataModule(LightningDataModule):
                 T.Grayscale(),
                 T.Resize(input_size),
                 T.ConvertImageDtype(torch.float32),
+                # T.Normalize(mean=0.17, std=0.19),  # FetalBrain
+                # T.Normalize(mean=0.449, std=0.226),  # ImageNet
             ]
         )
         self.labels = FetalBrainPlanesDataset.labels
         self.target_transform = LabelEncoder(labels=self.labels)
 
-        self.data_train: Optional[Dataset] = None
-        self.data_val: Optional[Dataset] = None
-        self.data_test: Optional[Dataset] = None
+        self.data_train: Dataset | None = None
+        self.data_val: Dataset | None = None
+        self.data_test: Dataset | None = None
 
     @property
     def num_classes(self):
@@ -112,7 +112,7 @@ class FetalPlanesDataModule(LightningDataModule):
         """
         pass
 
-    def setup(self, stage: Optional[str] = None):
+    def setup(self, stage: str | None = None):
         """Load data. Set variables: `self.data_train`, `self.data_val`, `self.data_test`.
 
         This method is called by lightning with both `trainer.fit()` and `trainer.test()`, so be
@@ -120,39 +120,26 @@ class FetalPlanesDataModule(LightningDataModule):
         """
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
-            self.data_train = self.dataset(
+            train = self.dataset(
                 data_dir=self.hparams.data_dir,
                 train=True,
+            )
+            data_train, data_val = group_split(
+                dataset=train,
+                test_size=self.hparams.train_val_split,
+                groups=train.img_labels["Patient_num"],
+                random_state=self.hparams.train_val_split_seed,
+            )
+            self.data_train = TransformDataset(
+                dataset=data_train,
                 transform=self.train_transforms,
                 target_transform=self.target_transform,
             )
-            # data_train, data_val = group_split(
-            #     dataset=train,
-            #     test_size=self.hparams.train_val_split,
-            #     groups=train.img_labels["Patient_num"],
-            #     random_state=self.hparams.train_val_split_seed,
-            # )
-            # self.data_train = TransformDataset(
-            #     dataset=data_train,
-            #     transform=self.train_transforms,
-            #     target_transform=self.target_transform,
-            # )
-            # if self.hparams.video_dataset:
-            #     video_dataset = USVideosDataset(
-            #         data_dir=self.hparams.data_dir,
-            #         dataset_dir=self.hparams.video_dataset_dir,
-            #         transform=self.train_transforms,
-            #         target_transform=self.target_transform,
-            #     )
-            #     if self.hparams.video_dataset_size:
-            #         video_dataset_idx = np.random.permutation(len(video_dataset))[: self.hparams.video_dataset_size]
-            #         video_dataset = Subset(video_dataset, video_dataset_idx)
-            #     self.data_train = ConcatDataset((self.data_train, video_dataset))
-            # self.data_val = TransformDataset(
-            #     dataset=data_val,
-            #     transform=self.test_transforms,
-            #     target_transform=self.target_transform,
-            # )
+            self.data_val = TransformDataset(
+                dataset=data_val,
+                transform=self.test_transforms,
+                target_transform=self.target_transform,
+            )
             self.data_test = self.dataset(
                 data_dir=self.hparams.data_dir,
                 train=False,
@@ -188,7 +175,7 @@ class FetalPlanesDataModule(LightningDataModule):
 
     def val_dataloader(self):
         return DataLoader(
-            dataset=self.data_test,
+            dataset=self.data_val,
             batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
@@ -204,7 +191,7 @@ class FetalPlanesDataModule(LightningDataModule):
             shuffle=False,
         )
 
-    def teardown(self, stage: Optional[str] = None):
+    def teardown(self, stage: str | None = None):
         """Clean up after fit or test."""
         pass
 
@@ -212,7 +199,7 @@ class FetalPlanesDataModule(LightningDataModule):
         """Extra things to save to checkpoint."""
         return {}
 
-    def load_state_dict(self, state_dict: Dict[str, Any]):
+    def load_state_dict(self, state_dict: dict[str, Any]):
         """Things to do when loading checkpoint."""
         pass
 

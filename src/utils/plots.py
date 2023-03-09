@@ -1,6 +1,7 @@
+from collections.abc import Callable
 from math import ceil
 from pathlib import Path
-from typing import Any, Callable, Dict, List
+from typing import Any, Dict, List
 
 import cv2
 import matplotlib.pyplot as plt
@@ -52,7 +53,7 @@ class PlotVideosProbabilities(PlotExtras):
         video_dataset_dir: str = "US_VIDEOS",
         batch_size: int = 32,
         input_size: tuple[int, int] = (55, 80),
-        min_probabilities: List[int] = (),
+        min_probabilities: list[int] = (),
         probability_norm: float = 1.0,
     ):
         super().__init__(enabled)
@@ -153,7 +154,7 @@ class PlotVideoQuality(PlotExtras):
         dataset_name: str = "US_VIDEOS",
         samples: int = 5,
         beans: int = 10,
-        img_size: List[int] = (165, 240),
+        img_size: list[int] = (165, 240),
     ):
         super().__init__(enabled)
         self.samples = samples
@@ -164,7 +165,7 @@ class PlotVideoQuality(PlotExtras):
             data_dir=data_dir,
             dataset_name=dataset_name,
             train=False,
-            all_transforms=False,
+            # all_transforms=False,
             seq_len=0,
         )
         self.videos = USVideosFrameDataset(
@@ -225,7 +226,7 @@ class PlotVideoQuality(PlotExtras):
 
     def plot_best_planes(self, data, model: pl.LightningModule):
         nrows = len(data)
-        figsize = 3
+        figsize = 1.5
         scale = self.img_size[0] / self.img_size[1]
         fig, axes = plt.subplots(
             ncols=1,
@@ -233,11 +234,14 @@ class PlotVideoQuality(PlotExtras):
             squeeze=True,
             tight_layout=True,
             figsize=(figsize * self.samples, figsize * scale * nrows * 3),
+            dpi=300,
         )
 
         # For each test video
         for i, (y, y_hat, preds) in enumerate(data):
             rows = []
+            qualities = []
+
             # For each label
             for j in range(3):
                 mask = torch.ne(preds, j)
@@ -254,6 +258,8 @@ class PlotVideoQuality(PlotExtras):
                 row = torch.cat(frames, dim=2)
                 rows.append(row)
 
+                qualities.extend([y_hat[idx.item()].item() for idx in reversed(samples)])
+
             img = torch.cat(rows, dim=1)
             img = TF.to_pil_image(img)
             img = TF.to_grayscale(img)
@@ -261,23 +267,26 @@ class PlotVideoQuality(PlotExtras):
             axes[i].imshow(img, cmap="gray")
             axes[i].set(xticklabels=[], yticklabels=[], xticks=[], yticks=[])
 
-        for col_idx in range(self.samples):
-            axes[0].text(
-                self.img_size[1] * col_idx + self.img_size[1] / 2,
-                -10,
-                self.beans - self.samples + col_idx,
-                size="large",
-                horizontalalignment="center",
-                verticalalignment="center",
-            )
+            for col_idx in range(self.samples):
+                for label_idx in range(3):
+                    axes[i].text(
+                        self.img_size[1] * col_idx + self.img_size[1] - 10,
+                        self.img_size[0] * label_idx + 10,
+                        round(qualities[label_idx * self.samples + col_idx], 2),
+                        size="large",
+                        color="tab:cyan",
+                        bbox={"pad": 0, "color": (0, 0, 0, 0.3)},
+                        horizontalalignment="right",
+                        verticalalignment="top",
+                    )
+
         for row_idx in range(nrows):
             for label_idx in range(3):
                 axes[row_idx].text(
-                    -10,
+                    -30,
                     self.img_size[0] * label_idx + self.img_size[0] / 2,
-                    self.labels[label_idx],
+                    self.labels[label_idx].replace("-", "\n"),
                     rotation=90,
-                    size="large",
                     horizontalalignment="center",
                     verticalalignment="center",
                 )
@@ -285,7 +294,7 @@ class PlotVideoQuality(PlotExtras):
         log_to_wandb(lambda: {"test/samples": wandb.Image(fig)}, loggers=model.loggers)
 
 
-def log_to_wandb(get_date: Callable[[], Dict[str, Any]], loggers: List[Logger]) -> None:
+def log_to_wandb(get_date: Callable[[], dict[str, Any]], loggers: list[Logger]) -> None:
     for logger in loggers:
         if isinstance(logger, WandbLogger):
             logger.experiment.log(get_date())

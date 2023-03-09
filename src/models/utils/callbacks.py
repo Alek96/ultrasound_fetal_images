@@ -1,4 +1,5 @@
-from typing import Any, Dict, List, Sequence
+from collections.abc import Sequence
+from typing import Any, Dict, List
 
 import torch
 import wandb
@@ -18,13 +19,13 @@ class ClassImageSampler(Callback):
     ) -> None:
         super().__init__()
         self.class_names: Sequence[str] = class_names
-        self.samples: List[List[List[int]]] = torch.zeros((len(self.class_names), len(self.class_names), 0)).tolist()
+        self.samples: list[list[list[int]]] = torch.zeros((len(self.class_names), len(self.class_names), 0)).tolist()
 
     def on_test_batch_end(
         self,
         trainer: Trainer,
         pl_module: LightningModule,
-        outputs: Dict[str, Tensor],
+        outputs: dict[str, Tensor],
         batch: Any,
         batch_idx: int,
         dataloader_idx: int,
