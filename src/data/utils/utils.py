@@ -30,7 +30,7 @@ def group_split(
 
 def get_under_sampler(dataset: Dataset) -> UnderSampler:
     log.info("Instantiating UnderSampler")
-    classes = torch.tensor([dataset[i][1].item() for i in range(len(dataset))])
+    classes = torch.tensor([dataset[i, 1].item() for i in range(len(dataset))])
     classes_indices = [torch.nonzero(classes == class_id).flatten() for class_id in torch.unique(classes)]
     # classes_indices[3] = torch.cat([classes_indices[3], classes_indices[3]])
     classes_num_samples = [len(indices) for indices in classes_indices]
@@ -44,7 +44,7 @@ def get_under_sampler(dataset: Dataset) -> UnderSampler:
 
 def get_over_sampler(dataset: Dataset) -> WeightedRandomSampler:
     log.info("Instantiating OverSampler")
-    classes = np.array([dataset[i][1].item() for i in range(len(dataset))])
+    classes = np.array([dataset[i, 1].item() for i in range(len(dataset))])
     class_sample_count = np.array([len(np.where(classes == class_id)[0]) for class_id in np.unique(classes)])
     weight = 1.0 / class_sample_count
     samples_weight = np.array([weight[label] for label in classes])

@@ -74,6 +74,16 @@ class FetalBrainPlanesDataset(Dataset):
         if idx >= len(self):
             raise IndexError(f"list index {idx} out of range")
 
+        if isinstance(idx, tuple):
+            idx, sub_idx = idx
+            if sub_idx == 0:
+                return self.get_image(idx)
+            elif sub_idx == 1:
+                return self.get_label(idx)
+
+        return self.get_image(idx), self.get_label(idx)
+
+    def get_image(self, idx):
         if isinstance(idx, torch.Tensor):
             idx = idx.item()
 
@@ -81,14 +91,20 @@ class FetalBrainPlanesDataset(Dataset):
         image = read_image(img_path)
         if image.shape[0] == 4:
             image = image[:3, :, :]
+
         if self.transform:
             image = self.transform(image)
+        return image
+
+    def get_label(self, idx):
+        if isinstance(idx, torch.Tensor):
+            idx = idx.item()
 
         label = self.img_labels.Brain_plane[idx]
+
         if self.target_transform:
             label = self.target_transform(label)
-
-        return image, label
+        return label
 
 
 class FetalBrainPlanesSamplesDataset(FetalBrainPlanesDataset):
@@ -163,10 +179,9 @@ class VideoQualityDataset(Dataset):
             logits, quality, _ = torch.load(transform_path)
 
             seq_len = self.seq_len or len(quality)
-            seq_step = self.seq_step or max(1.0, seq_len / 2)
-            n = ceil((len(quality) - seq_len + 1) / seq_step)
+            seq_step = self.seq_step or max(1, ceil(seq_len / 2))
 
-            for i in range(n):
+            for i in range(0, len(quality) - seq_len + 1, seq_step):
                 from_idx = ceil(i * seq_step)
                 to_idx = from_idx + seq_len
                 clips.append((video_path.name, transforms, from_idx, to_idx, False))
