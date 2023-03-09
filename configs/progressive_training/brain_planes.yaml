@@ -1,0 +1,29 @@
+# @package _global_
+
+# example progressing learning of some experiment:
+# python src/train.py -m hydra=progressive_training experiment=brain_planes
+
+defaults:
+  - override /hydra/sweeper: progressive_training
+
+optimized_metric: "val/acc_best"
+
+hydra:
+  mode: "MULTIRUN" # set hydra to multirun by default if this config is attached
+
+  sweeper:
+    # number of training epochs (trainer.max_epochs value)
+    epochs: ${trainer.max_epochs}
+
+    # number of stages. In each stage we will run epochs/stages epoch
+    stages: 3
+
+    # define parameters for progressive training.
+    # Each parameter should have three values in a list - [min, max, type]
+    params:
+      data.input_size: [[55, 80], [165, 240], "int"]
+      data.rand_augment_magnitude: [5, 15, "int"]
+      model.net_spec.dropout: [0.1, 0.3, "float"]
+
+callbacks:
+  early_stopping:
