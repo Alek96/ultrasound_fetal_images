@@ -13,11 +13,16 @@ class EfficientNet(nn.Module):
         name: str = "efficientnet_b0",
         output_size: int = 6,
         pretrain: bool = True,
+        dropout: float | None = None,
     ):
         super().__init__()
 
         assert name in self.supported_models
-        self.model = get_model(name=name, weights="DEFAULT" if pretrain else None)
+
+        get_model_param = {"name": name, "weights": "DEFAULT" if pretrain else None}
+        if dropout is not None:
+            get_model_param["dropout"] = dropout
+        self.model = get_model(**get_model_param)
 
         # input
         old_conv = self.model.features[0][0]

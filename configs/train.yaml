@@ -14,11 +14,14 @@ defaults:
   - hydra: default.yaml
 
   # experiment configs allow for version control of specific hyperparameters
-  # e.g. best hyperparameters for given model and data
+  # e.g. the best hyperparameters for given model and data
   - experiment: null
 
   # config for hyperparameter optimization
   - hparams_search: null
+
+  # config progressing training
+  - progressive_training: null
 
   # optional local config for machine/user specific settings
   # it's optional since it doesn't need to exist and is excluded from version control
