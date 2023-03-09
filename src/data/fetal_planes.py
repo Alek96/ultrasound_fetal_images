@@ -1,16 +1,14 @@
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Literal
 
-import numpy as np
 import torch
 import torchvision.transforms as T
 from pytorch_lightning import LightningDataModule
-from torch.utils.data import ConcatDataset, DataLoader, Dataset, Subset
+from torch.utils.data import DataLoader, Dataset
 
 from src.data.components.dataset import (
     FetalBrainPlanesDataset,
     FetalBrainPlanesSamplesDataset,
     TransformDataset,
-    USVideosDataset,
 )
 from src.data.components.transforms import LabelEncoder, RandomPercentCrop
 from src.data.utils import group_split

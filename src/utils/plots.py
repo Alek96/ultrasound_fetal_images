@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from math import ceil
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import cv2
 import matplotlib.pyplot as plt

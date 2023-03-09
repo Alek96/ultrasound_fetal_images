@@ -1,8 +1,7 @@
 import os
 from collections.abc import Callable
-from math import ceil, floor
+from math import ceil
 from pathlib import Path
-from typing import Optional
 from zipfile import ZipFile
 
 import cv2

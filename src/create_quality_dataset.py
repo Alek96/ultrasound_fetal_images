@@ -1,10 +1,8 @@
-import csv
 import itertools
 import shutil
 from collections.abc import Callable
-from math import ceil, sqrt
+from math import ceil
 from pathlib import Path
-from typing import List, Tuple
 
 import cv2
 import hydra

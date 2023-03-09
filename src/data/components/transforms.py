@@ -1,8 +1,6 @@
 from math import floor
-from typing import List, Tuple
 
 import torch
-import torchvision.transforms as T
 import torchvision.transforms.functional as TF
 
 

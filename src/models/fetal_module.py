@@ -1,9 +1,7 @@
-from collections.abc import Callable
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import torch
 from pytorch_lightning import LightningModule
-from pytorch_lightning.loggers import Logger, WandbLogger
 from torchmetrics import ConfusionMatrix, MaxMetric, MeanMetric
 from torchmetrics.classification.accuracy import Accuracy
 

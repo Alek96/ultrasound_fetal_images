@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import Tuple
 
 import hydra
 import pyrootutils
@@ -27,7 +27,7 @@ pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 # ------------------------------------------------------------------------------------ #
 
 from src import utils
-from src.utils.plots import PlotExtras, PlotVideosProbabilities, log_to_wandb
+from src.utils.plots import PlotExtras, log_to_wandb
 
 log = utils.get_pylogger(__name__)
 
