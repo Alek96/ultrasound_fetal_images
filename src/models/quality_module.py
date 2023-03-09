@@ -41,9 +41,7 @@ class QualityLitModule(LightningModule):
         )
 
         # loss function
-        self.criterion_fn = torch.nn.MSELoss()
-        # self.criterion_fn = torch.nn.L1Loss()
-        self.test_criterion_fn = torch.nn.MSELoss()
+        self.criterion = torch.nn.MSELoss()
 
         # for averaging loss across batches
         self.train_loss = MeanMetric()
@@ -77,12 +75,6 @@ class QualityLitModule(LightningModule):
         loss = self.criterion(y_hat, y)
         return loss
 
-    def criterion(self, y_hat: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        if self.training:
-            return self.criterion_fn(y_hat, y)
-        else:
-            return self.test_criterion_fn(y_hat, y)
-
     def training_step(self, batch: Any, batch_idx: int):
         loss = self.model_step(batch)
 
@@ -95,7 +87,7 @@ class QualityLitModule(LightningModule):
         # remember to always return loss from `training_step()` or backpropagation will fail!
         return {"loss": loss}
 
-    def training_epoch_end(self, outputs: List[Any]):
+    def training_epoch_end(self, outputs: list[Any]):
         # `outputs` is a list of dicts returned from `training_step()`
 
         # Warning: when overriding `training_epoch_end()`, lightning accumulates outputs from all batches of the epoch
@@ -115,7 +107,7 @@ class QualityLitModule(LightningModule):
 
         return {"loss": loss}
 
-    def validation_epoch_end(self, outputs: List[Any]):
+    def validation_epoch_end(self, outputs: list[Any]):
         acc = self.val_loss.compute()  # get current val acc
         self.val_loss_best(acc)  # update best so far val acc
         # log `val_loss_best` as a value through `.compute()` method, instead of as a metric object
@@ -131,7 +123,7 @@ class QualityLitModule(LightningModule):
 
         return {"loss": loss}
 
-    def test_epoch_end(self, outputs: List[Any]):
+    def test_epoch_end(self, outputs: list[Any]):
         pass
 
     def configure_optimizers(self):

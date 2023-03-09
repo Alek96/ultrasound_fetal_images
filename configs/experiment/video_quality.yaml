@@ -19,9 +19,9 @@ find_lr: False
 trainer:
   min_epochs: 5
   max_epochs: 60
-  val_check_interval: 1.0
-  limit_train_batches: 0.05
-  # accumulate_grad_batches: 2
+#  val_check_interval: 1.0
+#  limit_train_batches: 0.01
+#  accumulate_grad_batches: 4
 
 callbacks:
   stochastic_weight_averaging:
@@ -42,14 +42,17 @@ model:
     weight_decay: 1e-05
   scheduler:
     factor: 0.5
-    patience: 10
+    patience: 60
 
 data:
-  dataset_name: "US_VIDEOS_tran_" # US_VIDEOS, US_VIDEOS_temp_2.0, US_VIDEOS_window_5
-  seq_len: 0
+  dataset_name: "US_VIDEOS_tran_630"
+  seq_len: 128
+  seq_step:
+  reverse: True
+  transform: False
   train_val_split: 0.1
-  train_val_split_seed: 42
-  batch_size: 1
+  train_val_split_seed: 65
+  batch_size: 8
   num_workers: 8
   pin_memory: True
 

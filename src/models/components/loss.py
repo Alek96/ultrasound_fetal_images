@@ -3,7 +3,6 @@ from torch import Tensor
 
 
 class WeightedMSELoss(torch.nn.Module):
-
     def __init__(self, weight) -> None:
         super().__init__()
         self.weight = weight

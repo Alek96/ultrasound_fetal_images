@@ -38,6 +38,9 @@ class VideoQualityDataModule(LightningDataModule):
         data_dir: str = "data/",
         dataset_name: str = "US_VIDEOS",
         seq_len: int = 32,
+        seq_step: int = None,
+        reverse: bool = False,
+        transform: bool = False,
         train_val_split: float = 0.2,
         train_val_split_seed: float = 42,
         batch_size: int = 64,
@@ -50,9 +53,9 @@ class VideoQualityDataModule(LightningDataModule):
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
 
-        self.data_train: Optional[Dataset] = None
-        self.data_val: Optional[Dataset] = None
-        self.data_test: Optional[Dataset] = None
+        self.data_train: Dataset | None = None
+        self.data_val: Dataset | None = None
+        self.data_test: Dataset | None = None
 
     def prepare_data(self):
         """Download data if needed.
@@ -61,7 +64,7 @@ class VideoQualityDataModule(LightningDataModule):
         """
         pass
 
-    def setup(self, stage: Optional[str] = None):
+    def setup(self, stage: str | None = None):
         """Load data. Set variables: `self.data_train`, `self.data_val`, `self.data_test`.
 
         This method is called by lightning with both `trainer.fit()` and `trainer.test()`, so be
@@ -69,25 +72,28 @@ class VideoQualityDataModule(LightningDataModule):
         """
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
-            self.data_train = VideoQualityDataset(
+            train = VideoQualityDataset(
                 data_dir=self.hparams.data_dir,
                 dataset_name=self.hparams.dataset_name,
                 train=True,
                 seq_len=self.hparams.seq_len,
-                normalize=True,
+                seq_step=self.hparams.seq_step,
+                reverse=self.hparams.reverse,
+                transform=self.hparams.transform,
+                normalize=False,
             )
-            # self.data_train, self.data_val = group_split(
-            #     dataset=train,
-            #     test_size=self.hparams.train_val_split,
-            #     groups=train.clips.Video,
-            #     random_state=self.hparams.train_val_split_seed,
-            # )
+            self.data_train, self.data_val = group_split(
+                dataset=train,
+                test_size=self.hparams.train_val_split,
+                groups=train.clips.Video,
+                random_state=self.hparams.train_val_split_seed,
+            )
             self.data_test = VideoQualityDataset(
                 data_dir=self.hparams.data_dir,
                 dataset_name=self.hparams.dataset_name,
                 train=False,
                 seq_len=0,
-                normalize=True,
+                normalize=False,
             )
 
     def train_dataloader(self):
@@ -101,7 +107,7 @@ class VideoQualityDataModule(LightningDataModule):
 
     def val_dataloader(self):
         return DataLoader(
-            dataset=self.data_test,
+            dataset=self.data_val,
             batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
@@ -111,13 +117,13 @@ class VideoQualityDataModule(LightningDataModule):
     def test_dataloader(self):
         return DataLoader(
             dataset=self.data_test,
-            batch_size=self.hparams.batch_size,
+            batch_size=1,
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
             shuffle=False,
         )
 
-    def teardown(self, stage: Optional[str] = None):
+    def teardown(self, stage: str | None = None):
         """Clean up after fit or test."""
         pass
 
@@ -125,7 +131,7 @@ class VideoQualityDataModule(LightningDataModule):
         """Extra things to save to checkpoint."""
         return {}
 
-    def load_state_dict(self, state_dict: Dict[str, Any]):
+    def load_state_dict(self, state_dict: dict[str, Any]):
         """Things to do when loading checkpoint."""
         pass
 

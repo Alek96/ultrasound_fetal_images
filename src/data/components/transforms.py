@@ -21,7 +21,7 @@ class RandomPercentCrop(torch.nn.Module):
         self.max_percent = max_percent
 
     @staticmethod
-    def get_params(img: torch.Tensor, max_percent: int) -> Tuple[int, int, int, int]:
+    def get_params(img: torch.Tensor, max_percent: int) -> tuple[int, int, int, int]:
         """Get parameters for ``crop`` for a random percent crop.
 
         Args:
@@ -82,7 +82,7 @@ class Affine(torch.nn.Module):
     def __init__(
         self,
         degrees: float = None,
-        translate: Tuple[float, float] = None,
+        translate: tuple[float, float] = None,
         scale: float = None,
         shear: float = None,
     ) -> None:
@@ -120,7 +120,7 @@ class Affine(torch.nn.Module):
 
 
 class LabelEncoder(torch.nn.Module):
-    def __init__(self, labels: List[str]):
+    def __init__(self, labels: list[str]):
         super().__init__()
         self.labels = labels
 
