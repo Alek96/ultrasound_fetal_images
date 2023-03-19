@@ -3,7 +3,7 @@ from typing import Any, Literal
 import torch
 import torchvision.transforms as T
 from pytorch_lightning import LightningDataModule
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import ConcatDataset, DataLoader, Dataset
 
 from src.data.components.dataset import (
     FetalBrainPlanesDataset,
@@ -46,7 +46,8 @@ class FetalPlanesDataModule(LightningDataModule):
         data_dir: str = "data/",
         sample: bool = False,
         input_size: tuple[int, int] = (55, 80),
-        rand_augment_magnitude: int = 9,
+        train_transforms: list = None,
+        test_transforms: list = None,
         train_val_split: float = 0.2,
         train_val_split_seed: float = 79,
         batch_size: int = 64,
@@ -62,37 +63,39 @@ class FetalPlanesDataModule(LightningDataModule):
 
         self.dataset = FetalBrainPlanesSamplesDataset if sample else FetalBrainPlanesDataset
 
-        # data transformations
-        self.train_transforms = T.Compose(
-            [
-                T.Grayscale(),
-                # RandomPercentCrop(max_percent=20),
-                T.Resize(input_size),
-                # T.AutoAugment(T.AutoAugmentPolicy.IMAGENET),
-                T.RandAugment(magnitude=rand_augment_magnitude),
-                # T.TrivialAugmentWide(),
-                # T.AugMix(),
-                T.RandomHorizontalFlip(p=0.5),
-                T.RandomVerticalFlip(p=0.5),
-                # T.RandomAffine(degrees=0, translate=(0, 0), scale=(1.0, 1.2)),
-                # T.RandomAffine(degrees=15, translate=(0.1, 0.1)),
-                T.RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(1.0, 1.2)),
-                # T.RandomAffine(degrees=30, translate=(0.2, 0.2), scale=(1.0, 1.2)),
-                # T.RandomAffine(degrees=45, translate=(0.3, 0.3), scale=(1.0, 1.2)),
-                T.ConvertImageDtype(torch.float32),
-                # T.Normalize(mean=0.17, std=0.19),  # FetalBrain
-                # T.Normalize(mean=0.449, std=0.226),  # ImageNet
-            ]
-        )
-        self.test_transforms = T.Compose(
-            [
-                T.Grayscale(),
-                T.Resize(input_size),
-                T.ConvertImageDtype(torch.float32),
-                # T.Normalize(mean=0.17, std=0.19),  # FetalBrain
-                # T.Normalize(mean=0.449, std=0.226),  # ImageNet
-            ]
-        )
+        self.train_transforms = T.Compose(train_transforms)
+        # self.train_transforms = T.Compose(
+        #     [
+        #         T.Grayscale(),
+        #         # RandomPercentCrop(max_percent=20),
+        #         T.Resize(input_size),
+        #         T.AutoAugment(T.AutoAugmentPolicy.IMAGENET),
+        #         T.RandAugment(magnitude=rand_augment_magnitude),
+        #         # T.TrivialAugmentWide(),
+        #         # T.AugMix(),
+        #         T.RandomHorizontalFlip(p=0.5),
+        #         # T.RandomVerticalFlip(p=0.5),
+        #         # T.RandomAffine(degrees=0, translate=(0, 0), scale=(1.0, 1.2)),
+        #         # T.RandomAffine(degrees=15, translate=(0.1, 0.1)),
+        #         # T.RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(1.0, 1.2)),
+        #         # T.RandomAffine(degrees=30, translate=(0.2, 0.2), scale=(1.0, 1.2)),
+        #         T.RandomAffine(degrees=45, translate=(0.3, 0.3), scale=(1.0, 1.2)),
+        #         T.ConvertImageDtype(torch.float32),
+        #         # T.Normalize(mean=0.17, std=0.19),  # FetalBrain
+        #         # T.Normalize(mean=0.449, std=0.226),  # ImageNet
+        #     ]
+        # )
+        self.test_transforms = T.Compose(test_transforms)
+        # self.test_transforms = T.Compose(
+        #     [
+        #         T.Grayscale(),
+        #         T.Resize(input_size),
+        #         T.ConvertImageDtype(torch.float32),
+        #         # T.Normalize(mean=0.17, std=0.19),  # FetalBrain
+        #         # T.Normalize(mean=0.449, std=0.226),  # ImageNet
+        #     ]
+        # )
+
         self.labels = FetalBrainPlanesDataset.labels
         self.target_transform = LabelEncoder(labels=self.labels)
 
@@ -175,7 +178,7 @@ class FetalPlanesDataModule(LightningDataModule):
     def val_dataloader(self):
         return DataLoader(
             dataset=self.data_val,
-            batch_size=self.hparams.batch_size,
+            batch_size=self.hparams.batch_size * 2,
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
             shuffle=False,
@@ -184,7 +187,7 @@ class FetalPlanesDataModule(LightningDataModule):
     def test_dataloader(self):
         return DataLoader(
             dataset=self.data_test,
-            batch_size=self.hparams.batch_size,
+            batch_size=self.hparams.batch_size * 2,
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
             shuffle=False,

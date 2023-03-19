@@ -1,5 +1,5 @@
 import os
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from math import ceil
 from pathlib import Path
 from zipfile import ZipFile
@@ -13,6 +13,29 @@ import torchvision.transforms as T
 import torchvision.transforms.functional as TF
 from torch.utils.data import Dataset
 from torchvision.io import read_image
+
+
+class Subset(Dataset):
+    r"""Subset of a dataset at specified indices.
+
+    Args:
+        dataset (Dataset): The whole Dataset
+        indices (sequence): Indices in the whole set selected for subset
+    """
+    dataset: Dataset
+    indices: Sequence[int]
+
+    def __init__(self, dataset: Dataset, indices: Sequence[int]) -> None:
+        self.dataset = dataset
+        self.indices = indices
+
+    def __getitem__(self, idx):
+        if isinstance(idx, tuple):
+            return self.dataset[self.indices[idx[0]], idx[1]]
+        return self.dataset[self.indices[idx]]
+
+    def __len__(self):
+        return len(self.indices)
 
 
 class TransformDataset(Dataset):
@@ -30,12 +53,23 @@ class TransformDataset(Dataset):
         return len(self.dataset)
 
     def __getitem__(self, idx):
-        x, y = self.dataset[idx]
+        rs = self.dataset[idx]
+
         if self.transform:
-            x = self.transform(x)
+            if isinstance(idx, tuple):
+                if idx[1] == 0:
+                    rs = self.transform(rs)
+            else:
+                rs = (self.transform(rs[0]), rs[1])
+
         if self.target_transform:
-            y = self.target_transform(y)
-        return x, y
+            if isinstance(idx, tuple):
+                if idx[1] == 1:
+                    rs = self.target_transform(rs)
+            else:
+                rs = (rs[0], self.target_transform(rs[1]))
+
+        return rs
 
 
 class FetalBrainPlanesDataset(Dataset):
@@ -71,9 +105,6 @@ class FetalBrainPlanesDataset(Dataset):
         return len(self.img_labels)
 
     def __getitem__(self, idx):
-        if idx >= len(self):
-            raise IndexError(f"list index {idx} out of range")
-
         if isinstance(idx, tuple):
             idx, sub_idx = idx
             if sub_idx == 0:

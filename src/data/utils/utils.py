@@ -8,9 +8,10 @@ import torch
 import torchvision.transforms.functional as TF
 from sklearn.model_selection import GroupShuffleSplit
 from torch import Tensor
-from torch.utils.data import Dataset, Subset, WeightedRandomSampler
+from torch.utils.data import Dataset, WeightedRandomSampler
 
 from src import utils
+from src.data.components.dataset import Subset
 from src.data.components.samplers import UnderSampler
 
 log = utils.get_pylogger(__name__)

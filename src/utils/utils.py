@@ -1,3 +1,4 @@
+import importlib
 import warnings
 from collections.abc import Callable
 from importlib.util import find_spec
@@ -11,6 +12,18 @@ from pytorch_lightning.utilities import rank_zero_only
 from src.utils import pylogger, rich_utils
 
 log = pylogger.get_pylogger(__name__)
+
+
+def import_object(name: str):
+    module, obj = name.rsplit(".", 1)
+    # module is a module
+    if importlib.util.find_spec(module) is not None:
+        module = importlib.import_module(module)
+        return getattr(module, obj)
+    # module is combination of module & object
+    else:
+        module = import_object(module)
+        return getattr(module, obj)
 
 
 def task_wrapper(task_func: Callable) -> Callable:
