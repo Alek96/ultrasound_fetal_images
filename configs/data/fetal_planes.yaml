@@ -1,5 +1,60 @@
 _target_: src.data.fetal_planes.FetalPlanesDataModule
 data_dir: ${paths.data_dir}
+input_size: [55, 80]
+
+train_transforms:
+  - _target_: torchvision.transforms.Grayscale
+  - _target_: torchvision.transforms.Resize
+    size: ${data.input_size}
+
+  - _target_: torchvision.transforms.AutoAugment
+    policy:
+      _target_: src.utils.utils.import_object
+      name: torchvision.transforms.AutoAugmentPolicy.IMAGENET
+  #- _target_: torchvision.transforms.RandAugment
+  #  magnitude: 9
+  #- _target_: torchvision.transforms.TrivialAugmentWide
+  #- _target_: torchvision.transforms.AugMix
+
+  - _target_: torchvision.transforms.RandomHorizontalFlip
+    p: 0.5
+  #- _target_: torchvision.transforms.RandomVerticalFlip
+  #  p: 0.5
+
+  - _target_: torchvision.transforms.RandomAffine
+    degrees: 15
+    translate: [0.1, 0.1]
+    scale: [1.0, 1.2]
+
+  - _target_: torchvision.transforms.ConvertImageDtype
+    dtype:
+      _target_: src.utils.utils.import_object
+      name: torch.float32
+
+  #- _target_: torchvision.transforms.Normalize  # FetalBrain
+  #  mean: 0.17
+  #  std: 0.19
+  #- _target_: torchvision.transforms.Normalize  # ImageNet
+  #  mean: 0.449
+  #  std: 0.226
+
+test_transforms:
+  - _target_: torchvision.transforms.Grayscale
+  - _target_: torchvision.transforms.Resize
+    size: ${data.input_size}
+
+  - _target_: torchvision.transforms.ConvertImageDtype
+    dtype:
+      _target_: src.utils.utils.import_object
+      name: torch.float32
+
+  #- _target_: torchvision.transforms.Normalize  # FetalBrain
+  #  mean: 0.17
+  #  std: 0.19
+  #- _target_: torchvision.transforms.Normalize  # ImageNet
+  #  mean: 0.449
+  #  std: 0.226
+
 train_val_split: 0.2
 train_val_split_seed: 79
 batch_size: 128

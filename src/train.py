@@ -1,8 +1,10 @@
 from typing import Tuple
 
 import hydra
+import numpy as np
 import pyrootutils
 import pytorch_lightning as pl
+import torch
 import wandb
 from omegaconf import DictConfig
 from pytorch_lightning import Callback, LightningDataModule, LightningModule, Trainer
@@ -49,7 +51,10 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
 
     # set seed for random number generators in pytorch, numpy and python.random
     if cfg.get("seed"):
+        if cfg.seed == "rand":
+            cfg.seed = np.random.randint(np.iinfo(np.uint32).min, np.iinfo(np.uint32).max)
         pl.seed_everything(cfg.seed, workers=True)
+        cfg.trainer.deterministic = True
 
     log.info(f"Instantiating datamodule <{cfg.data._target_}>")
     datamodule: LightningDataModule = hydra.utils.instantiate(cfg.data)

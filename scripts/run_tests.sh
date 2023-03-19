@@ -33,21 +33,32 @@
 #python src/train.py experiment=brain_planes tags='["nets"]' \
 #  model.net_spec.name="densenet169"
 
-python src/train.py experiment=brain_planes tags='["nets"]' model.net_spec.name="efficientnet_v2_s" +logger.wandb.notes="t 5"
-python src/train.py experiment=brain_planes tags='["nets"]' model.net_spec.name="efficientnet_v2_m" +logger.wandb.notes="t 5"
-python src/train.py experiment=brain_planes tags='["nets"]' model.net_spec.name="resnet101" +logger.wandb.notes="t 5"
-python src/train.py experiment=brain_planes tags='["nets"]' model.net_spec.name="resnext50_32x4d" +logger.wandb.notes="t 4"
 
-declare -a arr=("mobilenet_v3_small" "mobilenet_v3_large" "efficientnet_v2_s" "efficientnet_v2_m" "resnet18" "resnet34" "resnet50" "resnet101" "resnet152" "resnext50_32x4d" "resnext101_32x8d" "resnext101_64x4d")
+python src/train.py -m progressive_training=brain_planes experiment=brain_planes tags='["prog"]' \
+  hydra.sweeper.ckpt="best"
+python src/train.py -m progressive_training=brain_planes experiment=brain_planes tags='["prog"]' \
+  hydra.sweeper.ckpt="best"
+python src/train.py -m progressive_training=brain_planes experiment=brain_planes tags='["prog"]' \
+  hydra.sweeper.ckpt="best"
 
-for model in "${arr[@]}"; do
-  for i in {6..15}; do
-    echo "test model ${model} ${i}"
-    python src/train.py experiment=brain_planes tags='["nets"]' \
-      model.net_spec.name="${model}" \
-      +logger.wandb.notes="t ${i}"
-  done
-done
+python src/train.py -m progressive_training=brain_planes experiment=brain_planes tags='["prog"]' \
+  hydra.sweeper.ckpt="last"
+python src/train.py -m progressive_training=brain_planes experiment=brain_planes tags='["prog"]' \
+  hydra.sweeper.ckpt="last"
+python src/train.py -m progressive_training=brain_planes experiment=brain_planes tags='["prog"]' \
+  hydra.sweeper.ckpt="last"
+
+
+#declare -a arr=("mobilenet_v3_small" "mobilenet_v3_large" "efficientnet_v2_s" "efficientnet_v2_m" "resnet18" "resnet34" "resnet50" "resnet101" "resnet152" "resnext50_32x4d" "resnext101_32x8d" "resnext101_64x4d")
+#
+#for model in "${arr[@]}"; do
+#  for i in {6..15}; do
+#    echo "test model ${model} ${i}"
+#    python src/train.py experiment=brain_planes tags='["nets"]' \
+#      model.net_spec.name="${model}" \
+#      +logger.wandb.notes="t ${i}"
+#  done
+#done
 
 #python src/train.py experiment=video_quality tags='["test"]'
 

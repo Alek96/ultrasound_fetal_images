@@ -2,7 +2,7 @@ from typing import Any
 
 import torch
 from pytorch_lightning import LightningModule
-from torchmetrics import ConfusionMatrix, MaxMetric, MeanMetric
+from torchmetrics import ConfusionMatrix, F1Score, MaxMetric, MeanMetric
 from torchmetrics.classification.accuracy import Accuracy
 
 from src.data.components.dataset import FetalBrainPlanesDataset
@@ -49,6 +49,7 @@ class FetalLitModule(LightningModule):
         self.val_acc = Accuracy(task="multiclass", num_classes=num_classes, average="macro")
         self.test_acc = Accuracy(task="multiclass", num_classes=num_classes, average="macro")
         self.test_acc_cm = ConfusionMatrix(task="multiclass", num_classes=num_classes, normalize="true")
+        self.test_f1 = F1Score(task="multiclass", num_classes=num_classes, average="macro")
 
         # for averaging loss across batches
         self.train_loss = MeanMetric()
@@ -130,9 +131,11 @@ class FetalLitModule(LightningModule):
         self.test_loss(loss)
         self.test_acc(preds, targets)
         self.test_acc_cm.update(preds, targets)
+        self.test_f1(preds, targets)
         self.test_cm.update(preds, targets)
         self.log("test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("test/acc", self.test_acc, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("test/f1", self.test_f1, on_step=False, on_epoch=True, prog_bar=True)
 
         return {"loss": loss, "preds": preds, "targets": targets}
 
