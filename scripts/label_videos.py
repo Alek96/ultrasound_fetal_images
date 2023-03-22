@@ -10,8 +10,8 @@ import pyrootutils
 import torch
 import torchvision.transforms as T
 import torchvision.transforms.functional as F
+from lightning import LightningModule
 from omegaconf import DictConfig
-from pytorch_lightning import LightningModule
 from tqdm import tqdm
 
 pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)

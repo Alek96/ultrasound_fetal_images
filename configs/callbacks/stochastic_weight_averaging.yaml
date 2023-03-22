@@ -1,9 +1,9 @@
-# https://pytorch-lightning.readthedocs.io/en/stable/api/pytorch_lightning.callbacks.StochasticWeightAveraging.html
+# https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.StochasticWeightAveraging.html
 
 # The SWA procedure smooths the loss landscape thus making it harder to end up in a local minimum during optimization.
 # https://pytorch.org/blog/pytorch-1.6-now-includes-stochastic-weight-averaging/
 stochastic_weight_averaging:
-  _target_: pytorch_lightning.callbacks.StochasticWeightAveraging
+  _target_: lightning.pytorch.callbacks.StochasticWeightAveraging
   swa_lrs: 0.01 # The SWA learning rate to use:
   swa_epoch_start: 0.8 # When procedure will start
   annealing_epochs: 10 # Number of epochs in the annealing phase

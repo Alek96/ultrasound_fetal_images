@@ -1,14 +1,14 @@
 from typing import Tuple
 
 import hydra
+import lightning as pl
 import numpy as np
 import pyrootutils
-import pytorch_lightning as pl
 import torch
 import wandb
+from lightning import Callback, LightningDataModule, LightningModule, Trainer
+from lightning.pytorch.loggers import Logger
 from omegaconf import DictConfig
-from pytorch_lightning import Callback, LightningDataModule, LightningModule, Trainer
-from pytorch_lightning.loggers import Logger
 
 pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 # ------------------------------------------------------------------------------------ #
@@ -74,7 +74,7 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
 
     if cfg.get("find_lr"):
         log.info("Run learning Rate Finder")
-        trainer: Trainer = pl.Trainer(
+        trainer: Trainer = Trainer(
             auto_lr_find="optimizer.lr",
             max_epochs=1,
             accelerator=cfg.trainer.accelerator if cfg.trainer.get("accelerator") else None,
@@ -105,6 +105,10 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
     if logger:
         log.info("Logging hyperparameters!")
         utils.log_hyperparameters(object_dict)
+
+    if cfg.get("compile"):
+        log.info("Compiling model!")
+        model = torch.compile(model)
 
     if cfg.get("train"):
         log.info("Starting training!")
