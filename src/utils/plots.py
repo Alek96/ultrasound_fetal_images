@@ -7,13 +7,13 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import PIL
-import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
 import torchvision.transforms as T
 import torchvision.transforms.functional as TF
 import wandb
-from pytorch_lightning.loggers import Logger, WandbLogger
+from lightning import LightningModule, Trainer
+from lightning.pytorch.loggers import Logger, WandbLogger
 from tqdm import tqdm
 
 from src.data.components.dataset import (
@@ -31,17 +31,17 @@ class PlotExtras:
         super().__init__()
         self.enabled = enabled
 
-    def run(self, trainer: pl.Trainer, model: pl.LightningModule) -> None:
+    def run(self, trainer: Trainer, model: LightningModule) -> None:
         if not self._skip(trainer):
             device = "cuda" if torch.cuda.is_available() else "cpu"
             model.to(device)
             model.eval()
             self._run(trainer, model)
 
-    def _skip(self, trainer: pl.Trainer) -> bool:
+    def _skip(self, trainer: Trainer) -> bool:
         return not self.enabled or bool(trainer.fast_dev_run)
 
-    def _run(self, trainer: pl.Trainer, model: pl.LightningModule) -> None:
+    def _run(self, trainer: Trainer, model: LightningModule) -> None:
         pass
 
 
@@ -83,24 +83,24 @@ class PlotVideosProbabilities(PlotExtras):
             counts[min_probability] = count
         return counts
 
-    def _run(self, trainer: pl.Trainer, model: pl.LightningModule) -> None:
+    def _run(self, trainer: Trainer, model: LightningModule) -> None:
         self._label_videos(model)
         self._log_probabilities(model)
 
-    def _label_videos(self, model: pl.LightningModule):
+    def _label_videos(self, model: LightningModule):
         selected_path = Path(self.data_dir) / self.video_dataset_dir / "selected"
         videos = list(selected_path.iterdir())
         for i, frames_path in enumerate(tqdm(videos, desc="Label videos")):
             self._label_video(model, frames_path)
 
-    def _label_video(self, model: pl.LightningModule, frames_path: Path):
+    def _label_video(self, model: LightningModule, frames_path: Path):
         frames_paths = list(frames_path.iterdir())
         epochs = ceil(len(frames_paths) / self.batch_size)
         for i in range(epochs):
             frames = frames_paths[(i * self.batch_size) : ((i + 1) * self.batch_size)]
             self._label_frames(model, frames)
 
-    def _label_frames(self, model: pl.LightningModule, frames):
+    def _label_frames(self, model: LightningModule, frames):
         with torch.no_grad():
             frames = self._get_frames_tensor(frames)
             frames = frames.to(model.device)
@@ -131,7 +131,7 @@ class PlotVideosProbabilities(PlotExtras):
         prob = min_prob * self.probability_norm if pred < 3 else min_prob
         return y_hat[pred] > prob
 
-    def _log_probabilities(self, model: pl.LightningModule):
+    def _log_probabilities(self, model: LightningModule):
         with plt.style.context("seaborn-v0_8-muted"):
             fig, ax = plt.subplots(figsize=(15, 8))
 
@@ -179,12 +179,12 @@ class PlotVideoQuality(PlotExtras):
         )
         self.labels = FetalBrainPlanesDataset.labels
 
-    def _run(self, trainer: pl.Trainer, model: pl.LightningModule) -> None:
+    def _run(self, trainer: Trainer, model: LightningModule) -> None:
         data = self.test_video_qualities(model)
         self.plot_quality(data, model)
         self.plot_best_planes(data, model)
 
-    def test_video_qualities(self, model: pl.LightningModule):
+    def test_video_qualities(self, model: LightningModule):
         data = []
         for i in range(len(self.dataset)):
             x, y, preds = self.dataset[i]
@@ -195,7 +195,7 @@ class PlotVideoQuality(PlotExtras):
             data.append((y.cpu(), y_hat.cpu(), preds))
         return data
 
-    def plot_quality(self, data, model: pl.LightningModule):
+    def plot_quality(self, data, model: LightningModule):
         nrows = len(data)
         fig, axes = plt.subplots(ncols=1, nrows=nrows, tight_layout=True, figsize=(10, 5 * nrows))
 
@@ -224,7 +224,7 @@ class PlotVideoQuality(PlotExtras):
 
         log_to_wandb(lambda: {"test/quality": wandb.Image(fig)}, loggers=model.loggers)
 
-    def plot_best_planes(self, data, model: pl.LightningModule):
+    def plot_best_planes(self, data, model: LightningModule):
         nrows = len(data)
         figsize = 1.5
         scale = self.img_size[0] / self.img_size[1]

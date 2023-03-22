@@ -13,8 +13,8 @@ import torch
 import torch.nn.functional as F
 import torchvision.transforms as T
 import torchvision.transforms.functional as TF
+from lightning import LightningModule
 from omegaconf import DictConfig
-from pytorch_lightning import LightningModule
 from torch import Tensor
 from tqdm import tqdm
 

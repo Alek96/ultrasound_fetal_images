@@ -1,14 +1,23 @@
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, Optional
 
 import torch
 import wandb
-from pytorch_lightning import Callback, LightningModule, Trainer
+from lightning import Callback, LightningModule, Trainer
+from lightning.pytorch.utilities.types import STEP_OUTPUT
 from torch import Tensor
 
 from src.data.components.dataset import FetalBrainPlanesDataset
 from src.data.utils.utils import show_pytorch_images
 from src.utils.plots import log_to_wandb
+
+
+def get_test_dataloader(trainer, dataloader_idx: int = 0):
+    test_dataloaders = trainer.test_dataloaders
+    if hasattr(test_dataloaders, "__getitem__"):
+        return test_dataloaders[dataloader_idx]
+    else:
+        return test_dataloaders
 
 
 class ClassImageSampler(Callback):
@@ -24,15 +33,15 @@ class ClassImageSampler(Callback):
         self,
         trainer: Trainer,
         pl_module: LightningModule,
-        outputs: dict[str, Tensor],
+        outputs: STEP_OUTPUT | None,
         batch: Any,
         batch_idx: int,
-        dataloader_idx: int,
+        dataloader_idx: int = 0,
     ) -> None:
         """Called when the test batch ends."""
         preds = outputs["preds"]
         targets = outputs["targets"]
-        batch_size = trainer.test_dataloaders[dataloader_idx].batch_size
+        batch_size = get_test_dataloader(trainer, dataloader_idx).batch_size
 
         idx = batch_size * batch_idx
         for i, (target, pred) in enumerate(zip(targets, preds)):
@@ -40,7 +49,7 @@ class ClassImageSampler(Callback):
 
     def on_test_epoch_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
         """Called when the test epoch ends."""
-        dataset = trainer.test_dataloaders[0].dataset
+        dataset = get_test_dataloader(trainer).dataset
 
         images = []
         for row in self.samples:

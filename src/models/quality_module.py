@@ -1,7 +1,7 @@
 from typing import Any
 
 import torch
-from pytorch_lightning import LightningModule
+from lightning import LightningModule
 from torchmetrics import MeanMetric, MinMetric
 
 
@@ -9,7 +9,7 @@ class QualityLitModule(LightningModule):
     """Example of LightningModule for Fetal classification.
 
     A LightningModule organizes your PyTorch code into 6 sections:
-        - Computations (init)
+        - Initialization (__init__)
         - Train loop (training_step)
         - Validation loop (validation_step)
         - Test loop (test_step)
@@ -82,20 +82,10 @@ class QualityLitModule(LightningModule):
         self.train_loss(loss)
         self.log("train/loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True)
 
-        # we can return here dict with any tensors
-        # and then read it in some callback or in `training_epoch_end()` below
         # remember to always return loss from `training_step()` or backpropagation will fail!
-        return {"loss": loss}
+        return loss
 
-    def training_epoch_end(self, outputs: list[Any]):
-        # `outputs` is a list of dicts returned from `training_step()`
-
-        # Warning: when overriding `training_epoch_end()`, lightning accumulates outputs from all batches of the epoch
-        # this may not be an issue when training on mnist
-        # but on larger datasets/models it's easy to run into out-of-memory errors
-
-        # consider detaching tensors before returning them from `training_step()`
-        # or using `on_train_epoch_end()` instead which doesn't accumulate outputs
+    def on_train_epoch_end(self):
         pass
 
     def validation_step(self, batch: Any, batch_idx: int):
@@ -105,9 +95,7 @@ class QualityLitModule(LightningModule):
         self.val_loss(loss)
         self.log("val/loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
 
-        return {"loss": loss}
-
-    def validation_epoch_end(self, outputs: list[Any]):
+    def on_validation_epoch_end(self):
         acc = self.val_loss.compute()  # get current val acc
         self.val_loss_best(acc)  # update best so far val acc
         # log `val_loss_best` as a value through `.compute()` method, instead of as a metric object
@@ -121,9 +109,7 @@ class QualityLitModule(LightningModule):
         self.test_loss(loss)
         self.log("test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)
 
-        return {"loss": loss}
-
-    def test_epoch_end(self, outputs: list[Any]):
+    def on_test_epoch_end(self):
         pass
 
     def configure_optimizers(self):

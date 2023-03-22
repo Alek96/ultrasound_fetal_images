@@ -1,7 +1,7 @@
 from typing import Any
 
 import torch
-from pytorch_lightning import LightningModule
+from lightning import LightningModule
 from torchmetrics import ConfusionMatrix, F1Score, MaxMetric, MeanMetric
 from torchmetrics.classification.accuracy import Accuracy
 
@@ -15,7 +15,7 @@ class FetalLitModule(LightningModule):
     """Example of LightningModule for Fetal classification.
 
     A LightningModule organizes your PyTorch code into 6 sections:
-        - Computations (init)
+        - Initialization (__init__)
         - Train loop (training_step)
         - Validation loop (validation_step)
         - Test loop (test_step)
@@ -23,7 +23,7 @@ class FetalLitModule(LightningModule):
         - Optimizers and LR Schedulers (configure_optimizers)
 
     Docs:
-        https://pytorch-lightning.readthedocs.io/en/latest/common/lightning_module.html
+        https://lightning.ai/docs/pytorch/latest/common/lightning_module.html
     """
 
     def __init__(
@@ -90,20 +90,10 @@ class FetalLitModule(LightningModule):
         self.log("train/loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("train/acc", self.train_acc, on_step=False, on_epoch=True, prog_bar=True)
 
-        # we can return here dict with any tensors
-        # and then read it in some callback or in `training_epoch_end()` below
         # remember to always return loss from `training_step()` or backpropagation will fail!
         return {"loss": loss, "preds": preds, "targets": targets}
 
-    def training_epoch_end(self, outputs: list[Any]):
-        # `outputs` is a list of dicts returned from `training_step()`
-
-        # Warning: when overriding `training_epoch_end()`, lightning accumulates outputs from all batches of the epoch
-        # this may not be an issue when training on mnist
-        # but on larger datasets/models it's easy to run into out-of-memory errors
-
-        # consider detaching tensors before returning them from `training_step()`
-        # or using `on_train_epoch_end()` instead which doesn't accumulate outputs
+    def on_train_epoch_end(self):
         pass
 
     def validation_step(self, batch: Any, batch_idx: int):
@@ -117,7 +107,7 @@ class FetalLitModule(LightningModule):
 
         return {"loss": loss, "preds": preds, "targets": targets}
 
-    def validation_epoch_end(self, outputs: list[Any]):
+    def on_validation_epoch_end(self):
         acc = self.val_acc.compute()  # get current val acc
         self.val_acc_best(acc)  # update best so far val acc
         # log `val_acc_best` as a value through `.compute()` method, instead of as a metric object
@@ -139,7 +129,7 @@ class FetalLitModule(LightningModule):
 
         return {"loss": loss, "preds": preds, "targets": targets}
 
-    def test_epoch_end(self, outputs: list[Any]):
+    def on_test_epoch_end(self):
         confusion_matrix = self.test_acc_cm.compute()
         test_acc_brain_planes = self.confusion_matrix_acc(confusion_matrix, [0, 1, 2])
         self.log("test/acc_brain_planes", test_acc_brain_planes, on_step=False, on_epoch=True, prog_bar=True)
@@ -168,7 +158,7 @@ class FetalLitModule(LightningModule):
         Normally you'd need one. But in the case of GANs or similar you might have multiple.
 
         Examples:
-            https://pytorch-lightning.readthedocs.io/en/latest/common/lightning_module.html#configure-optimizers
+            https://lightning.ai/docs/pytorch/latest/common/lightning_module.html#configure-optimizers
         """
         optimizer = self.hparams.optimizer(params=self.parameters())
         if self.hparams.scheduler is not None:
