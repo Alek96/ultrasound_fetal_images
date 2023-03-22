@@ -39,8 +39,8 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
     """Trains the model. Can additionally evaluate on a testset, using best weights obtained during
     training.
 
-    This method is wrapped in optional @task_wrapper decorator which applies extra utilities
-    before and after the call.
+    This method is wrapped in optional @task_wrapper decorator, that controls the behavior during
+    failure. Useful for multiruns, saving info about the crash, etc.
 
     Args:
         cfg (DictConfig): Configuration composed by Hydra.
@@ -139,6 +139,10 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
 
 @hydra.main(version_base="1.3", config_path="../configs", config_name="train.yaml")
 def main(cfg: DictConfig) -> float | None:
+    # apply extra utilities
+    # (e.g. ask for tags if none are provided in cfg, print cfg tree, etc.)
+    utils.extras(cfg)
+
     # train the model
     metric_dict, _ = train(cfg)
 
