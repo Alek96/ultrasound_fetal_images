@@ -79,11 +79,14 @@ class FetalLitModule(LightningModule):
         _, logits = self.forward(x)
         loss = self.criterion(logits, y)
         preds = torch.argmax(logits, dim=1)
+
+        if len(y.shape) == 2:
+            y = torch.argmax(y, dim=1)
+
         return loss, preds, y
 
     def training_step(self, batch: Any, batch_idx: int):
         loss, preds, targets = self.model_step(batch)
-
         # update and log metrics
         self.train_loss(loss)
         self.train_acc(preds, targets)

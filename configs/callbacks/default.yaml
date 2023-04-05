@@ -1,4 +1,5 @@
 defaults:
+  - mix_up.yaml
   - stochastic_weight_averaging.yaml
   - model_checkpoint.yaml
   - early_stopping.yaml

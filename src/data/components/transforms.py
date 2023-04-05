@@ -454,9 +454,9 @@ class LabelEncoder(torch.nn.Module):
 
 
 class OneHotEncoder(torch.nn.Module):
-    def __init__(self, labels: list[str]):
+    def __init__(self, labels: int | list[str]):
         super().__init__()
-        self.labels = len(labels)
+        self.labels = labels if isinstance(labels, int) else len(labels)
 
     def forward(self, target: torch.Tensor) -> torch.Tensor:
         return F.one_hot(target, num_classes=self.labels).float()

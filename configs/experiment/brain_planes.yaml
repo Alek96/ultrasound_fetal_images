@@ -25,6 +25,9 @@ trainer:
   accumulate_grad_batches: 1
 
 callbacks:
+  mix_up:
+    alpha: 0.5
+  #    softmax_target: False
   stochastic_weight_averaging:
     swa_lrs:
     swa_epoch_start:
