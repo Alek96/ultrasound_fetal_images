@@ -1,3 +1,5 @@
+import os
+import shutil
 from typing import Tuple
 
 import hydra
@@ -137,14 +139,32 @@ def train(cfg: DictConfig) -> tuple[dict, dict]:
     return metric_dict, object_dict
 
 
+def clear_log_directory(cfg: DictConfig):
+    log.info("clear log directory")
+    log_path = cfg.paths.output_dir
+    for path in os.listdir(log_path):
+        if path not in [".hydra", "tags.log", "config_tree.log"]:
+            path = os.path.join(log_path, path)
+            if os.path.isdir(path):
+                shutil.rmtree(path)
+            else:
+                os.remove(path)
+
+
 @hydra.main(version_base="1.3", config_path="../configs", config_name="train.yaml")
 def main(cfg: DictConfig) -> float | None:
     # apply extra utilities
     # (e.g. ask for tags if none are provided in cfg, print cfg tree, etc.)
     utils.extras(cfg)
 
-    # train the model
-    metric_dict, _ = train(cfg)
+    while True:
+        try:
+            # train the model
+            metric_dict, _ = train(cfg)
+            break
+        except IndexError:
+            print("IndexError: index is out of bounds")
+            clear_log_directory(cfg)
 
     # safely retrieve metric value for hydra-based hyperparameter optimization
     metric_value = utils.get_metric_value(metric_dict=metric_dict, metric_name=cfg.get("optimized_metric"))

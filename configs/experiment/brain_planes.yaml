@@ -44,6 +44,8 @@ callbacks:
       - "Not A Brain"
 
 model:
+  criterion:
+    label_smoothing: 0.02
   optimizer:
     lr: 5e-04
     weight_decay: 1e-05
@@ -61,6 +63,50 @@ data:
   num_workers: 8
   pin_memory: True
   sampler: "under"
+  train_transforms:
+    - _target_: torchvision.transforms.Grayscale
+    - _target_: torchvision.transforms.Resize
+      size: ${data.input_size}
+      antialias: true
+
+    #- _target_: torchvision.transforms.AutoAugment
+    #  policy:
+    #    _target_: src.utils.utils.import_object
+    #    name: torchvision.transforms.AutoAugmentPolicy.IMAGENET
+    #- _target_: torchvision.transforms.RandAugment
+    #  magnitude: 11
+    - _target_: src.data.components.transforms.RandAugment
+      policy:
+        _target_: src.utils.utils.import_object
+        name: src.data.components.transforms.RandAugmentPolicy.RAND_AUGMENT_CUTOUT
+      num_ops: 2
+      magnitude: 11
+      arg1: 0.7
+      arg2: 5
+    #- _target_: torchvision.transforms.TrivialAugmentWide
+    #- _target_: torchvision.transforms.AugMix
+
+    - _target_: torchvision.transforms.RandomHorizontalFlip
+      p: 0.5
+    #- _target_: torchvision.transforms.RandomVerticalFlip
+    #  p: 0.5
+
+    #- _target_: torchvision.transforms.RandomAffine
+    #  degrees: 30
+    #  translate: [ 0.1, 0.1 ]
+    #  scale: [ 1.0, 1.2 ]
+
+    - _target_: torchvision.transforms.ConvertImageDtype
+      dtype:
+        _target_: src.utils.utils.import_object
+        name: torch.float32
+
+    #- _target_: torchvision.transforms.Normalize  # FetalBrain
+    #  mean: 0.17
+    #  std: 0.19
+    #- _target_: torchvision.transforms.Normalize  # ImageNet
+    #  mean: 0.449
+    #  std: 0.226
 
 logger:
   wandb:
