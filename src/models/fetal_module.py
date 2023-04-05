@@ -30,6 +30,7 @@ class FetalLitModule(LightningModule):
         self,
         net_spec: dict,
         num_classes: int,
+        criterion: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
     ):
@@ -42,7 +43,7 @@ class FetalLitModule(LightningModule):
         self.net = get_model(**net_spec)
 
         # loss function
-        self.criterion = torch.nn.CrossEntropyLoss()
+        self.criterion = criterion()
 
         # metric objects for calculating and averaging accuracy across batches
         self.train_acc = Accuracy(task="multiclass", num_classes=num_classes, average="macro")

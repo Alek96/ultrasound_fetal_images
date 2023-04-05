@@ -6,6 +6,7 @@ train_transforms:
   - _target_: torchvision.transforms.Grayscale
   - _target_: torchvision.transforms.Resize
     size: ${data.input_size}
+    antialias: true
 
   - _target_: torchvision.transforms.AutoAugment
     policy:
@@ -42,7 +43,7 @@ test_transforms:
   - _target_: torchvision.transforms.Grayscale
   - _target_: torchvision.transforms.Resize
     size: ${data.input_size}
-
+    antialias: true
   - _target_: torchvision.transforms.ConvertImageDtype
     dtype:
       _target_: src.utils.utils.import_object

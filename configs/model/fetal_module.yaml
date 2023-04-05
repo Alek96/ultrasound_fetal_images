@@ -1,5 +1,10 @@
 _target_: src.models.fetal_module.FetalLitModule
 
+criterion:
+  _target_: torch.nn.CrossEntropyLoss
+  _partial_: true
+  label_smoothing: 0.0
+
 optimizer:
   _target_: torch.optim.Adam
   _partial_: true
