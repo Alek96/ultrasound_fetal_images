@@ -48,6 +48,8 @@ class FetalLitModule(LightningModule):
         # metric objects for calculating and averaging accuracy across batches
         self.train_acc = Accuracy(task="multiclass", num_classes=num_classes, average="macro")
         self.val_acc = Accuracy(task="multiclass", num_classes=num_classes, average="macro")
+        self.val_acc_cm = ConfusionMatrix(task="multiclass", num_classes=num_classes, normalize="true")
+        self.val_f1 = F1Score(task="multiclass", num_classes=num_classes, average="macro")
         self.test_acc = Accuracy(task="multiclass", num_classes=num_classes, average="macro")
         self.test_acc_cm = ConfusionMatrix(task="multiclass", num_classes=num_classes, normalize="true")
         self.test_f1 = F1Score(task="multiclass", num_classes=num_classes, average="macro")
@@ -100,23 +102,37 @@ class FetalLitModule(LightningModule):
     def on_train_epoch_end(self):
         pass
 
-    def validation_step(self, batch: Any, batch_idx: int):
+    def on_validation_start(self):
+        self.val_acc_cm.reset()
+
+    def validation_step(self, batch: Any, batch_idx: int, dataloader_idx: int = 0):
         loss, preds, targets = self.model_step(batch)
 
         # update and log metrics
         self.val_loss(loss)
         self.val_acc(preds, targets)
+        self.val_acc_cm.update(preds, targets)
+        self.val_f1(preds, targets)
         self.log("val/loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("val/acc", self.val_acc, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("val/f1", self.val_f1, on_step=False, on_epoch=True, prog_bar=True)
 
         return {"loss": loss, "preds": preds, "targets": targets}
 
     def on_validation_epoch_end(self):
         acc = self.val_acc.compute()  # get current val acc
         self.val_acc_best(acc)  # update best so far val acc
+        confusion_matrix = self.val_acc_cm.compute()
+        val_acc_brain_planes = self.confusion_matrix_acc(confusion_matrix, [0, 1, 2])
+
         # log `val_acc_best` as a value through `.compute()` method, instead of as a metric object
         # otherwise metric would be reset by lightning after each epoch
         self.log("val/acc_best", self.val_acc_best.compute(), prog_bar=True)
+        self.log("val/acc_brain_planes", val_acc_brain_planes, on_step=False, on_epoch=True, prog_bar=True)
+
+    def on_test_start(self) -> None:
+        self.test_acc_cm.reset()
+        self.test_cm.reset()
 
     def test_step(self, batch: Any, batch_idx: int):
         loss, preds, targets = self.model_step(batch)
@@ -176,6 +192,7 @@ class FetalLitModule(LightningModule):
                     "frequency": 1,
                 },
             }
+
         return {"optimizer": optimizer}
 
 

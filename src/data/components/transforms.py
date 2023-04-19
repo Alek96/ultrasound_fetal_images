@@ -124,6 +124,29 @@ class Affine(torch.nn.Module):
         return s
 
 
+class RandomCutout(torch.nn.Module):
+    def __init__(self, n_holes: int = 1, length: int = 10, p: float = 0.5) -> None:
+        super().__init__()
+        self.n_holes = n_holes
+        self.length = length
+        self.p = p
+
+    def forward(self, img):
+        """
+        Args:
+            img (Tensor): Image to be flipped.
+
+        Returns:
+            PIL Tensor: Randomly cutout image.
+        """
+        if self.p < torch.rand(1):
+            return img
+        return cutout(img, self.n_holes, self.length)
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(n_holes={self.n_holes},length={self.length})"
+
+
 def cutout(img: Tensor, n_holes: int = 1, length: int = 10, fill: None | list[float] = None):
     c, h, w = img.shape
     mask = torch.zeros((h, w), dtype=torch.bool)
@@ -279,6 +302,7 @@ class RandAugmentPolicy(Enum):
     RAND_AUGMENT_ELASTIC = "RandAugmentElastic"
     RAND_AUGMENT_GRID_DISTORTION = "RandAugmentGridDistortion"
     RAND_AUGMENT_SPECKLE = "RandAugmentSpeckle"
+    RAND_AUGMENT_14 = "RandAugment14"
     RAND_AUGMENT_18 = "RandAugment18"
 
 
@@ -376,6 +400,31 @@ class RandAugment(torch.nn.Module):
             arg = self.arg1 if self.arg1 is not None else 0.9
             op_meta["Speckle"] = (torch.linspace(0.0, arg, num_bins), False)
             return op_meta
+
+        elif policy == RandAugmentPolicy.RAND_AUGMENT_14:
+            return {
+                # op_name: (magnitudes, signed)
+                "Identity": (torch.tensor(0.0), False),
+                "ShearX": (torch.linspace(0.0, 0.3, num_bins), True),
+                "ShearY": (torch.linspace(0.0, 0.3, num_bins), True),
+                "TranslateX": (torch.linspace(0.0, 150.0 / 331.0 * image_size[1], num_bins), True),
+                "TranslateY": (torch.linspace(0.0, 150.0 / 331.0 * image_size[0], num_bins), True),
+                "Rotate": (torch.linspace(0.0, 30.0, num_bins), True),
+                "Brightness": (torch.linspace(0.0, 0.9, num_bins), True),
+                "Color": (torch.linspace(0.0, 0.9, num_bins), True),
+                "Contrast": (torch.linspace(0.0, 0.9, num_bins), True),
+                "Sharpness": (torch.linspace(0.0, 0.9, num_bins), True),
+                "Posterize": (8 - (torch.arange(num_bins) / ((num_bins - 1) / 4)).round().int(), False),
+                "Solarize": (torch.linspace(255.0, 0.0, num_bins), False),
+                "AutoContrast": (torch.tensor(0.0), False),
+                "Equalize": (torch.tensor(0.0), False),
+                "Invert": (torch.tensor(0.0), False),
+                "Gamma": (torch.linspace(0.0, 0.9, num_bins), True),
+                "Cutout": (torch.linspace(0.0, 0.7 * min(image_size), num_bins), False),
+                # "RandomErasing": (torch.linspace(0.0, 0.5 * image_size[0] / image_size[1], num_bins), False),
+                # "Elastic": (torch.linspace(0.0, 400.0, num_bins), False),
+                "Speckle": (torch.linspace(0.0, 0.9, num_bins), False),
+            }
 
         elif policy == RandAugmentPolicy.RAND_AUGMENT_18:
             return {
