@@ -16,13 +16,19 @@ optimizer:
 #  _partial_: true
 #  mode: min
 #  factor: 0.1
-#  patience: 10
+#  patience: 5
 
 scheduler:
   _target_: torch.optim.lr_scheduler.StepLR
   _partial_: true
   step_size: 5
   gamma: 0.1
+
+#scheduler:
+#  _target_: torch.optim.lr_scheduler.CosineAnnealingLR
+#  _partial_: true
+#  T_max: ??
+#  eta_min: 0
 
 net_spec:
   name: "densenet169"
