@@ -1,11 +1,12 @@
 from collections.abc import Sequence
-from typing import Any, Optional
+from typing import Any, Optional, Tuple
 
 import torch
 import wandb
 from lightning import Callback, LightningModule, Trainer
 from lightning.pytorch.utilities.types import STEP_OUTPUT
 from torch import Tensor
+from torch.distributions.beta import Beta
 
 from src.data.components.dataset import FetalBrainPlanesDataset
 from src.data.components.transforms import OneHotEncoder
@@ -74,78 +75,114 @@ class ClassImageSampler(Callback):
         log_to_wandb(lambda: {"test/samples": wandb.Image(fig)}, loggers=pl_module.loggers)
 
 
-class MixUpCallback(Callback):
-    """Callback that perform MixUp augmentation on the input batch.
-
-    Assumes the first dimension is batch.
-
-    Works best with pytorch_lightning_spells.losses.MixupSoftmaxLoss
-
-    Reference: `Fast.ai's implementation <https://github.com/fastai/fastai/blob/master/fastai/callbacks/mixup.py>`_
-    """
-
-    def __init__(self, alpha: float = 0.4, softmax_target: bool = False, labels: int = 0):
+class BaseMixCallback(Callback):
+    def __init__(self, alpha: float = 0.5, softmax_target: bool = False, labels: int = 0):
         super().__init__()
         self.alpha = alpha
+        self.distribution_fn = Beta(self.alpha, self.alpha)
         self.softmax_target = softmax_target
         self.one_hot_encoder = OneHotEncoder(labels)
 
     def on_train_batch_start(self, trainer: Trainer, pl_module: LightningModule, batch: Any, batch_idx: int) -> None:
-        if self.alpha <= 0:
-            return
-
         x, y = batch
-        if len(y.shape) == 1:
+        if not self.softmax_target and len(y.shape) == 1:
             y = self.one_hot_encoder(y)
 
-        index = torch.randperm(x.size(0), device=x.device)
-        x_perm = x[index]
-        y_perm = y[index]
+        x_new, y_new = self.mix(x, y)
 
-        lam = torch.distributions.beta.Beta(self.alpha, self.alpha).sample(x.shape[:1]).to(x.device)
-        lam = torch.stack([lam, 1 - lam], dim=1).amax(dim=1)
+        batch[0] = x_new
+        batch[1] = y_new
+
+    def mix(self, x: Tensor, y: Tensor) -> tuple[Tensor, Tensor]:
+        raise NotImplementedError()
+
+    def distribution(self, samples: int, device) -> Tensor:
+        x = self.distribution_fn.sample(torch.Size((samples,)))
+        x = torch.stack([x, 1 - x], dim=1).amax(dim=1)
+        return x.to(device)
+
+
+class MixUpCallback(BaseMixCallback):
+    """Callback that perform MixUp augmentation on the input batch.
+
+    Reference:
+     - `mixup: Beyond Empirical Risk Minimization <https://arxiv.org/abs/1710.09412>`_
+     - `Facebook's Mixup-CIFAR10 <https://github.com/facebookresearch/mixup-cifar10>`_
+    """
+
+    def __init__(self, alpha: float = 0.5, softmax_target: bool = False, labels: int = 0):
+        super().__init__(alpha=alpha, softmax_target=softmax_target, labels=labels)
+
+    def mix(self, x: Tensor, y: Tensor) -> tuple[Tensor, Tensor]:
+        if self.alpha > 0:
+            lam = self.distribution(samples=1, device=x.device).squeeze()
+        else:
+            lam = 1
+
+        index = torch.randperm(x.size(0), device=x.device)
+
+        # Combine input batch
+        x_new = lam * x + (1 - lam) * x[index, :]
+
+        # Combine targets
+        if self.softmax_target:
+            y_lam = lam.expand(y.size(0))
+            y_new = torch.stack([y.float(), y[index].float(), y_lam, (1 - y_lam)], dim=1)
+        else:
+            y_new = lam * y + (1 - lam) * y[index]
+
+        return x_new, y_new
+
+
+class MixUpV2Callback(BaseMixCallback):
+    """Callback that perform MixUp augmentation on the input batch.
+
+    Reference:
+     - `mixup: Beyond Empirical Risk Minimization <https://arxiv.org/abs/1710.09412>`_
+     - `PyTorch Lightning Spells's implementation <https://github.com/veritable-tech/pytorch-lightning-spells/blob/master/pytorch_lightning_spells/callbacks.py>`_
+     - `Fast.ai's implementation <https://github.com/fastai/fastai/blob/master/fastai/callback/mixup.py>`_
+    """
+
+    def __init__(self, alpha: float = 0.5, softmax_target: bool = False, labels: int = 0):
+        super().__init__(alpha=alpha, softmax_target=softmax_target, labels=labels)
+
+    def mix(self, x: Tensor, y: Tensor) -> tuple[Tensor, Tensor]:
+        if self.alpha > 0:
+            lam = self.distribution(samples=x.size(0), device=x.device)
+        else:
+            lam = torch.ones(x.shape[:1], device=x.device)
+
+        index = torch.randperm(x.size(0), device=x.device)
 
         # Create the tensor and expand (for batch inputs)
         x_lam = lam.view(-1, *[1 for _ in range(len(x.shape[1:]))]).expand(-1, *x.shape[1:])
         # Combine input batch
-        x_new = x * x_lam + x_perm * (1 - x_lam)
+        x_new = x_lam * x + (1 - x_lam) * x[index]
 
         # Create the tensor and expand (for target)
         y_lam = lam.view(-1, *[1 for _ in range(len(y.size()) - 1)]).expand(-1, *y.shape[1:])
         # Combine targets
         if self.softmax_target:
-            y_new = torch.stack([y.float(), y.flip(0).float(), y_lam], dim=1)
+            y_new = torch.stack([y.float(), y[index].float(), y_lam, (1 - y_lam)], dim=1)
         else:
-            y_new = y * y_lam + y_perm * (1 - y_lam)
+            y_new = y_lam * y + (1 - y_lam) * y[index]
 
-        batch[0] = x_new
-        batch[1] = y_new
+        return x_new, y_new
 
 
-class VHMixUpCallback(Callback):
+class VHMixUpCallback(BaseMixCallback):
     """Callback that perform "Vertical Concat” and “Horizontal Concat” with mixup on the input
     batch.
 
-    Assumes the first dimension is batch.
-
-    Works best with pytorch_lightning_spells.losses.MixupSoftmaxLoss
-
-    Reference: `Fast.ai's implementation <https://github.com/fastai/fastai/blob/master/fastai/callbacks/mixup.py>`_
+    Reference:
+     - `Improved Mixed-Example Data Augmentation <https://arxiv.org/abs/1805.11272>`_
+     - `Principled Ultrasound Data Augmentation for Classification of Standard Planes <https://arxiv.org/abs/2103.07895>`_
     """
 
-    def __init__(self, alpha: float = 0.4, labels: int = 0):
-        super().__init__()
-        self.alpha = alpha
-        self.one_hot_encoder = OneHotEncoder(labels)
+    def __init__(self, alpha: float = 0.5, softmax_target: bool = False, labels: int = 0):
+        super().__init__(alpha=alpha, softmax_target=softmax_target, labels=labels)
 
-    def on_train_batch_start(self, trainer: Trainer, pl_module: LightningModule, batch: Any, batch_idx: int) -> None:
-        if self.alpha <= 0:
-            return
-
-        x, y = batch
-        if len(y.shape) == 1:
-            y = self.one_hot_encoder(y)
-
+    def mix(self, x: Tensor, y: Tensor) -> tuple[Tensor, Tensor]:
         index = torch.randperm(x.size(0), device=x.device)
         x_perm = x[index]
         y_perm = y[index]
@@ -155,7 +192,7 @@ class VHMixUpCallback(Callback):
 
         c, h, w = x[0].shape
         for i in range(x.size(0)):
-            lam = torch.distributions.beta.Beta(0.9, 0.9).sample([3]).to(x.device)
+            lam = self.distribution(samples=3, device=x.device)
             border_h = int((h * lam[0]).round())
             border_w = int((w * lam[1]).round())
 
@@ -178,10 +215,11 @@ class VHMixUpCallback(Callback):
                 + x_perm[i] * mask_bottom_right
             )
 
-            y_combined.append(
-                (lam[2] * lam[0] + (1 - lam[2]) * lam[1]) * y[i]
-                + (lam[2] * (1 - lam[0]) + (1 - lam[2]) * (1 - lam[1])) * y_perm[i]
-            )
+            y_lam = lam[2] * lam[0] + (1 - lam[2]) * lam[1]
+            y_perm_lam = lam[2] * (1 - lam[0]) + (1 - lam[2]) * (1 - lam[1])
+            if self.softmax_target:
+                y_combined.append(torch.stack([y[i].float(), y_perm[i].float(), y_lam, y_perm_lam], dim=0))
+            else:
+                y_combined.append(y_lam * y[i] + y_perm_lam * y_perm[i])
 
-        batch[0] = torch.stack(x_combined)
-        batch[1] = torch.stack(y_combined)
+        return torch.stack(x_combined), torch.stack(y_combined)

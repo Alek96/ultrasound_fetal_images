@@ -83,6 +83,25 @@ class HorizontalFlip(torch.nn.Module):
         return f"{self.__class__.__name__}(flip={self.max_percent})"
 
 
+class VerticalFlip(torch.nn.Module):
+    def __init__(self, flip: bool = True) -> None:
+        super().__init__()
+        self.flip = flip
+
+    def forward(self, img):
+        """
+        Args:
+            img (PIL Image or Tensor): Image to be flipped.
+
+        Returns:
+            PIL Image or Tensor: Vertically flipped image.
+        """
+        return TF.vflip(img=img) if self.flip else img
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(flip={self.max_percent})"
+
+
 class Affine(torch.nn.Module):
     def __init__(
         self,

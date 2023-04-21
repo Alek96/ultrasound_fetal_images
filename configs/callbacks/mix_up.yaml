@@ -1,4 +1,5 @@
 mix_up:
   _target_: src.models.utils.callbacks.MixUpCallback
   alpha: 0.4
+  softmax_target: False
   labels: 0
