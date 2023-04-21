@@ -3,6 +3,7 @@ _target_: src.models.fetal_module.FetalLitModule
 criterion:
   _target_: torch.nn.CrossEntropyLoss
   _partial_: true
+  reduction: "mean"
   label_smoothing: 0.0
 
 optimizer:
@@ -11,18 +12,18 @@ optimizer:
   lr: 0.001
   weight_decay: 0.0
 
-#scheduler:
-#  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
-#  _partial_: true
-#  mode: min
-#  factor: 0.1
-#  patience: 5
-
 scheduler:
-  _target_: torch.optim.lr_scheduler.StepLR
+  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
   _partial_: true
-  step_size: 5
-  gamma: 0.1
+  mode: min
+  factor: 0.1
+  patience: 5
+
+#scheduler:
+#  _target_: torch.optim.lr_scheduler.StepLR
+#  _partial_: true
+#  step_size: 5
+#  gamma: 0.1
 
 #scheduler:
 #  _target_: torch.optim.lr_scheduler.CosineAnnealingLR
@@ -36,3 +37,17 @@ net_spec:
   pretrain: true
 
 num_classes: 5
+
+softmax_target: False
+
+vta_transforms:
+  horizontal_flips: [False, True]
+  rotate_degrees: [0]
+  translates: [[0.0, 0.0]]
+  scales: [1.0]
+
+tta_transforms:
+  horizontal_flips: [False, True]
+  rotate_degrees: [0, -5, 5]
+  translates: [[0.0, 0.0]]
+  scales: [1.0]

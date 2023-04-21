@@ -20,14 +20,19 @@ seed: "rand"
 
 trainer:
   min_epochs: 0
-  max_epochs: 40
-  val_check_interval: 0.25
-  accumulate_grad_batches: 1
+  max_epochs: 100
+  #  val_check_interval: 0.25
+  accumulate_grad_batches: 4
+  precision: 16-mixed
 
 callbacks:
   mix_up:
-    alpha: 0.5
-  #    softmax_target: False
+    #_target_: src.models.utils.callbacks.MixUpCallback
+    _target_: src.models.utils.callbacks.MixUpV2Callback
+    #_target_: src.models.utils.callbacks.VHMixUpCallback
+    alpha: 0.4
+    softmax_target: ${model.softmax_target}
+    labels: 5
   stochastic_weight_averaging:
     swa_lrs:
     swa_epoch_start:
@@ -37,7 +42,8 @@ callbacks:
   early_stopping:
     monitor: "val/acc"
     mode: "max"
-    patience: 40
+    patience: 20
+    #patience: ${trainer.max_epochs}
   class_image_sampler:
     class_names:
       - "Trans-thalamic"
@@ -48,68 +54,91 @@ callbacks:
 
 model:
   criterion:
+    reduction: "none"
     label_smoothing: 0.02
   optimizer:
-    lr: 5e-04
+    lr: 1e-03
     weight_decay: 1e-05
-  #  scheduler:
-  #    factor: 0.5
-  #    patience: 5
+  #scheduler:
+  #  T_max: ${trainer.max_epochs}
+  #  factor: 0.5
+  #  patience: 5
   net_spec:
-    name: "efficientnet_v2_m"
+    name: "efficientnet_v2_l"
+  softmax_target: True
+  vta_transforms:
+    horizontal_flips: [False, True]
+    vertical_flips: [False, True]
+    rotate_degrees: [0]
+    translates: [[0.0, 0.0]]
+    scales: [1.0]
+  tta_transforms:
+    horizontal_flips: [False, True]
+    vertical_flips: [False, True]
+    rotate_degrees: [0, -5, 5]
+    translates: [[0.0, 0.0]]
+    scales: [1.0, 1.05, 1.10]
 
 data:
   input_size: [165, 240]
   train_val_split: 0.2
   train_val_split_seed: 5724
-  batch_size: 32
-  num_workers: 8
+  batch_size: 16
+  num_workers: 12
   pin_memory: True
   sampler: "under"
   train_transforms:
     - _target_: torchvision.transforms.Grayscale
     - _target_: torchvision.transforms.Resize
       size: ${data.input_size}
-      antialias: true
+      antialias: False
 
-    #- _target_: torchvision.transforms.AutoAugment
-    #  policy:
-    #    _target_: src.utils.utils.import_object
-    #    name: torchvision.transforms.AutoAugmentPolicy.IMAGENET
-    #- _target_: torchvision.transforms.RandAugment
-    #  magnitude: 11
-    - _target_: src.data.components.transforms.RandAugment
+    - _target_: torchvision.transforms.AutoAugment
       policy:
         _target_: src.utils.utils.import_object
-        name: src.data.components.transforms.RandAugmentPolicy.RAND_AUGMENT_CUTOUT
-      num_ops: 2
-      magnitude: 11
-      arg1: 0.7
-      arg2: 5
+        name: torchvision.transforms.AutoAugmentPolicy.IMAGENET
+    #- _target_: torchvision.transforms.RandAugment
+    #  magnitude: 11
+    #- _target_: src.data.components.transforms.RandAugment
+    #  policy:
+    #    _target_: src.utils.utils.import_object
+    #    name: src.data.components.transforms.RandAugmentPolicy.RAND_AUGMENT_CUTOUT
+    #  num_ops: 3
+    #  magnitude: 10
+    #  arg1: 0.7
+    #  arg2: 5
     #- _target_: torchvision.transforms.TrivialAugmentWide
     #- _target_: torchvision.transforms.AugMix
 
     - _target_: torchvision.transforms.RandomHorizontalFlip
       p: 0.5
-    #- _target_: torchvision.transforms.RandomVerticalFlip
-    #  p: 0.5
+    - _target_: torchvision.transforms.RandomVerticalFlip
+      p: 0.5
 
-    #- _target_: torchvision.transforms.RandomAffine
-    #  degrees: 30
-    #  translate: [ 0.1, 0.1 ]
-    #  scale: [ 1.0, 1.2 ]
+    - _target_: torchvision.transforms.RandomAffine
+      degrees: 30
+      translate: [0.2, 0.2]
+      scale: [1.0, 1.2]
+
+    - _target_: src.data.components.transforms.RandomCutout
+      n_holes: 5
+      length: 40
+      p: 0.1
 
     - _target_: torchvision.transforms.ConvertImageDtype
       dtype:
         _target_: src.utils.utils.import_object
         name: torch.float32
 
-    #- _target_: torchvision.transforms.Normalize  # FetalBrain
-    #  mean: 0.17
-    #  std: 0.19
-    #- _target_: torchvision.transforms.Normalize  # ImageNet
-    #  mean: 0.449
-    #  std: 0.226
+  test_transforms:
+    - _target_: torchvision.transforms.Grayscale
+    - _target_: torchvision.transforms.Resize
+      size: ${data.input_size}
+      antialias: False
+    - _target_: torchvision.transforms.ConvertImageDtype
+      dtype:
+        _target_: src.utils.utils.import_object
+        name: torch.float32
 
 logger:
   wandb:
