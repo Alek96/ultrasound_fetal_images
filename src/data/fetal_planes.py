@@ -142,6 +142,13 @@ class FetalPlanesDataModule(LightningDataModule):
                 transform=self.test_transforms,
                 target_transform=self.target_transform,
             )
+
+            # self.data_train = self.dataset(
+            #     data_dir=self.hparams.data_dir,
+            #     transform=self.train_transforms,
+            #     target_transform=self.target_transform,
+            #     train=True,
+            # )
             self.data_test = self.dataset(
                 data_dir=self.hparams.data_dir,
                 train=False,
@@ -183,11 +190,12 @@ class FetalPlanesDataModule(LightningDataModule):
             pin_memory=self.hparams.pin_memory,
             shuffle=False,
         )
+        # return self.test_dataloader()
 
     def test_dataloader(self):
         return DataLoader(
             dataset=self.data_test,
-            batch_size=self.hparams.batch_size * 2,
+            batch_size=self.hparams.batch_size * 3,
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
             shuffle=False,

@@ -55,9 +55,12 @@ transforms: list[Callable]
 # scales = [1.0]
 
 horizontal_flips = [False, True]
-rotate_degrees = [0, -5, -10, -15, 5, 10, 15]
+# rotate_degrees = [0, -5, -10, 5, 10]
+rotate_degrees = [0, -2.5, -5, -7.5, -10, -12.5, -15, 2.5, 5, 7.5, 10, 12.5, 15]
+# translates = [(0.0, 0.0), (0.1, 0.1), (-0.1, 0.1), (-0.1, -0.1), (0.1, -0.1)]
 translates = list(itertools.product([0.0, 0.1, -0.1], [0.0, 0.1, -0.1]))
-scales = [1.0, 1.05, 1.1, 1.15, 1.2]
+# scales = [1.00, 1.05, 1.10, 1.15, 1.20]
+scales = [1.00, 1.05, 1.10, 1.15, 1.20, 1.25, 1.30, 1.35, 1.40]
 
 label_def = FetalBrainPlanesDataset.labels
 model: LightningModule
@@ -238,7 +241,7 @@ def main(cfg: DictConfig):
         T.Compose(
             [
                 T.Grayscale(),
-                T.Resize((cfg.image_height, cfg.image_width)),
+                T.Resize(size=(cfg.image_height, cfg.image_width), antialias=False),
                 HorizontalFlip(flip=horizontal_flip),
                 Affine(degrees=rotate_degree, translate=translate, scale=scale),
                 T.ConvertImageDtype(torch.float32),

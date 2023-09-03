@@ -212,8 +212,7 @@ class VideoQualityDataset(Dataset):
             seq_len = self.seq_len or len(quality)
             seq_step = self.seq_step or max(1, ceil(seq_len / 2))
 
-            for i in range(0, len(quality) - seq_len + 1, seq_step):
-                from_idx = ceil(i * seq_step)
+            for from_idx in range(0, len(quality) - seq_len + 1, seq_step):
                 to_idx = from_idx + seq_len
                 clips.append((video_path.name, transforms, from_idx, to_idx, False))
                 if self.train and self.reverse:
