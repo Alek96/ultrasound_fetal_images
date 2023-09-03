@@ -6,7 +6,7 @@ from math import ceil
 import cv2
 import hydra
 import PIL
-import pyrootutils
+import rootutils
 import torch
 import torchvision.transforms as T
 import torchvision.transforms.functional as F
@@ -14,7 +14,7 @@ from lightning import LightningModule
 from omegaconf import DictConfig
 from tqdm import tqdm
 
-pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 # ------------------------------------------------------------------------------------ #
 # the setup_root above is equivalent to:
 # - adding project root dir to PYTHONPATH
@@ -29,7 +29,7 @@ pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 # 1. either install project as a package or move entry files to project root dir
 # 2. set `root_dir` to "." in "configs/paths/default.yaml"
 #
-# more info: https://github.com/ashleve/pyrootutils
+# more info: https://github.com/ashleve/rootutils
 # ------------------------------------------------------------------------------------ #
 
 from src import utils
@@ -135,7 +135,7 @@ def find_latest_experiment(path: pathlib.Path):
 def main(cfg: DictConfig):
     global batch_size, min_prob, prob_norm, model, transforms
 
-    root = pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+    root = rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
     model_path = cfg.model_path
     if model_path is None or model_path == "":

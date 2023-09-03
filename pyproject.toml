@@ -33,7 +33,7 @@ wandb = "^0.13.11"
 # mlflow
 # comet-ml
 # --------- others --------- #
-pyrootutils = "^1.0.4"     # standardizing the project root setup
+rootutils = "^1.0.7"       # standardizing the project root setup
 pre-commit = "^3.2.0"      # hooks for applying linters on commit
 rich = "^13.3.2"           # beautiful text formatting in terminal
 pytest = "^7.2.2"          # tests

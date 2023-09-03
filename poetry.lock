@@ -3863,21 +3863,6 @@ files = [
 ]
 
 [[package]]
-name = "pyrootutils"
-version = "1.0.4"
-description = "Simple package for easy project root setup"
-category = "main"
-optional = false
-python-versions = ">=3.7.0"
-files = [
-    {file = "pyrootutils-1.0.4-py3-none-any.whl", hash = "sha256:8bbf25425278693168ae03b167aa6509422dc21853a6ee01d5d5e40601a89f90"},
-    {file = "pyrootutils-1.0.4.tar.gz", hash = "sha256:f58aac67147bbab20938b7b783cb2f4670d6329a33c6640233854976538fc5f2"},
-]
-
-[package.dependencies]
-python-dotenv = ">=0.20.0"
-
-[[package]]
 name = "pyrsistent"
 version = "0.19.3"
 description = "Persistent/Functional/Immutable data structures"
@@ -4467,6 +4452,21 @@ pygments = ">=2.13.0,<3.0.0"
 
 [package.extras]
 jupyter = ["ipywidgets (>=7.5.1,<9)"]
+
+[[package]]
+name = "rootutils"
+version = "1.0.7"
+description = "Simple package for easy project root setup"
+category = "main"
+optional = false
+python-versions = ">=3.7.0"
+files = [
+    {file = "rootutils-1.0.7-py3-none-any.whl", hash = "sha256:89f1994e6d0f499db7aca7f90edc146801cb33c8565a15c7cee4a4e4fc8c6eef"},
+    {file = "rootutils-1.0.7.tar.gz", hash = "sha256:7e2444cdbf4a73a907875fb109d55a38b4ee21313cef305bf59fadbf540440bc"},
+]
+
+[package.dependencies]
+python-dotenv = ">=0.20.0"
 
 [[package]]
 name = "scikit-image"
@@ -5840,4 +5840,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "7e9fbef529efd900c2eb3e2b4ee264b5cb981a515d88fcef93a309e7bf180cc4"
+content-hash = "209a92923c357983b9852b0eb06b9788084aa187455625aaa10706333e0e4f2d"
