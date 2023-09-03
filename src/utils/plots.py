@@ -69,7 +69,7 @@ class PlotVideosProbabilities(PlotExtras):
         self.transforms = T.Compose(
             [
                 T.Grayscale(),
-                T.Resize(self.input_size),
+                T.Resize(self.input_size, antialias=False),
                 T.ConvertImageDtype(torch.float32),
             ]
         )
@@ -152,11 +152,13 @@ class PlotVideoQuality(PlotExtras):
         enabled: bool,
         data_dir: str,
         dataset_name: str = "US_VIDEOS",
+        min_quality: float = 0.3,
         samples: int = 5,
         beans: int = 10,
         img_size: list[int] = (165, 240),
     ):
         super().__init__(enabled)
+        self.min_quality = min_quality
         self.samples = samples
         self.beans = beans
         self.img_size = img_size
@@ -174,7 +176,7 @@ class PlotVideoQuality(PlotExtras):
             train=False,
             transform=torch.nn.Sequential(
                 T.Grayscale(),
-                T.Resize(self.img_size),
+                T.Resize(self.img_size, antialias=False),
             ),
         )
         self.labels = FetalBrainPlanesDataset.labels
@@ -241,24 +243,27 @@ class PlotVideoQuality(PlotExtras):
         for i, (y, y_hat, preds) in enumerate(data):
             rows = []
             qualities = []
+            true_qualities = []
 
             # For each label
             for j in range(3):
                 mask = torch.ne(preds, j)
                 y_hat_label = torch.masked_fill(y_hat, mask, 0)
-                y_hat_label[:25] = 0  # omit first 50 frames
+                # y_hat_label[:25] = 0  # omit first 50 frames
                 best = torch.argsort(y_hat_label, descending=True)
-                best = [idx for idx in best if y_hat_label[idx] != 0]
+                # delete frames from other classes and low quality frames
+                best = [idx.item() for idx in best if y_hat_label[idx] != 0 and y_hat_label[idx] > self.min_quality]
 
                 bean_size = int(len(best) / self.beans) + 1
                 samples = [idx for i, idx in enumerate(best) if i % bean_size == 0][: self.samples]
 
                 # for each sample
-                frames = [self.videos[i, idx.item()] for idx in reversed(samples)]
+                frames = [self.videos[i, idx] for idx in reversed(samples)]
                 row = torch.cat(frames, dim=2)
                 rows.append(row)
 
-                qualities.extend([y_hat[idx.item()].item() for idx in reversed(samples)])
+                qualities.extend([y_hat[idx].item() for idx in reversed(samples)])
+                true_qualities.extend([y[idx].item() for idx in reversed(samples)])
 
             img = torch.cat(rows, dim=1)
             img = TF.to_pil_image(img)
@@ -272,9 +277,19 @@ class PlotVideoQuality(PlotExtras):
                     axes[i].text(
                         self.img_size[1] * col_idx + self.img_size[1] - 10,
                         self.img_size[0] * label_idx + 10,
-                        round(qualities[label_idx * self.samples + col_idx], 2),
+                        f"{qualities[label_idx * self.samples + col_idx]:.2f}",
                         size="large",
                         color="tab:cyan",
+                        bbox={"pad": 0, "color": (0, 0, 0, 0.3)},
+                        horizontalalignment="right",
+                        verticalalignment="top",
+                    )
+                    axes[i].text(
+                        self.img_size[1] * col_idx + self.img_size[1] - 10,
+                        self.img_size[0] * label_idx + 40,
+                        f"{true_qualities[label_idx * self.samples + col_idx]:.2f}",
+                        size="large",
+                        color="tab:gray",
                         bbox={"pad": 0, "color": (0, 0, 0, 0.3)},
                         horizontalalignment="right",
                         verticalalignment="top",

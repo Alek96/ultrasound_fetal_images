@@ -165,6 +165,9 @@ def main(cfg: DictConfig) -> float | None:
         except IndexError:
             print("IndexError: index is out of bounds")
             clear_log_directory(cfg)
+        except KeyError:
+            print("KeyError: index is out of bounds")
+            clear_log_directory(cfg)
 
     # safely retrieve metric value for hydra-based hyperparameter optimization
     metric_value = utils.get_metric_value(metric_dict=metric_dict, metric_name=cfg.get("optimized_metric"))

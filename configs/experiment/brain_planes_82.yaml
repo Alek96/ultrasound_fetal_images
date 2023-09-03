@@ -9,14 +9,14 @@ defaults:
   - override /callbacks: default.yaml
   - override /logger: many_loggers.yaml
   - override /trainer: gpu.yaml
-#  - override /extras: plot_video_probabilities.yaml
+  - override /extras: plot_video_probabilities.yaml
 
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
 
 find_lr: False
 
-seed: "rand"
+seed: 4052244471
 
 trainer:
   min_epochs: 0
@@ -42,7 +42,7 @@ callbacks:
   early_stopping:
     monitor: "val/acc"
     mode: "max"
-    patience: 80
+    patience: 40
     #patience: ${trainer.max_epochs}
   class_image_sampler:
     class_names:
@@ -75,9 +75,9 @@ model:
   tta_transforms:
     horizontal_flips: [False, True]
     vertical_flips: [False]
-    rotate_degrees: [0]
-    translates: [[0.0, 0.0]]
-    scales: [1.0, 1.05, 1.10]
+    rotate_degrees: [0, -5, -10, 5, 10]
+    translates: [[0.0, 0.0], [0.1, 0.1], [-0.1, 0.1], [0.1, -0.1], [-0.1, -0.1]]
+    scales: [1.0, 1.05, 1.10, 1.15, 1.20]
 
 data:
   input_size: [165, 240]
@@ -145,13 +145,13 @@ logger:
     project: "brain_planes"
     tags: ${tags}
     group: "brain_planes"
-#extras:
-#  after_test_plots:
-#    enabled: true
-#    data_dir: ${paths.data_dir}
-#    video_dataset_dir: "US_VIDEOS_0.3"
-#    batch_size: ${data.batch_size}
-#    input_size: ${data.input_size}
-#    min_probabilities:
-#      [0.0, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.96, 0.97, 0.98, 0.99, 0.995]
-#    probability_norm: 1.0
+extras:
+  after_test_plots:
+    enabled: true
+    data_dir: ${paths.data_dir}
+    video_dataset_dir: "US_VIDEOS_0.3"
+    batch_size: ${data.batch_size}
+    input_size: ${data.input_size}
+    min_probabilities:
+      [0.0, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.96, 0.97, 0.98, 0.99, 0.995]
+    probability_norm: 1.0

@@ -1,6 +1,6 @@
 import itertools
-from typing import Any, List
 from collections.abc import Callable
+from typing import Any, List
 
 import torch
 import torchvision.transforms as T
@@ -56,7 +56,6 @@ class FetalLitModule(LightningModule):
         self.train_acc = Accuracy(task="multiclass", num_classes=num_classes, average="macro")
         self.val_acc = Accuracy(task="multiclass", num_classes=num_classes, average="macro")
         self.val_acc_cm = ConfusionMatrix(task="multiclass", num_classes=num_classes, normalize="true")
-        self.val_acc_tta = Accuracy(task="multiclass", num_classes=num_classes, average="macro")
         self.val_f1 = F1Score(task="multiclass", num_classes=num_classes, average="macro")
         self.test_acc = Accuracy(task="multiclass", num_classes=num_classes, average="macro")
         self.test_acc_cm = ConfusionMatrix(task="multiclass", num_classes=num_classes, normalize="true")
@@ -133,7 +132,7 @@ class FetalLitModule(LightningModule):
         return loss, true_y
 
     def model_tta_step(self, batch: Any, transforms):
-        x, _ = batch
+        x, y = batch
 
         result = []
         for transformer in transforms:
@@ -143,8 +142,9 @@ class FetalLitModule(LightningModule):
 
         logits = torch.mean(torch.stack(result, dim=1), dim=1)
         preds = torch.argmax(logits, dim=1)
+        loss, y = self.criterion(result[0], y)
 
-        return preds
+        return loss, preds, y
 
     def training_step(self, batch: Any, batch_idx: int):
         loss, preds, targets = self.model_step(batch)
@@ -166,18 +166,15 @@ class FetalLitModule(LightningModule):
         self.val_acc_cm.reset()
 
     def validation_step(self, batch: Any, batch_idx: int, dataloader_idx: int = 0):
-        loss, preds, targets = self.model_step(batch)
-        tta_preds = self.model_tta_step(batch, transforms=self.vta_transforms)
+        loss, preds, targets = self.model_tta_step(batch, transforms=self.vta_transforms)
 
         # update and log metrics
         self.val_loss(loss)
         self.val_acc(preds, targets)
         self.val_acc_cm.update(preds, targets)
-        self.val_acc_tta(tta_preds, targets)
         self.val_f1(preds, targets)
         self.log("val/loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("val/acc", self.val_acc, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("val/acc_tta", self.val_acc_tta, on_step=False, on_epoch=True, prog_bar=True)
         self.log("val/f1", self.val_f1, on_step=False, on_epoch=True, prog_bar=True)
 
         return {"loss": loss, "preds": preds, "targets": targets}
@@ -199,7 +196,7 @@ class FetalLitModule(LightningModule):
 
     def test_step(self, batch: Any, batch_idx: int):
         loss, preds, targets = self.model_step(batch)
-        tta_preds = self.model_tta_step(batch, transforms=self.tta_transforms)
+        _, tta_preds, _ = self.model_tta_step(batch, transforms=self.tta_transforms)
 
         # update and log metrics
         self.test_loss(loss)
