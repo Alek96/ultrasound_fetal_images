@@ -100,7 +100,7 @@ class QualityLitModule(LightningModule):
         self.val_loss_best(acc)  # update best so far val acc
         # log `val_loss_best` as a value through `.compute()` method, instead of as a metric object
         # otherwise metric would be reset by lightning after each epoch
-        self.log("val/lost_best", self.val_loss_best.compute(), prog_bar=True)
+        self.log("val/lost_best", self.val_loss_best.compute(), sync_dist=True, prog_bar=True)
 
     def test_step(self, batch: Any, batch_idx: int):
         loss = self.model_step(batch)

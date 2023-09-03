@@ -187,7 +187,7 @@ class FetalLitModule(LightningModule):
 
         # log `val_acc_best` as a value through `.compute()` method, instead of as a metric object
         # otherwise metric would be reset by lightning after each epoch
-        self.log("val/acc_best", self.val_acc_best.compute(), prog_bar=True)
+        self.log("val/acc_best", self.val_acc_best.compute(), sync_dist=True, prog_bar=True)
         self.log("val/acc_brain_planes", val_acc_brain_planes, on_step=False, on_epoch=True, prog_bar=True)
 
     def on_test_start(self) -> None:
