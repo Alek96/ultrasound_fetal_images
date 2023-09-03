@@ -4,12 +4,12 @@ https://github.com/PyTorchLightning/pytorch-lightning/blob/master/tests/helpers/
 """
 import os
 import sys
-from typing import Optional
 
 import pytest
 import torch
 from packaging.version import Version
 from pkg_resources import get_distribution
+from pytest import MarkDecorator
 
 from tests.helpers.package_available import (
     _COMET_AVAILABLE,
@@ -31,10 +31,12 @@ class RunIf:
 
     Example:
 
+    ```python
         @RunIf(min_torch="1.8")
         @pytest.mark.parametrize("arg1", [1.0, 2.0])
         def test_wrapper(arg1):
             assert arg1 > 0
+    ```
     """
 
     def __new__(
@@ -54,24 +56,23 @@ class RunIf:
         mlflow: bool = False,
         path: str = None,
         **kwargs,
-    ):
-        """
-        Args:
-            min_gpus: min number of GPUs required to run test
-            min_torch: minimum pytorch version to run test
-            max_torch: maximum pytorch version to run test
-            min_python: minimum python version required to run test
-            skip_windows: skip test for Windows platform
-            tpu: TPU is available
-            sh: `sh` module is required to run the test
-            fairscale: `fairscale` module is required to run the test
-            deepspeed: `deepspeed` module is required to run the test
-            wandb: `wandb` module is required to run the test
-            neptune: `neptune` module is required to run the test
-            comet: `comet` module is required to run the test
-            mlflow: `mlflow` module is required to run the test
-            path: `path` is present to run the test
-            kwargs: native pytest.mark.skipif keyword arguments
+    ) -> MarkDecorator:
+        """Creates a new `@RunIf` `MarkDecorator` decorator.
+
+        :param min_gpus: Min number of GPUs required to run test.
+        :param min_torch: Minimum pytorch version to run test.
+        :param max_torch: Maximum pytorch version to run test.
+        :param min_python: Minimum python version required to run test.
+        :param skip_windows: Skip test for Windows platform.
+        :param tpu: If TPU is available.
+        :param sh: If `sh` module is required to run the test.
+        :param fairscale: If `fairscale` module is required to run the test.
+        :param deepspeed: If `deepspeed` module is required to run the test.
+        :param wandb: If `wandb` module is required to run the test.
+        :param neptune: If `neptune` module is required to run the test.
+        :param comet: If `comet` module is required to run the test.
+        :param mlflow: If `mlflow` module is required to run the test.
+        :param kwargs: Native `pytest.mark.skipif` keyword arguments.
         """
         conditions = []
         reasons = []

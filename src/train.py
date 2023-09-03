@@ -1,6 +1,6 @@
 import os
 import shutil
-from typing import Tuple
+from typing import Any
 
 import hydra
 import lightning as pl
@@ -37,18 +37,15 @@ log = utils.get_pylogger(__name__)
 
 
 @utils.task_wrapper
-def train(cfg: DictConfig) -> tuple[dict, dict]:
+def train(cfg: DictConfig) -> tuple[dict[str, Any], dict[str, Any]]:
     """Trains the model. Can additionally evaluate on a testset, using best weights obtained during
     training.
 
     This method is wrapped in optional @task_wrapper decorator, that controls the behavior during
     failure. Useful for multiruns, saving info about the crash, etc.
 
-    Args:
-        cfg (DictConfig): Configuration composed by Hydra.
-
-    Returns:
-        Tuple[dict, dict]: Dict with metrics and dict with all instantiated objects.
+    :param cfg: A DictConfig configuration composed by Hydra.
+    :return: A tuple with metrics and dict with all instantiated objects.
     """
 
     # set seed for random number generators in pytorch, numpy and python.random
@@ -153,6 +150,11 @@ def clear_log_directory(cfg: DictConfig):
 
 @hydra.main(version_base="1.3", config_path="../configs", config_name="train.yaml")
 def main(cfg: DictConfig) -> float | None:
+    """Main entry point for training.
+
+    :param cfg: DictConfig configuration composed by Hydra.
+    :return: Optional[float] with optimized metric value.
+    """
     # apply extra utilities
     # (e.g. ask for tags if none are provided in cfg, print cfg tree, etc.)
     utils.extras(cfg)
