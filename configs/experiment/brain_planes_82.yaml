@@ -4,12 +4,12 @@
 # python train.py experiment=example
 
 defaults:
-  - override /data: fetal_planes.yaml
-  - override /model: fetal_module.yaml
-  - override /callbacks: default.yaml
-  - override /logger: many_loggers.yaml
-  - override /trainer: gpu.yaml
-  - override /extras: plot_video_probabilities.yaml
+  - override /data: fetal_planes
+  - override /model: fetal_module
+  - override /callbacks: default
+  - override /logger: many_loggers
+  - override /trainer: gpu
+  - override /extras: plot_video_probabilities
 
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters

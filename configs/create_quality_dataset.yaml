@@ -1,7 +1,7 @@
 defaults:
   - _self_
-  - paths: default.yaml
-  - hydra: default.yaml
+  - paths: default
+  - hydra: default
 
 # task name, determines output directory path
 task_name: "create_quality_dataset"

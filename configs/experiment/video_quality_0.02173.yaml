@@ -4,12 +4,12 @@
 # python train.py experiment=example
 
 defaults:
-  - override /data: video_quality.yaml
-  - override /model: quality_module.yaml
-  - override /callbacks: default.yaml
-  - override /logger: many_loggers.yaml
-  - override /trainer: gpu.yaml
-  - override /extras: plot_video_quality.yaml
+  - override /data: video_quality
+  - override /model: quality_module
+  - override /callbacks: default
+  - override /logger: many_loggers
+  - override /trainer: gpu
+  - override /extras: plot_video_quality
 
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
