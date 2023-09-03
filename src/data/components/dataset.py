@@ -9,7 +9,6 @@ import gdown
 import pandas as pd
 import PIL
 import torch
-import torchvision.transforms as T
 import torchvision.transforms.functional as TF
 from torch.utils.data import Dataset
 from torchvision.io import read_image

@@ -8,29 +8,39 @@ from src.data.utils import group_split
 
 
 class VideoQualityDataModule(LightningDataModule):
-    """A DataModule implements 5 key methods:
+    """A `LightningDataModule` implements 7 key methods:
 
+    ```python
         def prepare_data(self):
-            # things to do on 1 GPU/TPU (not on every GPU/TPU in DDP)
-            # download data, pre-process, split, save to disk, etc...
+        # Things to do on 1 GPU/TPU (not on every GPU/TPU in DDP).
+        # Download data, pre-process, split, save to disk, etc...
+
         def setup(self, stage):
-            # things to do on every process in DDP
-            # load data, set variables, etc...
+        # Things to do on every process in DDP.
+        # Load data, set variables, etc...
+
         def train_dataloader(self):
-            # return train dataloader
+        # return train dataloader
+
         def val_dataloader(self):
-            # return validation dataloader
+        # return validation dataloader
+
         def test_dataloader(self):
-            # return test dataloader
-        def teardown(self):
-            # called on every process in DDP
-            # clean up after fit or test
+        # return test dataloader
+
+        def predict_dataloader(self):
+        # return predict dataloader
+
+        def teardown(self, stage):
+        # Called on every process in DDP.
+        # Clean up after fit or test.
+    ```
 
     This allows you to share a full dataset without explaining how to download,
     split, transform and process the data.
 
     Read the docs:
-        https://pytorch-lightning.readthedocs.io/en/latest/data/datamodule.html
+        https://lightning.ai/docs/pytorch/latest/data/datamodule.html
     """
 
     def __init__(
@@ -57,18 +67,25 @@ class VideoQualityDataModule(LightningDataModule):
         self.data_val: Dataset | None = None
         self.data_test: Dataset | None = None
 
-    def prepare_data(self):
-        """Download data if needed.
+    def prepare_data(self) -> None:
+        """Download data if needed. Lightning ensures that `self.prepare_data()` is called only
+        within a single process on CPU, so you can safely add your downloading logic within. In
+        case of multi-node training, the execution of this hook depends upon
+        `self.prepare_data_per_node()`.
 
         Do not use it to assign state (self.x = y).
         """
         pass
 
-    def setup(self, stage: str | None = None):
+    def setup(self, stage: str | None = None) -> None:
         """Load data. Set variables: `self.data_train`, `self.data_val`, `self.data_test`.
 
-        This method is called by lightning with both `trainer.fit()` and `trainer.test()`, so be
-        careful not to execute things like random split twice!
+        This method is called by Lightning before `trainer.fit()`, `trainer.validate()`, `trainer.test()`, and
+        `trainer.predict()`, so be careful not to execute things like random split twice! Also, it is called after
+        `self.prepare_data()` and there is a barrier in between which ensures that all the processes proceed to
+        `self.setup()` once the data is prepared and available for use.
+
+        :param stage: The stage to setup. Either `"fit"`, `"validate"`, `"test"`, or `"predict"`. Defaults to ``None``.
         """
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
@@ -96,7 +113,11 @@ class VideoQualityDataModule(LightningDataModule):
                 normalize=False,
             )
 
-    def train_dataloader(self):
+    def train_dataloader(self) -> DataLoader[Any]:
+        """Create and return the train dataloader.
+
+        :return: The train dataloader.
+        """
         return DataLoader(
             dataset=self.data_train,
             batch_size=self.hparams.batch_size,
@@ -105,7 +126,11 @@ class VideoQualityDataModule(LightningDataModule):
             shuffle=True,
         )
 
-    def val_dataloader(self):
+    def val_dataloader(self) -> DataLoader[Any]:
+        """Create and return the validation dataloader.
+
+        :return: The validation dataloader.
+        """
         return DataLoader(
             dataset=self.data_val,
             batch_size=self.hparams.batch_size,
@@ -114,7 +139,11 @@ class VideoQualityDataModule(LightningDataModule):
             shuffle=False,
         )
 
-    def test_dataloader(self):
+    def test_dataloader(self) -> DataLoader[Any]:
+        """Create and return the test dataloader.
+
+        :return: The test dataloader.
+        """
         return DataLoader(
             dataset=self.data_test,
             batch_size=1,
@@ -123,16 +152,28 @@ class VideoQualityDataModule(LightningDataModule):
             shuffle=False,
         )
 
-    def teardown(self, stage: str | None = None):
-        """Clean up after fit or test."""
+    def teardown(self, stage: str | None = None) -> None:
+        """Lightning hook for cleaning up after `trainer.fit()`, `trainer.validate()`,
+        `trainer.test()`, and `trainer.predict()`.
+
+        :param stage: The stage being torn down. Either `"fit"`, `"validate"`, `"test"`, or `"predict"`.
+            Defaults to ``None``.
+        """
         pass
 
-    def state_dict(self):
-        """Extra things to save to checkpoint."""
+    def state_dict(self) -> dict[Any, Any]:
+        """Called when saving a checkpoint. Implement to generate and save the datamodule state.
+
+        :return: A dictionary containing the datamodule state that you want to save.
+        """
         return {}
 
-    def load_state_dict(self, state_dict: dict[str, Any]):
-        """Things to do when loading checkpoint."""
+    def load_state_dict(self, state_dict: dict[str, Any]) -> None:
+        """Called when loading a checkpoint. Implement to reload datamodule state given datamodule
+        `state_dict()`.
+
+        :param state_dict: The datamodule state returned by `self.state_dict()`.
+        """
         pass
 
 

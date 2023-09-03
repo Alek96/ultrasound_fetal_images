@@ -1,3 +1,5 @@
+from typing import Any
+
 from lightning.pytorch.utilities import rank_zero_only
 from omegaconf import OmegaConf
 
@@ -7,10 +9,16 @@ log = pylogger.get_pylogger(__name__)
 
 
 @rank_zero_only
-def log_hyperparameters(object_dict: dict) -> None:
-    """Controls which config parts are saved by lightning loggers. Additionally saves:
+def log_hyperparameters(object_dict: dict[str, Any]) -> None:
+    """Controls which config parts are saved by Lightning loggers.
 
-    - Number of model parameters
+    Additionally, it saves:
+        - Number of model parameters
+
+    :param object_dict: A dictionary containing the following objects:
+        - `"cfg"`: A DictConfig object containing the main config.
+        - `"model"`: The Lightning model.
+        - `"trainer"`: The Lightning trainer.
     """
 
     hparams = {}

@@ -1,7 +1,6 @@
 import math
 from enum import Enum
 from math import floor
-from typing import Dict, List, Optional, Tuple
 
 import albumentations as A
 import torch
@@ -338,7 +337,7 @@ class RandAugment(torch.nn.Module):
         magnitude (int): Magnitude for all the transformations.
         num_magnitude_bins (int): The number of different magnitude values.
         interpolation (InterpolationMode): Desired interpolation enum defined by
-            :class:`torchvision.transforms.InterpolationMode`. Default is ``InterpolationMode.NEAREST``.
+            `torchvision.transforms.InterpolationMode`. Default is ``InterpolationMode.NEAREST``.
             If input is Tensor, only ``InterpolationMode.NEAREST``, ``InterpolationMode.BILINEAR`` are supported.
         fill (sequence or number, optional): Pixel fill value for the area outside the transformed
             image. If given a number, the value is used for all bands respectively.
@@ -473,7 +472,7 @@ class RandAugment(torch.nn.Module):
             raise ValueError(f"The provided policy {policy} is not recognized.")
 
     def forward(self, img: Tensor) -> Tensor:
-        """img (PIL Image or Tensor): Image to be transformed.
+        """Img (PIL Image or Tensor): Image to be transformed.
 
         Returns:
             PIL Image or Tensor: Transformed image.
