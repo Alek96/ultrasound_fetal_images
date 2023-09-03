@@ -8,7 +8,7 @@ import cv2
 import hydra
 import matplotlib.pyplot as plt
 import PIL
-import pyrootutils
+import rootutils
 import torch
 import torch.nn.functional as F
 import torchvision.transforms as T
@@ -18,7 +18,7 @@ from omegaconf import DictConfig
 from torch import Tensor
 from tqdm import tqdm
 
-pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 # ------------------------------------------------------------------------------------ #
 # the setup_root above is equivalent to:
 # - adding project root dir to PYTHONPATH
@@ -33,7 +33,7 @@ pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 # 1. either install project as a package or move entry files to project root dir
 # 2. set `root_dir` to "." in "configs/paths/default.yaml"
 #
-# more info: https://github.com/ashleve/pyrootutils
+# more info: https://github.com/ashleve/rootutils
 # ------------------------------------------------------------------------------------ #
 
 from src import utils
@@ -226,7 +226,7 @@ def save_std_mean(data_path: Path, logits):
 def main(cfg: DictConfig):
     global model, transforms, batch_size, window, temperature
 
-    root = pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+    root = rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
     checkpoint_file = sorted((root / cfg.model_path / "checkpoints").glob("epoch_*.ckpt"))[-1]
     log.info(f"Load model from <{checkpoint_file}>")
