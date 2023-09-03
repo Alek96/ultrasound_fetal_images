@@ -1,12 +1,12 @@
 defaults:
-  - mix_up.yaml
-  - stochastic_weight_averaging.yaml
-  - model_checkpoint.yaml
-  - early_stopping.yaml
-  # - model_summary.yaml
-  - learning_rate_monitor.yaml
-  - rich_progress_bar.yaml
-  - class_image_sampler.yaml
+  - mix_up
+  - stochastic_weight_averaging
+  - model_checkpoint
+  - early_stopping
+  # - model_summary
+  - learning_rate_monitor
+  - rich_progress_bar
+  - class_image_sampler
   - _self_
 
 model_checkpoint:
