@@ -36,12 +36,10 @@ callbacks:
     monitor: "val/loss"
     mode: "min"
     patience: 40
-  class_image_sampler:
-  mix_up:
 
 model:
+  lr: 5e-05
   optimizer:
-    lr: 5e-05
     weight_decay: 1e-05
   scheduler:
     factor: 0.5

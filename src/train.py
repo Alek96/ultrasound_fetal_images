@@ -10,6 +10,7 @@ import torch
 import wandb
 from lightning import Callback, LightningDataModule, LightningModule, Trainer
 from lightning.pytorch.loggers import Logger
+from lightning.pytorch.tuner import Tuner
 from omegaconf import DictConfig
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
@@ -65,21 +66,21 @@ def train(cfg: DictConfig) -> tuple[dict[str, Any], dict[str, Any]]:
         log.info(f"Load checkpoint {cfg.get('model_path')}")
         model = model.load_from_checkpoint(cfg.get("model_path"))
 
-    log.info("Instantiating callbacks...")
-    callbacks: list[Callback] = utils.instantiate_callbacks(cfg.get("callbacks"))
-
     log.info("Instantiating loggers...")
     logger: list[Logger] = utils.instantiate_loggers(cfg.get("logger"))
+
+    log.info("Instantiating callbacks...")
+    callbacks: list[Callback] = utils.instantiate_callbacks(cfg.get("callbacks"), logger)
 
     if cfg.get("find_lr"):
         log.info("Run learning Rate Finder")
         trainer: Trainer = Trainer(
-            auto_lr_find="optimizer.lr",
             max_epochs=1,
             accelerator=cfg.trainer.accelerator if cfg.trainer.get("accelerator") else None,
         )
+        tuner: Tuner = Tuner(trainer)
         # Run learning rate finder
-        lr_finder = trainer.tuner.lr_find(model=model, datamodule=datamodule, min_lr=1e-10, num_training=200)
+        lr_finder = tuner.lr_find(model=model, datamodule=datamodule, min_lr=1e-10, num_training=200)
         # Plot results
         fig = lr_finder.plot(suggest=True)
         log_to_wandb(lambda: {"trainer/samples": wandb.Image(fig)}, loggers=logger)

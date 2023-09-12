@@ -1,5 +1,6 @@
 from typing import Any, Literal
 
+import torch
 import torchvision.transforms as T
 from lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset
@@ -72,38 +73,39 @@ class FetalPlanesDataModule(LightningDataModule):
 
         self.dataset = FetalBrainPlanesSamplesDataset if sample else FetalBrainPlanesDataset
 
-        self.train_transforms = T.Compose(train_transforms)
-        # self.train_transforms = T.Compose(
-        #     [
-        #         T.Grayscale(),
-        #         # RandomPercentCrop(max_percent=20),
-        #         T.Resize(input_size),
-        #         T.AutoAugment(T.AutoAugmentPolicy.IMAGENET),
-        #         T.RandAugment(magnitude=rand_augment_magnitude),
-        #         # T.TrivialAugmentWide(),
-        #         # T.AugMix(),
-        #         T.RandomHorizontalFlip(p=0.5),
-        #         # T.RandomVerticalFlip(p=0.5),
-        #         # T.RandomAffine(degrees=0, translate=(0, 0), scale=(1.0, 1.2)),
-        #         # T.RandomAffine(degrees=15, translate=(0.1, 0.1)),
-        #         # T.RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(1.0, 1.2)),
-        #         # T.RandomAffine(degrees=30, translate=(0.2, 0.2), scale=(1.0, 1.2)),
-        #         T.RandomAffine(degrees=45, translate=(0.3, 0.3), scale=(1.0, 1.2)),
-        #         T.ConvertImageDtype(torch.float32),
-        #         # T.Normalize(mean=0.17, std=0.19),  # FetalBrain
-        #         # T.Normalize(mean=0.449, std=0.226),  # ImageNet
-        #     ]
-        # )
-        self.test_transforms = T.Compose(test_transforms)
-        # self.test_transforms = T.Compose(
-        #     [
-        #         T.Grayscale(),
-        #         T.Resize(input_size),
-        #         T.ConvertImageDtype(torch.float32),
-        #         # T.Normalize(mean=0.17, std=0.19),  # FetalBrain
-        #         # T.Normalize(mean=0.449, std=0.226),  # ImageNet
-        #     ]
-        # )
+        if train_transforms is not None:
+            self.train_transforms = T.Compose(train_transforms)
+        else:
+            self.train_transforms = T.Compose(
+                [
+                    T.Grayscale(),
+                    # RandomPercentCrop(max_percent=20),
+                    T.Resize(input_size),
+                    # T.AutoAugment(T.AutoAugmentPolicy.IMAGENET),
+                    T.RandAugment(magnitude=11),
+                    # T.TrivialAugmentWide(),
+                    # T.AugMix(),
+                    T.RandomHorizontalFlip(p=0.5),
+                    # T.RandomVerticalFlip(p=0.5),
+                    T.RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(1.0, 1.2)),
+                    T.ConvertImageDtype(torch.float32),
+                    # T.Normalize(mean=0.17, std=0.19),  # FetalBrain
+                    # T.Normalize(mean=0.449, std=0.226),  # ImageNet
+                ]
+            )
+
+        if test_transforms is not None:
+            self.test_transforms = T.Compose(test_transforms)
+        else:
+            self.test_transforms = T.Compose(
+                [
+                    T.Grayscale(),
+                    T.Resize(input_size),
+                    T.ConvertImageDtype(torch.float32),
+                    # T.Normalize(mean=0.17, std=0.19),  # FetalBrain
+                    # T.Normalize(mean=0.449, std=0.226),  # ImageNet
+                ]
+            )
 
         self.labels = FetalBrainPlanesDataset.labels
         self.target_transform = LabelEncoder(labels=self.labels)

@@ -34,6 +34,7 @@ def cfg_train_global() -> DictConfig:
             cfg.extras.print_config = False
             cfg.extras.enforce_tags = False
             cfg.logger = None
+            cfg.seed = None
 
     return cfg
 

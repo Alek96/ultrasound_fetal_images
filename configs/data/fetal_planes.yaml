@@ -1,5 +1,6 @@
 _target_: src.data.fetal_planes.FetalPlanesDataModule
 data_dir: ${paths.data_dir}
+sample: false
 input_size: [55, 80]
 
 train_transforms:

@@ -8,10 +8,11 @@ from src.utils import pylogger
 log = pylogger.get_pylogger(__name__)
 
 
-def instantiate_callbacks(callbacks_cfg: DictConfig) -> list[Callback]:
+def instantiate_callbacks(callbacks_cfg: DictConfig, logger: list[Logger]) -> list[Callback]:
     """Instantiates callbacks from config.
 
     :param callbacks_cfg: A DictConfig object containing callback configurations.
+    :param logger: List of instantiated loggers
     :return: A list of instantiated callbacks.
     """
 
@@ -25,15 +26,19 @@ def instantiate_callbacks(callbacks_cfg: DictConfig) -> list[Callback]:
         raise TypeError("Callbacks config must be a DictConfig!")
 
     for key, cb_conf in callbacks_cfg.items():
-        if isinstance(cb_conf, DictConfig) and "_target_" in cb_conf and not disabled_by_optuna(key, cb_conf):
+        if isinstance(cb_conf, DictConfig) and "_target_" in cb_conf and not disabled(key, cb_conf, logger):
             log.info(f"Instantiating callback <{cb_conf._target_}>")
             callbacks.append(hydra.utils.instantiate(cb_conf))
 
     return callbacks
 
 
-def disabled_by_optuna(key, cb_conf):
-    return key == "stochastic_weight_averaging" and cb_conf.swa_lrs is None
+def disabled(key, cb_conf, logger: list[Logger]):
+    if key == "learning_rate_monitor":
+        return not logger
+    elif key == "stochastic_weight_averaging":
+        return cb_conf.swa_lrs is None
+    return False
 
 
 def instantiate_loggers(logger_cfg: DictConfig) -> list[Logger]:
