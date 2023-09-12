@@ -1,9 +1,10 @@
 _target_: src.models.quality_module.QualityLitModule
 
+lr: 0.001
+
 optimizer:
   _target_: torch.optim.Adam
   _partial_: true
-  lr: 0.001
   weight_decay: 0.0
 
 scheduler:

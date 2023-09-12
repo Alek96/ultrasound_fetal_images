@@ -45,6 +45,7 @@ callbacks:
     patience: 40
     #patience: ${trainer.max_epochs}
   class_image_sampler:
+    _target_: src.models.utils.callbacks.ClassImageSampler
     class_names:
       - "Trans-thalamic"
       - "Trans-cerebellum"
@@ -56,8 +57,8 @@ model:
   criterion:
     reduction: "none"
     label_smoothing: 0.02
+  lr: 1e-03
   optimizer:
-    lr: 1e-03
     weight_decay: 1e-05
   #scheduler:
   #  T_max: ${trainer.max_epochs}

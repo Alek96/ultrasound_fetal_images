@@ -134,7 +134,7 @@ class RunIf:
 
         if path:
             conditions.append(not os.path.exists(path))
-            reasons.append(f"path {path}")
+            reasons.append(f"path exist {path} in {os.getcwd()}")
 
         reasons = [rs for cond, rs in zip(conditions, reasons) if cond]
         return pytest.mark.skipif(

@@ -55,6 +55,7 @@ class FetalLitModule(LightningModule):
         vta_transforms: dict,
         tta_transforms: dict,
         criterion: torch.nn.Module,
+        lr: float,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
     ):
@@ -288,7 +289,7 @@ class FetalLitModule(LightningModule):
 
         :return: A dict containing the configured optimizers and learning-rate schedulers to be used for training.
         """
-        optimizer = self.hparams.optimizer(params=self.parameters())
+        optimizer = self.hparams.optimizer(params=self.parameters(), lr=self.hparams.lr)
         if self.hparams.scheduler is not None:
             scheduler = self.hparams.scheduler(optimizer=optimizer)
             return {
