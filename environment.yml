@@ -13,7 +13,7 @@ dependencies:
   - mamba
   - pip # pip must be mentioned explicitly, or conda-lock will fail
   - setuptools
-  - poetry=1.4.*
+  - poetry=1.6.*
   - pytorch::pytorch=2.0.0
   - pytorch::pytorch-cuda=11.7
 
