@@ -135,9 +135,14 @@ class FetalLitModule(LightningModule):
 
     def criterion(self, y_hat, y) -> tuple[Tensor, Tensor]:
         if len(y.shape) == 1:
+            # training without mix-up or testing
+            # y has shape ([batch_size])
+            # torch.mean is used when criterion.reduction = "none"
             return torch.mean(self.criterion_fn(y_hat, y)), y
 
         if self.hparams.softmax_target:
+            # training with mix-up and criterion.reduction = "none"
+            # y has shape ([batch_size, 4])
             y_a = y[:, 0].long()
             y_b = y[:, 1].long()
             lam_a = y[:, 2]
@@ -145,6 +150,9 @@ class FetalLitModule(LightningModule):
             loss = torch.mean(lam_a * self.criterion_fn(y_hat, y_a) + lam_b * self.criterion_fn(y_hat, y_b))
             true_y = y_a
         else:
+            # training with mix-up
+            # y has shape ([batch_size, 5])
+            # torch.mean is used when criterion.reduction = "none"
             loss = torch.mean(self.criterion_fn(y_hat, y))
             true_y = torch.argmax(y, dim=1)
 

@@ -132,13 +132,12 @@ def test_train_label_smoothing(cfg_train: DictConfig) -> None:
     HydraConfig().set_config(cfg_train)
     with open_dict(cfg_train):
         # cfg_train.trainer.fast_dev_run = True
-        cfg_train.model.criterion.reduction = "none"
         cfg_train.model.criterion.label_smoothing = 0.02
     train(cfg_train)
 
 
 @pytest.mark.slow
-def test_train_softmax_target(cfg_train: DictConfig) -> None:
+def test_train_reduction_noon(cfg_train: DictConfig) -> None:
     """Run for 1 train, val and test step.
 
     :param cfg_train: A DictConfig containing a valid training configuration.
@@ -146,7 +145,7 @@ def test_train_softmax_target(cfg_train: DictConfig) -> None:
     HydraConfig().set_config(cfg_train)
     with open_dict(cfg_train):
         # cfg_train.trainer.fast_dev_run = True
-        cfg_train.model.softmax_target = True
+        cfg_train.model.criterion.reduction = "none"
     train(cfg_train)
 
 
@@ -202,6 +201,42 @@ def test_train_vm_mix_up(cfg_train: DictConfig) -> None:
 
 
 @pytest.mark.slow
+def test_train_mix_up_label_smoothing(cfg_train: DictConfig) -> None:
+    """Run for 1 train, val and test step.
+
+    :param cfg_train: A DictConfig containing a valid training configuration.
+    """
+    HydraConfig().set_config(cfg_train)
+    with open_dict(cfg_train):
+        # cfg_train.trainer.fast_dev_run = True
+        cfg_train.model.criterion.label_smoothing = 0.02
+        cfg_train.callbacks.mix_up = {}
+        cfg_train.callbacks.mix_up._target_ = "src.models.utils.callbacks.MixUpCallback"
+        cfg_train.callbacks.mix_up.alpha = 0.4
+        cfg_train.callbacks.mix_up.softmax_target = False
+        cfg_train.callbacks.mix_up.labels = 5
+    train(cfg_train)
+
+
+@pytest.mark.slow
+def test_train_mix_up_reduction_noon(cfg_train: DictConfig) -> None:
+    """Run for 1 train, val and test step.
+
+    :param cfg_train: A DictConfig containing a valid training configuration.
+    """
+    HydraConfig().set_config(cfg_train)
+    with open_dict(cfg_train):
+        # cfg_train.trainer.fast_dev_run = True
+        cfg_train.model.criterion.reduction = "none"
+        cfg_train.callbacks.mix_up = {}
+        cfg_train.callbacks.mix_up._target_ = "src.models.utils.callbacks.MixUpCallback"
+        cfg_train.callbacks.mix_up.alpha = 0.4
+        cfg_train.callbacks.mix_up.softmax_target = False
+        cfg_train.callbacks.mix_up.labels = 5
+    train(cfg_train)
+
+
+@pytest.mark.slow
 def test_train_mix_up_softmax_target(cfg_train: DictConfig) -> None:
     """Run for 1 train, val and test step.
 
@@ -210,6 +245,7 @@ def test_train_mix_up_softmax_target(cfg_train: DictConfig) -> None:
     HydraConfig().set_config(cfg_train)
     with open_dict(cfg_train):
         # cfg_train.trainer.fast_dev_run = True
+        cfg_train.model.criterion.reduction = "none"
         cfg_train.model.softmax_target = True
         cfg_train.callbacks.mix_up = {}
         cfg_train.callbacks.mix_up._target_ = "src.models.utils.callbacks.MixUpV2Callback"
@@ -228,8 +264,8 @@ def test_train_mix_up_softmax_target_label_smoothing(cfg_train: DictConfig) -> N
     HydraConfig().set_config(cfg_train)
     with open_dict(cfg_train):
         # cfg_train.trainer.fast_dev_run = True
-        cfg_train.model.criterion.reduction = "none"
         cfg_train.model.criterion.label_smoothing = 0.02
+        cfg_train.model.criterion.reduction = "none"
         cfg_train.model.softmax_target = True
         cfg_train.callbacks.mix_up = {}
         cfg_train.callbacks.mix_up._target_ = "src.models.utils.callbacks.MixUpV2Callback"
