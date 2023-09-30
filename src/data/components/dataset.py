@@ -2,10 +2,8 @@ import os
 from collections.abc import Callable, Sequence
 from math import ceil
 from pathlib import Path
-from zipfile import ZipFile
 
 import cv2
-import gdown
 import pandas as pd
 import PIL
 import torch
@@ -147,8 +145,10 @@ class FetalBrainPlanesSamplesDataset(FetalBrainPlanesDataset):
         transform: Callable | None = None,
         target_transform: Callable | None = None,
     ):
+        from src.data.utils.google import download
+
         data_name = "FETAL_PLANES_SAMPLES"
-        self.download(data_dir, data_name)
+        download(data_dir, data_name, FetalBrainPlanesSamplesDataset.google_file_id)
         super().__init__(
             data_dir=data_dir,
             data_name=data_name,
@@ -156,20 +156,6 @@ class FetalBrainPlanesSamplesDataset(FetalBrainPlanesDataset):
             transform=transform,
             target_transform=target_transform,
         )
-
-    @staticmethod
-    def download(data_dir, data_name):
-        dataset_dir = f"{data_dir}/{data_name}"
-        if os.path.exists(dataset_dir):
-            return
-
-        zip_file = f"{data_dir}/{data_name}.zip"
-        gdown.download(id=FetalBrainPlanesSamplesDataset.google_file_id, output=zip_file, quiet=False)
-
-        with ZipFile(zip_file, "r") as zObject:
-            zObject.extractall(path=data_dir)
-
-        os.remove(zip_file)
 
 
 class VideoQualityDataset(Dataset):

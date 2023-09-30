@@ -1,0 +1,15 @@
+#model_path: "logs/train/runs/2023-06-26_12-06-59"
+#device: "auto" # cpu, cuda, auto
+#dataset_dir: "US_VIDEOS_tran_2106_playful-haze-2111"
+
+image_height: 165
+image_width: 240
+
+horizontal_flips: [False, True]
+rotate_degrees: [0, -5, -10, 5, 10]
+translates: [[0.0, 0.0], [0.1, 0.1], [-0.1, 0.1], [-0.1, -0.1], [0.1, -0.1]]
+scales: [1.00, 1.05, 1.10, 1.15, 1.20]
+
+batch_size: 350
+window: 3
+temperature: 1.0

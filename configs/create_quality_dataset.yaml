@@ -8,9 +8,19 @@ task_name: "create_quality_dataset"
 
 model_path: "logs/train/runs/2023-06-26_12-06-59"
 device: "auto" # cpu, cuda, auto
-dataset_dir: "US_VIDEOS_tran_2106_playful-haze-2111"
-image_height: 165
-image_width: 240
-batch_size: 350
+dataset_dir: "US_VIDEOS"
+
+sample: false
+google_file_id: "1A9LBOVRCcJdh_w4uUpYw-3Wc4Igvwwf1"
+
+image_height: 55
+image_width: 80
+
+horizontal_flips: [False, True]
+rotate_degrees: [0]
+translates: [[0.0, 0.0]]
+scales: [1.0]
+
+batch_size: 64
 window: 3
 temperature: 1.0
