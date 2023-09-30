@@ -39,6 +39,7 @@ rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 from src import utils
 from src.data.components.dataset import FetalBrainPlanesDataset
 from src.data.components.transforms import Affine, HorizontalFlip
+from src.data.utils.google import download
 from src.models.fetal_module import FetalLitModule
 
 log = utils.get_pylogger(__name__)
@@ -48,19 +49,6 @@ rotate_degrees: list[float]
 translates: list[tuple[float, float]]
 scales: list[float]
 transforms: list[Callable]
-
-# horizontal_flips = [False]
-# rotate_degrees = [0]
-# translates = [(0.0, 0.0)]
-# scales = [1.0]
-
-horizontal_flips = [False, True]
-# rotate_degrees = [0, -5, -10, 5, 10]
-rotate_degrees = [0, -2.5, -5, -7.5, -10, -12.5, -15, 2.5, 5, 7.5, 10, 12.5, 15]
-# translates = [(0.0, 0.0), (0.1, 0.1), (-0.1, 0.1), (-0.1, -0.1), (0.1, -0.1)]
-translates = list(itertools.product([0.0, 0.1, -0.1], [0.0, 0.1, -0.1]))
-# scales = [1.00, 1.05, 1.10, 1.15, 1.20]
-scales = [1.00, 1.05, 1.10, 1.15, 1.20, 1.25, 1.30, 1.35, 1.40]
 
 label_def = FetalBrainPlanesDataset.labels
 model: LightningModule
@@ -222,9 +210,8 @@ def save_std_mean(data_path: Path, logits):
     torch.save(std_mean, f"{data_path}/std_mean.pt")
 
 
-@hydra.main(version_base="1.3", config_path="../configs", config_name="create_quality_dataset.yaml")
-def main(cfg: DictConfig):
-    global model, transforms, batch_size, window, temperature
+def create_quality_dataset(cfg: DictConfig):
+    global model, horizontal_flips, rotate_degrees, translates, scales, transforms, batch_size, window, temperature
 
     root = rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
@@ -237,6 +224,10 @@ def main(cfg: DictConfig):
     model.to(device)
 
     log.info(f"Instantiating transformations for image size <{cfg.image_height}/{cfg.image_width}>")
+    horizontal_flips = cfg.horizontal_flips
+    rotate_degrees = cfg.rotate_degrees
+    translates = cfg.translates
+    scales = cfg.scales
     transforms = [
         T.Compose(
             [
@@ -252,12 +243,23 @@ def main(cfg: DictConfig):
         )
     ]
 
+    data_dir = root / "data"
+    if cfg.sample:
+        cfg.dataset_dir = "US_VIDEOS_SAMPLES"
+        log.info(f"Start downloading dataset {cfg.dataset_dir}")
+        download(data_dir, cfg.dataset_dir, cfg.google_file_id)
+
     log.info(f"Start creating dataset {cfg.dataset_dir}")
-    path = root / "data" / f"{cfg.dataset_dir}"
+    path = data_dir / f"{cfg.dataset_dir}"
     batch_size = cfg.batch_size
     window = cfg.window
     temperature = cfg.temperature
     create_dataset(path)
+
+
+@hydra.main(version_base="1.3", config_path="../configs", config_name="create_quality_dataset.yaml")
+def main(cfg: DictConfig):
+    create_quality_dataset(cfg)
 
 
 if __name__ == "__main__":

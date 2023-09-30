@@ -84,6 +84,8 @@ for i in {1..200}; do
 done
 
 #python src/create_quality_dataset.py
+#python src/create_quality_dataset.py sample=true
+#python src/create_quality_dataset.py experiment=create_quality_dataset_0250
 
 #python src/train.py experiment=brain_planes_mixup tags='["smooth"]' +logger.wandb.notes="mix-up"
 #python src/train.py experiment=brain_planes_mixup tags='["smooth"]' +logger.wandb.notes="mix-up"

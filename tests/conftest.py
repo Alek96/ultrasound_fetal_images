@@ -66,6 +66,24 @@ def cfg_eval_global() -> DictConfig:
     return cfg
 
 
+@pytest.fixture(scope="package")
+def cfg_create_quality_dataset_global() -> DictConfig:
+    """A pytest fixture for setting up a default Hydra DictConfig for create_quality_dataset.
+
+    :return: A DictConfig object containing a default Hydra configuration for
+        create_quality_dataset.
+    """
+    with initialize(version_base="1.3", config_path="../configs"):
+        cfg = compose(config_name="create_quality_dataset.yaml", return_hydra_config=True, overrides=[])
+
+        # set defaults for all tests
+        with open_dict(cfg):
+            cfg.paths.root_dir = str(rootutils.find_root(indicator=".project-root"))
+            cfg.sample = True
+
+    return cfg
+
+
 # this is called by each test which uses `cfg_train` arg
 # each test generates its own temporary logging path
 @pytest.fixture(scope="function")
@@ -106,6 +124,32 @@ def cfg_eval(cfg_eval_global: DictConfig, tmp_path: Path) -> DictConfig:
     :return: A DictConfig with updated output and log directories corresponding to `tmp_path`.
     """
     cfg = cfg_eval_global.copy()
+
+    with open_dict(cfg):
+        cfg.paths.output_dir = str(tmp_path)
+        cfg.paths.log_dir = str(tmp_path)
+
+    yield cfg
+
+    GlobalHydra.instance().clear()
+
+
+# this is called by each test which uses `cfg_eval` arg
+# each test generates its own temporary logging path
+@pytest.fixture(scope="function")
+def cfg_create_quality_dataset(cfg_create_quality_dataset_global: DictConfig, tmp_path: Path) -> DictConfig:
+    """A pytest fixture built on top of the `cfg_create_quality_dataset_global()` fixture, which
+    accepts a temporary logging path `tmp_path` for generating a temporary logging path.
+
+    This is called by each test which uses the `cfg_create_quality_dataset` arg.
+    Each test generates its own temporary logging path.
+
+    :param cfg_create_quality_dataset_global: The input DictConfig object to be modified.
+    :param tmp_path: The temporary logging path.
+
+    :return: A DictConfig with updated output and log directories corresponding to `tmp_path`.
+    """
+    cfg = cfg_create_quality_dataset_global.copy()
 
     with open_dict(cfg):
         cfg.paths.output_dir = str(tmp_path)
