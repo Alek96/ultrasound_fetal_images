@@ -1,6 +1,7 @@
 _target_: src.data.video_quality.VideoQualityDataModule
 data_dir: ${paths.data_dir}
 dataset_name: "US_VIDEOS"
+sample: false
 seq_len: 32
 seq_step:
 reverse: False

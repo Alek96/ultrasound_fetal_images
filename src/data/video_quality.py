@@ -3,7 +3,7 @@ from typing import Any
 from lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset
 
-from src.data.components.dataset import VideoQualityDataset
+from src.data.components.dataset import VideoQualityDataset, VideoQualitySamplesDataset
 from src.data.utils import group_split
 
 
@@ -47,6 +47,7 @@ class VideoQualityDataModule(LightningDataModule):
         self,
         data_dir: str = "data/",
         dataset_name: str = "US_VIDEOS",
+        sample: bool = False,
         seq_len: int = 32,
         seq_step: int = None,
         reverse: bool = False,
@@ -62,6 +63,8 @@ class VideoQualityDataModule(LightningDataModule):
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
+
+        self.dataset = VideoQualitySamplesDataset if sample else VideoQualityDataset
 
         self.data_train: Dataset | None = None
         self.data_val: Dataset | None = None
@@ -89,7 +92,7 @@ class VideoQualityDataModule(LightningDataModule):
         """
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
-            train = VideoQualityDataset(
+            train = self.dataset(
                 data_dir=self.hparams.data_dir,
                 dataset_name=self.hparams.dataset_name,
                 train=True,
@@ -105,7 +108,7 @@ class VideoQualityDataModule(LightningDataModule):
                 groups=train.clips.Video,
                 random_state=self.hparams.train_val_split_seed,
             )
-            self.data_test = VideoQualityDataset(
+            self.data_test = self.dataset(
                 data_dir=self.hparams.data_dir,
                 dataset_name=self.hparams.dataset_name,
                 train=False,
