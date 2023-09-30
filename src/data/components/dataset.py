@@ -244,7 +244,7 @@ class VideoQualityDataset(Dataset):
 
 
 class VideoQualitySamplesDataset(VideoQualityDataset):
-    google_file_id = "1A9LBOVRCcJdh_w4uUpYw-3Wc4Igvwwf1"
+    google_file_id = "14KIp3q8sJVw1oXFA3rQMYi-cs3pnLvdv"
 
     def __init__(
         self,
@@ -261,7 +261,7 @@ class VideoQualitySamplesDataset(VideoQualityDataset):
     ):
         from src.data.utils.google import download
 
-        dataset_name = "US_VIDEOS_SAMPLES"
+        dataset_name = "VIDEO_QUALITY_SAMPLES"
         download(data_dir, dataset_name, VideoQualitySamplesDataset.google_file_id)
         super().__init__(
             data_dir=data_dir,
