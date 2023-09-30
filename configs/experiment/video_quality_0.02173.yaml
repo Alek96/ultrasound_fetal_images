@@ -6,7 +6,7 @@
 defaults:
   - override /data: video_quality
   - override /model: quality_module
-  - override /callbacks: default
+  - override /callbacks: video_quality
   - override /logger: many_loggers
   - override /trainer: gpu
   - override /extras: plot_video_quality
