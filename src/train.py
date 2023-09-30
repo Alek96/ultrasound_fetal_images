@@ -149,7 +149,6 @@ def clear_log_directory(cfg: DictConfig):
                 os.remove(path)
 
 
-@hydra.main(version_base="1.3", config_path="../configs", config_name="train.yaml")
 def main(cfg: DictConfig) -> float | None:
     """Main entry point for training.
 
@@ -177,7 +176,3 @@ def main(cfg: DictConfig) -> float | None:
 
     # return optimized metric
     return metric_value
-
-
-if __name__ == "__main__":
-    main()
