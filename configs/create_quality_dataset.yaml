@@ -11,7 +11,7 @@ device: "auto" # cpu, cuda, auto
 dataset_dir: "US_VIDEOS"
 
 sample: false
-google_file_id: "1A9LBOVRCcJdh_w4uUpYw-3Wc4Igvwwf1"
+google_file_id: "1rKWhPg9lltY_dWMah9aN6pqs3H_ri-0a"
 
 image_height: 55
 image_width: 80
