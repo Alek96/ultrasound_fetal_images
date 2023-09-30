@@ -6,7 +6,7 @@ defaults:
   - _self_
   - data: fetal_planes
   - model: fetal_module
-  - callbacks: default
+  - callbacks: brain_planes
   - logger: null # set logger here or use command line (e.g. `python train.py logger=tensorboard`)
   - trainer: default
   - paths: default

@@ -243,6 +243,40 @@ class VideoQualityDataset(Dataset):
         return x, y, p
 
 
+class VideoQualitySamplesDataset(VideoQualityDataset):
+    google_file_id = "1A9LBOVRCcJdh_w4uUpYw-3Wc4Igvwwf1"
+
+    def __init__(
+        self,
+        data_dir: str,
+        dataset_name: str = "US_VIDEOS",
+        train: bool = True,
+        seq_len: int = 32,
+        seq_step: int = None,
+        reverse: bool = False,
+        transform: bool = False,
+        normalize: bool = False,
+        target_transform: Callable | None = None,
+        label_transform: Callable | None = None,
+    ):
+        from src.data.utils.google import download
+
+        dataset_name = "US_VIDEOS_SAMPLES"
+        download(data_dir, dataset_name, VideoQualitySamplesDataset.google_file_id)
+        super().__init__(
+            data_dir=data_dir,
+            dataset_name=dataset_name,
+            train=train,
+            seq_len=seq_len,
+            seq_step=seq_step,
+            reverse=reverse,
+            transform=transform,
+            normalize=normalize,
+            target_transform=target_transform,
+            label_transform=label_transform,
+        )
+
+
 class VideoQualityMemoryDataset(Dataset):
     def __init__(
         self,
