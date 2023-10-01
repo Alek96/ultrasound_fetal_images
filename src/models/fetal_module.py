@@ -69,6 +69,8 @@ class FetalLitModule(LightningModule):
 
         # loss function
         self.criterion_fn = criterion()
+        # softmax function for aggregation
+        self.softmax = torch.nn.Softmax(dim=1)
 
         # metric objects for calculating and averaging accuracy across batches
         self.train_acc = Accuracy(task="multiclass", num_classes=num_classes, average="macro")
@@ -161,15 +163,20 @@ class FetalLitModule(LightningModule):
     def model_tta_step(self, batch: tuple[Tensor, Tensor], transforms) -> tuple[Tensor, Tensor, Tensor]:
         x, y = batch
 
-        result = []
+        y_hats = []
+        logits_0 = None
+
         for transformer in transforms:
             augmented_x = transformer(x)
             _, logits = self.forward(augmented_x)
-            result.append(logits)
+            if logits_0 is None:
+                logits_0 = logits
+            y_hat = self.softmax(logits)
+            y_hats.append(y_hat)
 
-        logits = torch.mean(torch.stack(result, dim=1), dim=1)
-        preds = torch.argmax(logits, dim=1)
-        loss, y = self.criterion(result[0], y)
+        y_hat = torch.mean(torch.stack(y_hats, dim=1), dim=1)
+        preds = torch.argmax(y_hat, dim=1)
+        loss, y = self.criterion(logits_0, y)
 
         return loss, preds, y
 
