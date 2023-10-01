@@ -59,6 +59,8 @@ clean:
 ## Clean logs
 clean-logs:
 	rm -rf logs/**
+	rm -rf lightning_logs/**
+	rm -rf tests/lightning_logs/**
 
 ## Run pre-commit hooks
 format: ensure_conda_env
