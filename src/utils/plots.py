@@ -106,10 +106,9 @@ class PlotVideosProbabilities(PlotExtras):
             frames = frames.to(model.device)
             frames = self.transforms(frames)
 
-            _, logits = model(frames)
-            y_hats = F.softmax(logits, dim=1)
-            preds = torch.argmax(logits, dim=1)
-            self._count_labels(y_hats, preds)
+            _, y_hat = model.forward_tta(frames)
+            preds = torch.argmax(y_hat, dim=1)
+            self._count_labels(y_hat, preds)
 
     def _get_frames_tensor(self, frame_paths):
         frames = []
@@ -138,7 +137,7 @@ class PlotVideosProbabilities(PlotExtras):
         for i, (min_prob, count) in enumerate(self.counts.items()):
             labels = list(count.keys())
             values = list(count.values())
-            ax.bar(labels, values, label=min_prob)
+            ax.bar(labels, values, label=str(min_prob))
 
         ax.legend()
         ax.set_title("Probabilities on video dataset")

@@ -128,6 +128,24 @@ class FetalLitModule(LightningModule):
     def forward(self, x: Tensor) -> Tensor:
         return self.net(x)
 
+    def forward_tta(self, x: Tensor, transforms: None | list[Callable] = None) -> tuple[Tensor, Tensor]:
+        transforms = transforms or self.tta_transforms
+
+        y_hats = []
+        logits_0 = None
+
+        for transformer in transforms:
+            augmented_x = transformer(x)
+            _, logits = self.forward(augmented_x)
+            if logits_0 is None:
+                logits_0 = logits
+            y_hat = self.softmax(logits)
+            y_hats.append(y_hat)
+
+        y_hat = torch.mean(torch.stack(y_hats, dim=1), dim=1)
+
+        return logits_0, y_hat
+
     def model_step(self, batch: tuple[Tensor, Tensor]) -> tuple[Tensor, Tensor, Tensor]:
         x, y = batch
         _, logits = self.forward(x)
@@ -162,22 +180,9 @@ class FetalLitModule(LightningModule):
 
     def model_tta_step(self, batch: tuple[Tensor, Tensor], transforms) -> tuple[Tensor, Tensor, Tensor]:
         x, y = batch
-
-        y_hats = []
-        logits_0 = None
-
-        for transformer in transforms:
-            augmented_x = transformer(x)
-            _, logits = self.forward(augmented_x)
-            if logits_0 is None:
-                logits_0 = logits
-            y_hat = self.softmax(logits)
-            y_hats.append(y_hat)
-
-        y_hat = torch.mean(torch.stack(y_hats, dim=1), dim=1)
+        logits, y_hat = self.forward_tta(x, transforms)
         preds = torch.argmax(y_hat, dim=1)
-        loss, y = self.criterion(logits_0, y)
-
+        loss, y = self.criterion(logits, y)
         return loss, preds, y
 
     def training_step(self, batch: tuple[Tensor, Tensor], batch_idx: int) -> dict:
