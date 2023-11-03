@@ -86,3 +86,7 @@ train: ensure_conda_env
 ## Run jupyter notebook
 notebook: ensure_conda_env
 	jupyter notebook --notebook-dir=./notebooks --no-browser
+
+## Run jupyter notebook
+lab: ensure_conda_env
+	jupyter lab --notebook-dir=./notebooks --no-browser
