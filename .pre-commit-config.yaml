@@ -126,7 +126,7 @@ repos:
 
   # jupyter notebook cell output clearing
   - repo: https://github.com/kynan/nbstripout
-    rev: 0.7.0
+    rev: 0.7.1
     hooks:
       - id: nbstripout
 
