@@ -359,6 +359,36 @@ class VideoQualityMemoryDataset(Dataset):
         return x, y, p
 
 
+class VideosFrameDataset(Dataset):
+    def __init__(
+        self,
+        video_path: Path,
+        transform: Callable | None = None,
+    ):
+        self.video_path = video_path
+        self.video_length = self.get_video_length()
+        self.transform = transform
+
+    def get_video_length(self):
+        cap = cv2.VideoCapture(str(self.video_path))
+        # get total number of frames
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        cap.release()
+        return total_frames
+
+    def __len__(self):
+        return self.video_length
+
+    def __getitem__(self, idx: int):
+        if idx >= len(self):
+            raise IndexError(f"Video index {idx} out of range")
+
+        frame = USVideosFrameDataset.read_frame(self.video_path, idx)
+        if self.transform:
+            frame = self.transform(frame)
+        return frame
+
+
 class USVideosFrameDataset(Dataset):
     def __init__(
         self,
