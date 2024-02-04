@@ -38,13 +38,14 @@ rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
 from src import utils
 from src.data.components.dataset import FetalBrainPlanesDataset
-from src.data.components.transforms import Affine, HorizontalFlip
+from src.data.components.transforms import Affine, HorizontalFlip, VerticalFlip
 from src.data.utils.google import download
 from src.models.fetal_module import FetalLitModule
 
 log = utils.get_pylogger(__name__)
 
 horizontal_flips: list[bool]
+vertical_flips: list[bool]
 rotate_degrees: list[float]
 translates: list[tuple[float, float]]
 scales: list[float]
@@ -211,7 +212,7 @@ def save_std_mean(data_path: Path, logits):
 
 
 def create_quality_dataset(cfg: DictConfig):
-    global model, horizontal_flips, rotate_degrees, translates, scales, transforms, batch_size, window, temperature
+    global model, horizontal_flips, vertical_flips, rotate_degrees, translates, scales, transforms, batch_size, window, temperature
 
     root = rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
@@ -225,6 +226,7 @@ def create_quality_dataset(cfg: DictConfig):
 
     log.info(f"Instantiating transformations for image size <{cfg.image_height}/{cfg.image_width}>")
     horizontal_flips = cfg.horizontal_flips
+    vertical_flips = cfg.vertical_flips
     rotate_degrees = cfg.rotate_degrees
     translates = cfg.translates
     scales = cfg.scales
@@ -234,12 +236,13 @@ def create_quality_dataset(cfg: DictConfig):
                 T.Grayscale(),
                 T.Resize(size=(cfg.image_height, cfg.image_width), antialias=False),
                 HorizontalFlip(flip=horizontal_flip),
+                VerticalFlip(flip=vertical_flip),
                 Affine(degrees=rotate_degree, translate=translate, scale=scale),
                 T.ConvertImageDtype(torch.float32),
             ]
         )
-        for horizontal_flip, rotate_degree, translate, scale in itertools.product(
-            horizontal_flips, rotate_degrees, translates, scales
+        for horizontal_flip, vertical_flip, rotate_degree, translate, scale in itertools.product(
+            horizontal_flips, vertical_flips, rotate_degrees, translates, scales
         )
     ]
 

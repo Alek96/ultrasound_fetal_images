@@ -69,16 +69,16 @@ model:
   softmax_target: True
   vta_transforms:
     horizontal_flips: [False, True]
-    vertical_flips: [False]
+    vertical_flips: [False, True]
     rotate_degrees: [0]
     translates: [[0.0, 0.0]]
     scales: [1.0]
   tta_transforms:
     horizontal_flips: [False, True]
-    vertical_flips: [False]
-    rotate_degrees: [0]
+    vertical_flips: [False, True]
+    rotate_degrees: [0, -5, 5]
     translates: [[0.0, 0.0]]
-    scales: [1.0, 1.05, 1.10]
+    scales: [1.0, 1.10]
 
 data:
   input_size: [165, 240]
@@ -113,8 +113,8 @@ data:
 
     - _target_: torchvision.transforms.RandomHorizontalFlip
       p: 0.5
-    #- _target_: torchvision.transforms.RandomVerticalFlip
-    #  p: 0.5
+    - _target_: torchvision.transforms.RandomVerticalFlip
+      p: 0.5
 
     - _target_: torchvision.transforms.RandomAffine
       degrees: 15
