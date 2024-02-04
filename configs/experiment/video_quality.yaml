@@ -46,7 +46,7 @@ model:
     patience: 60
 
 data:
-  dataset_name: "US_VIDEOS_tran_350_playful-haze-2111"
+  dataset_name: "US_VIDEOS_tran_0500"
   seq_len: 128
   seq_step:
   reverse: True
