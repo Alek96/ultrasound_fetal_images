@@ -10,7 +10,7 @@ defaults:
   - logger: null # set logger here or use command line (e.g. `python train.py logger=tensorboard`)
   - trainer: default
   - paths: default
-  - extras: default
+  - extras: plot_video_probabilities
   - hydra: default
 
   # experiment configs allow for version control of specific hyperparameters
