@@ -1,4 +1,4 @@
-name: my_project_env
+name: ultrasound_fetal_images_env
 channels:
   - pytorch
   - nvidia
@@ -13,8 +13,8 @@ dependencies:
   - mamba
   - pip # pip must be mentioned explicitly, or conda-lock will fail
   - setuptools
-  - poetry=1.7.*
-  - pytorch::pytorch=2.2.0
+  - poetry=1.8.*
+  - pytorch::pytorch=2.2.2
   - pytorch::pytorch-cuda=12.1
   - conda-forge::opencv
 
