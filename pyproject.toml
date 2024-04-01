@@ -1,17 +1,13 @@
 [tool.poetry]
-name = "ultrasound-fetal-images"
-version = "0.1.0"
-description = ""
-authors = ["Aleksander Zamojski <zamojski96@gmail.com>"]
-readme = "README.md"
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "3.10.*"
 # --------- pytorch --------- #
-torch = "2.2.0"
-torchvision = "^0.17.0"
-lightning = "^2.1.4"
-torchmetrics = "^1.3.0"
+torch = "2.2.2"
+torchvision = "^0.17.2"
+lightning = "^2.2.1"
+torchmetrics = "^1.3.2"
 # --------- missing pytorch nvidia --------- # https://download.pytorch.org/whl/nightly/cu121
 nvidia-cublas-cu12 = "12.1.3.1"
 nvidia-cuda-cupti-cu12 = "12.1.105"
@@ -30,25 +26,26 @@ hydra-core = "1.3.2"
 hydra-colorlog = "^1.2.0"
 hydra-optuna-sweeper = "^1.2.0"
 # --------- data --------- #
-pandas = "^2.2.0"
-numpy = "^1.26.3"
+pandas = "^2.2.1"
+numpy = "^1.26.4"
 scipy = "^1.12.0"
 scikit-learn = "^1.4.0"
 jupyter = "^1.0.0"
-matplotlib = "^3.8.2"
-plotly = "^5.18.0"
+matplotlib = "^3.8.3"
+plotly = "^5.20.0"
 scikit-image = "^0.22.0"
-albumentations = "^1.3.1"
+albumentations = "^1.4.2"
+opencv-python-headless = "^4.9.0.80"
 # --------- loggers --------- #
 # tensorboard = "^2.12.0"
-wandb = "^0.16.2"
+wandb = "^0.16.5"
 # neptune-client
 # mlflow
 # comet-ml
 # --------- others --------- #
 rootutils = "^1.0.7"       # standardizing the project root setup
-pre-commit = "^3.6.0"      # hooks for applying linters on commit
-rich = "^13.7.0"           # beautiful text formatting in terminal
+pre-commit = "^3.7.0"      # hooks for applying linters on commit
+rich = "^13.7.1"           # beautiful text formatting in terminal
 pytest = "^8.1.1"          # tests
 pytest-cov = "^4.1.0"
 sh = { version = "^1.14.3", markers = "sys_platform == 'linux' or sys_platform == 'darwin'" }
