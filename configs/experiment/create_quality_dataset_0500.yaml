@@ -1,4 +1,6 @@
-model_path: "logs/train/multiruns/2023-11-09_15-55-39/0" # feager-deluge-2718"
+# @package _global_
+
+model_path: "logs/train/multiruns/2023-11-09_15-55-39/0"
 #device: "auto" # cpu, cuda, auto
 dataset_dir: "US_VIDEOS_tran_0500"
 
@@ -11,6 +13,7 @@ rotate_degrees: [0, -5, -10, 5, 10]
 translates: [[0.0, 0.0], [0.1, 0.1], [-0.1, 0.1], [-0.1, -0.1], [0.1, -0.1]]
 scales: [1.00, 1.05, 1.10, 1.15, 1.20]
 
-batch_size: 350
+batch_size: 32
 window: 3
+gma_width: 3
 temperature: 1.0

@@ -68,20 +68,20 @@ model:
     name: "efficientnet_v2_m"
   softmax_target: True
   vta_transforms:
-    horizontal_flips: [False, True]
-    vertical_flips: [False, True]
-    rotate_degrees: [0]
-    translates: [[0.0, 0.0]]
-    scales: [1.0]
+    horizontal_flips: [ False, True ]
+    vertical_flips: [ False, True ]
+    rotate_degrees: [ 0 ]
+    translates: [ [ 0.0, 0.0 ] ]
+    scales: [ 1.0 ]
   tta_transforms:
-    horizontal_flips: [False, True]
-    vertical_flips: [False, True]
-    rotate_degrees: [0, -5, 5]
-    translates: [[0.0, 0.0]]
-    scales: [1.0, 1.10]
+    horizontal_flips: [ False, True ]
+    vertical_flips: [ False, True ]
+    rotate_degrees: [ 0, -5, 5 ]
+    translates: [ [ 0.0, 0.0 ] ]
+    scales: [ 1.0, 1.10 ]
 
 data:
-  input_size: [165, 240]
+  input_size: [ 165, 240 ]
   train_val_split: 0.2
   train_val_split_seed: 5724
   batch_size: 32
@@ -118,8 +118,8 @@ data:
 
     - _target_: torchvision.transforms.RandomAffine
       degrees: 15
-      translate: [0.1, 0.1]
-      scale: [1.0, 1.2]
+      translate: [ 0.1, 0.1 ]
+      scale: [ 1.0, 1.2 ]
 
     #- _target_: src.data.components.transforms.RandomCutout
     #  n_holes: 5
@@ -130,6 +130,13 @@ data:
       dtype:
         _target_: src.utils.utils.import_object
         name: torch.float32
+
+    #- _target_: torchvision.transforms.Normalize  # FetalBrain
+    #  mean: 0.17
+    #  std: 0.19
+    #- _target_: torchvision.transforms.Normalize  # ImageNet
+    #  mean: 0.449
+    #  std: 0.226
 
   test_transforms:
     - _target_: torchvision.transforms.Grayscale

@@ -28,4 +28,5 @@ scales: [1.0]
 
 batch_size: 64
 window: 3
+gma_width: 3
 temperature: 1.0

@@ -166,8 +166,8 @@ class PlotVideoQuality(PlotExtras):
             data_dir=data_dir,
             dataset_name=dataset_name,
             train=False,
-            # all_transforms=False,
             seq_len=0,
+            normalize=True,
         )
         self.videos = USVideosFrameDataset(
             data_dir=data_dir,

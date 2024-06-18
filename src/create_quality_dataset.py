@@ -55,6 +55,9 @@ label_def = FetalBrainPlanesDataset.labels
 model: LightningModule
 batch_size: int
 window: int
+gma_width: int
+gma_window: int
+gma_sigma: float
 temperature: float
 
 
@@ -151,6 +154,23 @@ def calculate_quality(y_hats: Tensor):
     # average of all transformations
     y_hats = torch.mean(y_hats, dim=0)
 
+    # gaussian moving average
+    distance = torch.arange(-gma_width, gma_width + 1, dtype=torch.float)
+    gaussian = torch.exp(-(distance**2) / (2 * gma_sigma**2))
+
+    weight_sum = torch.ones(y_hats.shape)
+    weight_sum = F.pad(weight_sum, pad=(0, 0, gma_width, gma_width), mode="constant", value=0)
+    weight_sum = weight_sum.unfold(dimension=0, size=gma_window, step=1)
+    weight_sum = weight_sum * gaussian
+    weight_sum = torch.nansum(weight_sum, dim=2)
+
+    y_hats = F.pad(y_hats, pad=(0, 0, gma_width, gma_width), mode="constant", value=0)
+    y_hats = y_hats.unfold(dimension=0, size=gma_window, step=1)
+    y_hats = y_hats * gaussian
+    y_hats = torch.nansum(y_hats, dim=2)
+
+    y_hats = y_hats / weight_sum
+
     # (the best prediction - sum of the rest prediction)
     plates = y_hats[:, :3]
     quality = torch.amax(plates, dim=1)
@@ -212,7 +232,7 @@ def save_std_mean(data_path: Path, logits):
 
 
 def create_quality_dataset(cfg: DictConfig):
-    global model, horizontal_flips, vertical_flips, rotate_degrees, translates, scales, transforms, batch_size, window, temperature
+    global model, horizontal_flips, vertical_flips, rotate_degrees, translates, scales, transforms, batch_size, window, gma_width, gma_window, gma_sigma, temperature
 
     root = rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
@@ -256,6 +276,9 @@ def create_quality_dataset(cfg: DictConfig):
     path = data_dir / f"{cfg.dataset_dir}"
     batch_size = cfg.batch_size
     window = cfg.window
+    gma_width = cfg.gma_width
+    gma_window = gma_width * 2 + 1
+    gma_sigma = gma_window / 4
     temperature = cfg.temperature
     create_dataset(path)
 

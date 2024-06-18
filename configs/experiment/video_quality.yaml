@@ -20,7 +20,7 @@ seed: "rand"
 
 trainer:
   min_epochs: 5
-  max_epochs: 60
+  max_epochs: 100
   val_check_interval: 0.5
 #  limit_train_batches: 0.01
 #  accumulate_grad_batches: 4

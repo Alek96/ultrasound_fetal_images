@@ -16,7 +16,7 @@ defaults:
 
 find_lr: False
 
-seed: 4052244471
+seed: 1040985247
 
 trainer:
   min_epochs: 0
@@ -42,7 +42,7 @@ callbacks:
   early_stopping:
     monitor: "val/acc"
     mode: "max"
-    patience: 40
+    patience: 80
     #patience: ${trainer.max_epochs}
   class_image_sampler:
     _target_: src.models.utils.callbacks.ClassImageSampler
@@ -69,15 +69,15 @@ model:
   softmax_target: True
   vta_transforms:
     horizontal_flips: [False, True]
-    vertical_flips: [False]
+    vertical_flips: [False, True]
     rotate_degrees: [0]
     translates: [[0.0, 0.0]]
     scales: [1.0]
   tta_transforms:
     horizontal_flips: [False, True]
-    vertical_flips: [False]
-    rotate_degrees: [0, -5, -10, 5, 10]
-    translates: [[0.0, 0.0], [0.1, 0.1], [-0.1, 0.1], [0.1, -0.1], [-0.1, -0.1]]
+    vertical_flips: [True]
+    rotate_degrees: [0, -5, 5]
+    translates: [[0.0, 0.0]]
     scales: [1.0, 1.05, 1.10, 1.15, 1.20]
 
 data:
@@ -94,37 +94,18 @@ data:
       size: ${data.input_size}
       antialias: False
 
-    #- _target_: torchvision.transforms.AutoAugment
-    #  policy:
-    #    _target_: src.utils.utils.import_object
-    #    name: torchvision.transforms.AutoAugmentPolicy.IMAGENET
     - _target_: torchvision.transforms.RandAugment
       magnitude: 11
-    #- _target_: src.data.components.transforms.RandAugment
-    #  policy:
-    #    _target_: src.utils.utils.import_object
-    #    name: src.data.components.transforms.RandAugmentPolicy.RAND_AUGMENT_CUTOUT
-    #  num_ops: 3
-    #  magnitude: 10
-    #  arg1: 0.7
-    #  arg2: 5
-    #- _target_: torchvision.transforms.TrivialAugmentWide
-    #- _target_: torchvision.transforms.AugMix
 
     - _target_: torchvision.transforms.RandomHorizontalFlip
       p: 0.5
-    #- _target_: torchvision.transforms.RandomVerticalFlip
-    #  p: 0.5
+    - _target_: torchvision.transforms.RandomVerticalFlip
+      p: 0.5
 
     - _target_: torchvision.transforms.RandomAffine
       degrees: 15
       translate: [0.1, 0.1]
       scale: [1.0, 1.2]
-
-    #- _target_: src.data.components.transforms.RandomCutout
-    #  n_holes: 5
-    #  length: 40
-    #  p: 0.1
 
     - _target_: torchvision.transforms.ConvertImageDtype
       dtype:

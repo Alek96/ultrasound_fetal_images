@@ -193,7 +193,7 @@ class VideoQualityDataset(Dataset):
             transforms = [transform_path.name for transform_path in sorted(video_path.iterdir())]
 
             transform_path = sorted(video_path.iterdir())[0]
-            logits, quality, _ = torch.load(transform_path)
+            _, quality, _ = torch.load(transform_path)
 
             seq_len = self.seq_len or len(quality)
             seq_step = self.seq_step or max(1, ceil(seq_len / 2))
@@ -233,7 +233,7 @@ class VideoQualityDataset(Dataset):
             y = torch.flip(y, dims=[0])
             p = torch.flip(p, dims=[0])
 
-        if self.normalize is not None:
+        if self.normalize:
             x = (x - self.std_mean[1]) / self.std_mean[0]
 
         if self.target_transform:

@@ -100,7 +100,7 @@ class VideoQualityDataModule(LightningDataModule):
                 seq_step=self.hparams.seq_step,
                 reverse=self.hparams.reverse,
                 transform=self.hparams.transform,
-                normalize=False,
+                normalize=True,
             )
             self.data_train, self.data_val = group_split(
                 dataset=train,
@@ -113,7 +113,7 @@ class VideoQualityDataModule(LightningDataModule):
                 dataset_name=self.hparams.dataset_name,
                 train=False,
                 seq_len=0,
-                normalize=False,
+                normalize=True,
             )
 
     def train_dataloader(self) -> DataLoader[Any]:
