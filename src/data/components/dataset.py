@@ -201,7 +201,7 @@ class VideoQualityDataset(Dataset):
             for from_idx in range(0, len(quality) - seq_len + 1, seq_step):
                 to_idx = from_idx + seq_len
                 clips.append((video_path.name, transforms, from_idx, to_idx, False))
-                if self.train and self.reverse:
+                if self.reverse:
                     clips.append((video_path.name, transforms, from_idx, to_idx, True))
 
         return pd.DataFrame(clips, columns=["Video", "Transforms", "From", "To", "Flip"])

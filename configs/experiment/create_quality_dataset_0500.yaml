@@ -1,6 +1,6 @@
 # @package _global_
 
-model_path: "logs/train/multiruns/2023-11-09_15-55-39/0"
+model_path: "logs/train/runs/2024-06-21_13-37-18"
 #device: "auto" # cpu, cuda, auto
 dataset_dir: "US_VIDEOS_tran_0500"
 

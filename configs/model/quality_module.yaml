@@ -2,6 +2,11 @@ _target_: src.models.quality_module.QualityLitModule
 
 lr: 0.001
 
+criterion:
+  _target_: torch.nn.MSELoss
+  _partial_: true
+  reduction: "mean"
+
 optimizer:
   _target_: torch.optim.Adam
   _partial_: true

@@ -6,6 +6,18 @@ from torch import Tensor
 from torchmetrics import MeanMetric, MinMetric
 
 
+class LambdaModule(torch.nn.Module):
+    def __init__(self, lambd):
+        super().__init__()
+        import types
+
+        assert type(lambd) is types.LambdaType
+        self.lambd = lambd
+
+    def forward(self, x):
+        return self.lambd(x)
+
+
 class QualityLitModule(LightningModule):
     """A `LightningModule` implements 8 key methods:
 
@@ -40,6 +52,7 @@ class QualityLitModule(LightningModule):
     def __init__(
         self,
         lr: float,
+        criterion: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
     ):
@@ -49,17 +62,25 @@ class QualityLitModule(LightningModule):
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
 
-        hidden_size = 512
-        self.rnn = torch.nn.GRU(input_size=1280, hidden_size=hidden_size, num_layers=2, dropout=0.1, batch_first=True)
+        gru_output = LambdaModule(lambda outputs: outputs[0])
 
         self.fn = torch.nn.Sequential(
+            torch.nn.GRU(input_size=1280, hidden_size=512, batch_first=True),
+            gru_output,
             torch.nn.Dropout(p=0.2, inplace=False),
-            torch.nn.Linear(hidden_size, 1),
+            torch.nn.GRU(input_size=512, hidden_size=256, batch_first=True),
+            gru_output,
+            torch.nn.Dropout(p=0.2, inplace=False),
+            torch.nn.GRU(input_size=256, hidden_size=128, batch_first=True),
+            gru_output,
+            torch.nn.Linear(128, 64),
+            torch.nn.ReLU(),
+            torch.nn.Linear(64, 1),
             torch.nn.Sigmoid(),
         )
 
         # loss function
-        self.criterion = torch.nn.MSELoss()
+        self.criterion = criterion()
 
         # for averaging loss across batches
         self.train_loss = MeanMetric()
@@ -76,15 +97,12 @@ class QualityLitModule(LightningModule):
         self.val_loss_best.reset()
 
     def forward(self, x: Tensor) -> Tensor:
-        # x of (batch_size, seq_len, n_features) shape
-        output, h_n = self.rnn(x)
-        # output of (batch_size, seq_len, hidden_size) shape
-        # h_n of (num_layers, batch_size, hidden_size) shape
-        batch_size, seq_len, hidden_size = output.shape
-        output = output.contiguous().view(-1, hidden_size)
 
-        y_hat = self.fn(output)
+        y_hat = self.fn(x)
+        # y_hat of (batch_size, seq_len, hidden_size) shape
+        batch_size, seq_len, hidden_size = y_hat.shape
         y_hat = y_hat.contiguous().view(batch_size, seq_len)
+        # y_hat of (batch_size, seq_len) shape
 
         return y_hat
 

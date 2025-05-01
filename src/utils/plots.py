@@ -151,6 +151,7 @@ class PlotVideoQuality(PlotExtras):
         enabled: bool,
         data_dir: str,
         dataset_name: str = "US_VIDEOS",
+        normalize: bool = False,
         min_quality: float = 0.3,
         samples: int = 5,
         beans: int = 10,
@@ -167,7 +168,7 @@ class PlotVideoQuality(PlotExtras):
             dataset_name=dataset_name,
             train=False,
             seq_len=0,
-            normalize=True,
+            normalize=normalize,
         )
         self.videos = USVideosFrameDataset(
             data_dir=data_dir,

@@ -6,6 +6,7 @@ seq_len: 32
 seq_step:
 reverse: False
 transform: False
+normalize: False
 train_val_split: 0.2
 train_val_split_seed: 42
 batch_size: 64

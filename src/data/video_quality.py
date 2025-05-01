@@ -52,6 +52,7 @@ class VideoQualityDataModule(LightningDataModule):
         seq_step: int = None,
         reverse: bool = False,
         transform: bool = False,
+        normalize: bool = False,
         train_val_split: float = 0.2,
         train_val_split_seed: float = 42,
         batch_size: int = 64,
@@ -100,20 +101,39 @@ class VideoQualityDataModule(LightningDataModule):
                 seq_step=self.hparams.seq_step,
                 reverse=self.hparams.reverse,
                 transform=self.hparams.transform,
-                normalize=True,
+                normalize=self.hparams.normalize,
             )
-            self.data_train, self.data_val = group_split(
+            self.data_train, _ = group_split(
                 dataset=train,
                 test_size=self.hparams.train_val_split,
                 groups=train.clips.Video,
                 random_state=self.hparams.train_val_split_seed,
             )
+
+            val = self.dataset(
+                data_dir=self.hparams.data_dir,
+                dataset_name=self.hparams.dataset_name,
+                train=True,
+                seq_len=self.hparams.seq_len,
+                seq_step=self.hparams.seq_step,
+                reverse=self.hparams.reverse,
+                transform=self.hparams.transform,
+                normalize=self.hparams.normalize,
+            )
+            _, self.data_val = group_split(
+                dataset=val,
+                test_size=self.hparams.train_val_split,
+                groups=val.clips.Video,
+                random_state=self.hparams.train_val_split_seed,
+            )
+
             self.data_test = self.dataset(
                 data_dir=self.hparams.data_dir,
                 dataset_name=self.hparams.dataset_name,
                 train=False,
                 seq_len=0,
-                normalize=True,
+                reverse=self.hparams.reverse,
+                normalize=self.hparams.normalize,
             )
 
     def train_dataloader(self) -> DataLoader[Any]:
