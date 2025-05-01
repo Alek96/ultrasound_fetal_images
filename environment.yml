@@ -1,22 +1,17 @@
 name: ultrasound_fetal_images_env
 channels:
-  - pytorch
-  - nvidia
   - conda-forge
   # We want to have a reproducible setup, so we don't want default channels,
   # which may be different for different users. All required channels should
   # be listed explicitly here.
   - nodefaults
 dependencies:
-  - python=3.10.*
+  - python=3.12.*
   - conda-lock
   - mamba
   - pip # pip must be mentioned explicitly, or conda-lock will fail
   - setuptools
-  - poetry=1.8.*
-  - pytorch::pytorch=2.3.1
-  - pytorch::pytorch-cuda=12.1
-  - conda-forge::opencv
+  - poetry=2.1.*
 
 # Non-standard section listing target platforms for conda-lock:
 platforms:
