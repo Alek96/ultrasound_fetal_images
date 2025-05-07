@@ -53,3 +53,15 @@ def log_hyperparameters(object_dict: dict[str, Any]) -> None:
     # send hparams to all loggers
     for logger in trainer.loggers:
         logger.log_hyperparams(hparams)
+
+
+@rank_zero_only
+def log_model(model, spaces=0):
+    if len(list(model.named_children())) == 0:
+        for name, param in model.named_parameters():
+            space_name = f"{' ' * spaces}{name}:"
+            print(f"{space_name:<50} {param.requires_grad}")
+    else:
+        for name, layer in model.named_children():
+            print(f"{' ' * spaces}{name}: {layer.__class__.__name__}")
+            log_model(model=layer, spaces=spaces + 2)

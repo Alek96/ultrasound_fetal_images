@@ -309,7 +309,9 @@ class FetalLitModule(LightningModule):
 
         :return: A dict containing the configured optimizers and learning-rate schedulers to be used for training.
         """
-        optimizer = self.hparams.optimizer(params=self.parameters(), lr=self.hparams.lr)
+        optimizer = self.hparams.optimizer(
+            params=filter(lambda p: p.requires_grad, self.parameters()), lr=self.hparams.lr
+        )
         if self.hparams.scheduler is not None:
             scheduler = self.hparams.scheduler(optimizer=optimizer)
             return {

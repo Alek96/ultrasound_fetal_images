@@ -42,7 +42,7 @@ callbacks:
   early_stopping:
     monitor: "val/acc"
     mode: "max"
-    patience: 80
+    patience: 40
     #patience: ${trainer.max_epochs}
   class_image_sampler:
     _target_: src.models.utils.callbacks.ClassImageSampler
@@ -55,6 +55,15 @@ callbacks:
 
 model:
   criterion:
+    weight:
+      _target_: torch.tensor
+      #"Trans-ventricular" "Trans-thalamic" "Trans-cerebellum" "Other" "Not A Brain"
+      #data: [4.83, 1.63, 3.80, 18.52, 0.26]
+      data: [1.37, 0.46, 1.08, 5.26, 0.5]
+      #data: [2.68, 0.91, 2.11, 10.29, 1.12]
+      dtype:
+        _target_: src.utils.utils.import_object
+        name: torch.float32
     reduction: "none"
     label_smoothing: 0.02
   lr: 1e-03
@@ -155,5 +164,5 @@ logger:
     group: "brain_planes"
 extras:
   after_test_plots:
-    enabled: true
+    enabled: false
     video_dataset_dir: "US_VIDEOS_0.3"

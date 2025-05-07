@@ -36,6 +36,8 @@ net_spec:
   name: "mobilenet_v3_small"
   output_size: ${model.num_classes}
   pretrain: true
+  freez_layers: 0
+  freez_batch_norm: True
 
 num_classes: 5
 

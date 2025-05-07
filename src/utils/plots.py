@@ -1,14 +1,9 @@
 from collections.abc import Callable
-from math import ceil
-from pathlib import Path
 from typing import Any
 
-import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-import PIL
 import torch
-import torch.nn.functional as F
 import torchvision.transforms as T
 import torchvision.transforms.functional as TF
 import wandb
@@ -19,7 +14,10 @@ from tqdm import tqdm
 from src.data.components.dataset import (
     FetalBrainPlanesDataset,
     USVideosFrameDataset,
+    USVideosSsimFrameDataset,
     VideoQualityDataset,
+    VideosSsimFrameDataset,
+    batch_tensor,
 )
 
 
@@ -57,22 +55,24 @@ class PlotVideosProbabilities(PlotExtras):
         probability_norm: float = 1.0,
     ):
         super().__init__(enabled)
-        self.data_dir = data_dir
-        self.video_dataset_dir = video_dataset_dir
+
+        self.ssim_dataset = USVideosSsimFrameDataset(
+            data_dir=data_dir,
+            dataset_name=video_dataset_dir,
+            transform=T.Compose(
+                [
+                    T.Grayscale(),
+                    T.Resize(input_size, antialias=False),
+                    T.ConvertImageDtype(torch.float32),
+                ]
+            ),
+        )
         self.batch_size = batch_size
-        self.input_size = input_size
         self.min_probabilities = min_probabilities
         self.probability_norm = probability_norm
         self.label_names = FetalBrainPlanesDataset.labels
 
         self.counts = self._init_counts()
-        self.transforms = T.Compose(
-            [
-                T.Grayscale(),
-                T.Resize(self.input_size, antialias=False),
-                T.ConvertImageDtype(torch.float32),
-            ]
-        )
 
     def _init_counts(self):
         counts = {}
@@ -88,37 +88,17 @@ class PlotVideosProbabilities(PlotExtras):
         self._log_probabilities(model)
 
     def _label_videos(self, model: LightningModule):
-        selected_path = Path(self.data_dir) / self.video_dataset_dir / "selected"
-        videos = list(selected_path.iterdir())
-        for i, frames_path in enumerate(tqdm(videos, desc="Label videos")):
-            self._label_video(model, frames_path)
+        for video in tqdm(self.ssim_dataset, desc="Label videos"):
+            for frames in batch_tensor(video, self.batch_size):
+                self._label_frames(model, frames)
 
-    def _label_video(self, model: LightningModule, frames_path: Path):
-        frames_paths = list(frames_path.iterdir())
-        epochs = ceil(len(frames_paths) / self.batch_size)
-        for i in range(epochs):
-            frames = frames_paths[(i * self.batch_size) : ((i + 1) * self.batch_size)]
-            self._label_frames(model, frames)
-
-    def _label_frames(self, model: LightningModule, frames):
+    def _label_frames(self, model: LightningModule, frames: torch.Tensor):
         with torch.no_grad():
-            frames = self._get_frames_tensor(frames)
             frames = frames.to(model.device)
-            frames = self.transforms(frames)
 
             _, y_hat = model.forward_tta(frames)
             preds = torch.argmax(y_hat, dim=1)
             self._count_labels(y_hat, preds)
-
-    def _get_frames_tensor(self, frame_paths):
-        frames = []
-        for frame_path in frame_paths:
-            frame = cv2.imread(str(frame_path))
-            frame = PIL.Image.fromarray(frame)
-            frame = TF.to_tensor(frame)
-            frame = frame.unsqueeze(0)
-            frames.append(frame)
-        return torch.cat(frames)
 
     def _count_labels(self, y_hats, preds):
         for y_hat, pred in zip(y_hats, preds):
