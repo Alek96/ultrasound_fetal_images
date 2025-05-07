@@ -1,7 +1,8 @@
 import os
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from math import ceil
 from pathlib import Path
+from typing import Literal
 
 import cv2
 import pandas as pd
@@ -383,10 +384,34 @@ class VideosFrameDataset(Dataset):
         if idx >= len(self):
             raise IndexError(f"Video index {idx} out of range")
 
-        frame = USVideosFrameDataset.read_frame(self.video_path, idx)
+        frame = self.read_frame(idx)
         if self.transform:
             frame = self.transform(frame)
         return frame
+
+    def read_frame(self, frame_idx: int):
+        cap = cv2.VideoCapture(str(self.video_path))
+
+        # get total number of frames
+        total_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+
+        # check for valid frame number
+        if frame_idx < 0 or frame_idx >= total_frames:
+            raise IndexError(f"Frame index {frame_idx} out of range for video {self.video_path.name}")
+
+        # set frame position
+        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+        _, frame = cap.read()
+
+        cap.release()
+
+        frame = PIL.Image.fromarray(frame)
+        frame = TF.to_tensor(frame)
+        return frame
+
+    def __iter__(self) -> Iterator[torch.Tensor]:
+        for i in range(len(self)):
+            yield self[i]
 
 
 class USVideosFrameDataset(Dataset):
@@ -405,68 +430,90 @@ class USVideosFrameDataset(Dataset):
         return len(self.videos)
 
     def __getitem__(self, idx):
-        video_idx, frame_idx = idx
+        if isinstance(idx, tuple):
+            video_idx, frame_idx = idx
+            video = self.get_videos_frame_dataset(video_idx)
+            return video[frame_idx]
+        else:
+            return self.get_videos_frame_dataset(idx)
 
+    def get_videos_frame_dataset(self, video_idx: int):
         if video_idx >= len(self):
+            raise IndexError(f"Video index {video_idx} out of range")
+
+        return VideosFrameDataset(
+            video_path=self.videos[video_idx],
+            transform=self.transform,
+        )
+
+    def __iter__(self) -> Iterator[VideosFrameDataset]:
+        for i in range(len(self)):
+            yield self[i]
+
+
+class VideosSsimFrameDataset(Dataset):
+    def __init__(
+        self,
+        video_path: Path,
+        transform: Callable | None = None,
+    ):
+        self.video_path = video_path
+        self.images = list(self.video_path.iterdir())
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, idx: int):
+        if idx >= len(self):
             raise IndexError(f"Video index {idx} out of range")
 
-        frame = self.read_frame(self.videos[video_idx], frame_idx)
+        image_path = self.images[idx]
+        image = read_image(str(image_path))
         if self.transform:
-            frame = self.transform(frame)
-        return frame
+            image = self.transform(image)
+        return image
 
-    @staticmethod
-    def read_frame(video_path: Path, frame_idx: int):
-        cap = cv2.VideoCapture(str(video_path))
-
-        # get total number of frames
-        total_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
-
-        # check for valid frame number
-        if frame_idx < 0 or frame_idx >= total_frames:
-            raise IndexError(f"Frame index {frame_idx} out of range for video {video_path.name}")
-
-        # set frame position
-        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
-        _, frame = cap.read()
-
-        cap.release()
-
-        frame = PIL.Image.fromarray(frame)
-        frame = TF.to_tensor(frame)
-        return frame
+    def __iter__(self) -> Iterator[torch.Tensor]:
+        for i in range(len(self)):
+            yield self[i]
 
 
 class USVideosSsimFrameDataset(Dataset):
     def __init__(
         self,
-        data_dir: str,
+        data_dir: str | Path,
         dataset_name: str = "US_VIDEOS",
         transform: Callable | None = None,
     ):
-        data_dir = Path(data_dir) / dataset_name / "selected"
-        self.items = self.find_images(data_dir)
+        self.dataset_dir = Path(data_dir) / dataset_name
+        videos_dir = self.dataset_dir / "images"
+        self.videos = sorted(videos_dir.iterdir())
         self.transform = transform
 
-    @staticmethod
-    def find_images(images_path: Path):
-        images = []
-        for video_dir in sorted(images_path.iterdir()):
-            images.extend(sorted(video_dir.iterdir()))
-        return images
-
     def __len__(self):
-        return len(self.items)
+        return len(self.videos)
 
     def __getitem__(self, idx):
-        if idx >= len(self):
-            raise IndexError(f"list index {idx} out of range")
+        if isinstance(idx, tuple):
+            video_idx, frame_idx = idx
+            video = self.get_videos_frame_dataset(video_idx)
+            return video[frame_idx]
+        else:
+            return self.get_videos_frame_dataset(idx)
 
-        img_path = self.items[idx]
-        image = read_image(str(img_path))
-        if self.transform:
-            image = self.transform(image)
-        return image
+    def get_videos_frame_dataset(self, video_idx: int):
+        if video_idx >= len(self):
+            raise IndexError(f"list index {video_idx} out of range")
+
+        return VideosSsimFrameDataset(
+            video_path=self.videos[video_idx],
+            transform=self.transform,
+        )
+
+    def __iter__(self) -> Iterator[VideosSsimFrameDataset]:
+        for i in range(len(self)):
+            yield self[i]
 
 
 class USVideosDataset(Dataset):
@@ -511,3 +558,14 @@ class USVideosDataset(Dataset):
         if self.target_transform:
             label = self.target_transform(label)
         return image, label
+
+
+def batch_tensor(iterable: Iterable[torch.Tensor], batch_size: int) -> Iterable[torch.Tensor]:
+    tensors = []
+    for tensor in iterable:
+        tensors.append(tensor)
+        if len(tensors) % batch_size == 0:
+            yield torch.stack(tensors, dim=0)
+            tensors.clear()
+    if len(tensors) > 0:
+        yield torch.stack(tensors, dim=0)

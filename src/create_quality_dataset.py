@@ -61,10 +61,10 @@ gma_sigma: float
 temperature: float
 
 
-def create_dataset(path: Path):
-    videos_path = path / "videos"
-    data_path = path / "data"
-    plots_path = path / "plots"
+def create_dataset(videos_path: Path, dataset_path: Path):
+    videos_path = videos_path / "videos"
+    data_path = dataset_path / "data"
+    plots_path = dataset_path / "plots"
     shutil.rmtree(data_path, ignore_errors=True)
     shutil.rmtree(plots_path, ignore_errors=True)
     data_path.mkdir()
@@ -268,19 +268,22 @@ def create_quality_dataset(cfg: DictConfig):
 
     data_dir = root / "data"
     if cfg.sample:
+        cfg.video_dir = "US_VIDEOS_SAMPLES"
         cfg.dataset_dir = "US_VIDEOS_SAMPLES"
         log.info(f"Start downloading dataset {cfg.dataset_dir}")
         download(data_dir, cfg.dataset_dir, cfg.google_file_id)
 
     log.info(f"Start creating dataset {cfg.dataset_dir}")
-    path = data_dir / f"{cfg.dataset_dir}"
     batch_size = cfg.batch_size
     window = cfg.window
     gma_width = cfg.gma_width
     gma_window = gma_width * 2 + 1
     gma_sigma = gma_window / 4
     temperature = cfg.temperature
-    create_dataset(path)
+    create_dataset(
+        videos_path=data_dir / f"{cfg.video_dir}",
+        dataset_path=data_dir / f"{cfg.dataset_dir}",
+    )
 
 
 @hydra.main(version_base="1.3", config_path="../configs", config_name="create_quality_dataset.yaml")
