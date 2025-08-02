@@ -1,13 +1,15 @@
+from collections.abc import Sequence
 from typing import Any, Literal
 
 import torch
 import torchvision.transforms as T
 from lightning import LightningDataModule
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import ConcatDataset, DataLoader, Dataset
 
 from src.data.components.dataset import (
     FetalBrainPlanesDataset,
     FetalBrainPlanesSamplesDataset,
+    SsimFrameDataset,
     TransformDataset,
 )
 from src.data.components.transforms import LabelEncoder
@@ -60,12 +62,21 @@ class FetalPlanesDataModule(LightningDataModule):
         test_transforms: list = None,
         train_val_split: float = 0.2,
         train_val_split_seed: float = 79,
+        ssim: bool = False,
+        ssim_dataset_name: str = "US_VIDEOS_ssim_0.6",
+        ssim_min_probabilities: Sequence[float] = (0.8, 0.8, 0.8, 0.8, 0.8),
         batch_size: int = 64,
         num_workers: int = 0,
         pin_memory: bool = False,
         sampler: Literal[None, "under", "over"] = None,
+        sampler_max_sizes: Sequence[Sequence[int]] = ((-1, -1, -1, -1, 500),),
     ):
         super().__init__()
+
+        if not ssim:
+            assert len(sampler_max_sizes) == 1
+        else:
+            assert len(sampler_max_sizes) == 2
 
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
@@ -110,6 +121,8 @@ class FetalPlanesDataModule(LightningDataModule):
         self.labels = FetalBrainPlanesDataset.labels
         self.target_transform = LabelEncoder(labels=self.labels)
 
+        self.data_train_base: Dataset | None = None
+        self.data_train_ssim: Dataset | None = None
         self.data_train: Dataset | None = None
         self.data_val: Dataset | None = None
         self.data_test: Dataset | None = None
@@ -146,7 +159,7 @@ class FetalPlanesDataModule(LightningDataModule):
         if not self.data_train and not self.data_val and not self.data_test:
             train = self.dataset(
                 data_dir=self.hparams.data_dir,
-                train=True,
+                subset="train",
             )
             data_train, data_val = group_split(
                 dataset=train,
@@ -164,19 +177,23 @@ class FetalPlanesDataModule(LightningDataModule):
                 transform=self.test_transforms,
                 target_transform=self.target_transform,
             )
-
-            # self.data_train = self.dataset(
-            #     data_dir=self.hparams.data_dir,
-            #     transform=self.train_transforms,
-            #     target_transform=self.target_transform,
-            #     train=True,
-            # )
             self.data_test = self.dataset(
                 data_dir=self.hparams.data_dir,
-                train=False,
+                subset="test",
                 transform=self.test_transforms,
                 target_transform=self.target_transform,
             )
+
+            self.data_train_base = self.data_train
+            if self.hparams.ssim:
+                self.data_train_ssim = SsimFrameDataset(
+                    data_dir=self.hparams.data_dir,
+                    dataset_name=self.hparams.ssim_dataset_name,
+                    min_probabilities=self.hparams.ssim_min_probabilities,
+                    transform=self.train_transforms,
+                    target_transform=self.target_transform,
+                )
+                self.data_train = ConcatDataset([self.data_train_base, self.data_train_ssim])
 
     def train_dataloader(self) -> DataLoader[Any]:
         """Create and return the train dataloader.
@@ -188,8 +205,13 @@ class FetalPlanesDataModule(LightningDataModule):
                 dataset=self.data_train,
                 batch_size=self.hparams.batch_size,
                 num_workers=self.hparams.num_workers,
-                pin_memory=self.hparams.pin_memory,
-                sampler=get_under_sampler(self.data_train),
+                pin_memory=False,
+                sampler=get_under_sampler(
+                    datasets=[self.data_train_base, self.data_train_ssim],
+                    labels=torch.arange(self.num_classes),
+                    # max_sizes=[[-1, -1, -1, -1, 500]],
+                    max_sizes=self.hparams.sampler_max_sizes,
+                ),
             )
         elif self.hparams.sampler == "over":
             return DataLoader(

@@ -6,8 +6,7 @@ import torch
 import torchvision.transforms as T
 from lightning import LightningModule
 from torch import Tensor
-from torchmetrics import ConfusionMatrix, F1Score, MaxMetric, MeanMetric
-from torchmetrics.classification.accuracy import Accuracy
+from torchmetrics import Accuracy, ConfusionMatrix, F1Score, MaxMetric, MeanMetric
 
 from src.data.components.dataset import FetalBrainPlanesDataset
 from src.data.components.transforms import Affine, HorizontalFlip, VerticalFlip

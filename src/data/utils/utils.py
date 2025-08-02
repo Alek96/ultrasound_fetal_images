@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from math import ceil, sqrt
 
 import cv2
@@ -29,13 +30,36 @@ def group_split(
     return Subset(dataset, train_idx), Subset(dataset, test_idx)
 
 
-def get_under_sampler(dataset: Dataset) -> UnderSampler:
-    log.info("Instantiating UnderSampler")
+def get_under_sampler_config(
+    dataset: Dataset,
+    labels: torch.Tensor,
+    max_sizes: Sequence[int],
+) -> tuple[Sequence[torch.Tensor], Sequence[int]]:
     classes = torch.tensor([dataset[i, 1].item() for i in range(len(dataset))])
-    classes_indices = [torch.nonzero(classes == class_id).flatten() for class_id in torch.unique(classes)]
-    # classes_indices[3] = torch.cat([classes_indices[3], classes_indices[3]])
+    classes_indices = [torch.nonzero(classes == class_id).flatten() for class_id in torch.unique(labels)]
     classes_num_samples = [len(indices) for indices in classes_indices]
-    classes_num_samples[-1] = 500
+
+    for i, max_size in enumerate(max_sizes):
+        if max_size >= 0:
+            classes_num_samples[i] = min(classes_num_samples[i], max_size)
+
+    return classes_indices, classes_num_samples
+
+
+def get_under_sampler(
+    datasets: Sequence[Dataset], labels: torch.Tensor, max_sizes: Sequence[Sequence[int]]
+) -> UnderSampler:
+    log.info("Instantiating UnderSampler")
+    classes_index = 0
+    classes_indices = []
+    classes_num_samples = []
+    for dataset, max_size in zip(datasets, max_sizes):
+        dataset_classes_indices, dataset_classes_num_samples = get_under_sampler_config(dataset, labels, max_size)
+        dataset_classes_indices = [indices + classes_index for indices in dataset_classes_indices]
+
+        classes_indices.extend(dataset_classes_indices)
+        classes_num_samples.extend(dataset_classes_num_samples)
+        classes_index += len(dataset)
 
     return UnderSampler(
         classes_indices=classes_indices,
