@@ -131,6 +131,7 @@ class PlotVideoQuality(PlotExtras):
         enabled: bool,
         data_dir: str,
         dataset_name: str = "US_VIDEOS",
+        video_dataset: str = "US_VIDEOS",
         normalize: bool = False,
         min_quality: float = 0.3,
         samples: int = 5,
@@ -152,7 +153,7 @@ class PlotVideoQuality(PlotExtras):
         )
         self.videos = USVideosFrameDataset(
             data_dir=data_dir,
-            dataset_name=dataset_name,
+            dataset_name=video_dataset,
             train=False,
             transform=torch.nn.Sequential(
                 T.Grayscale(),
