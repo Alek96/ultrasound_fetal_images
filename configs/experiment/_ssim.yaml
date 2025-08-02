@@ -1,0 +1,15 @@
+# @package _global_
+
+defaults:
+  - brain_planes.yaml
+
+data:
+  ssim: True
+  ssim_dataset_name: "US_VIDEOS_ssim_0.6"
+  ssim_min_probabilities: [1.0, 1.0, 1.0, 0.8, 1.0]
+  sampler: "under"
+  sampler_max_sizes: [[-1, -1, -1, -1, 500], [0, 0, 0, 100, 0]]
+
+logger:
+  wandb:
+    group: "ssim 0-1 0.8 2"

@@ -59,7 +59,11 @@ test_transforms:
 
 train_val_split: 0.2
 train_val_split_seed: 79
+ssim: False
+ssim_dataset_name: "US_VIDEOS_ssim_0.6"
+ssim_min_probabilities: [0.8, 0.8, 0.8, 0.8, 0.8]
 batch_size: 128
 num_workers: 8
 pin_memory: false
 sampler:
+sampler_max_sizes: [[-1, -1, -1, -1, 500]]

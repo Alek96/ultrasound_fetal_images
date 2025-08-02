@@ -84,19 +84,22 @@ class FetalBrainPlanesDataset(Dataset):
         self,
         data_dir: str,
         data_name: str = "FETAL_PLANES",
-        train: bool = True,
+        subset: Literal["train", "test", "all"] = "train",
         transform: Callable | None = None,
         target_transform: Callable | None = None,
     ):
         self.dataset_dir = f"{data_dir}/{data_name}"
-        self.img_labels = self.load_img_labels(train)
+        self.img_labels = self.load_img_labels(subset)
         self.img_dir = f"{self.dataset_dir}/Images"
         self.transform = transform
         self.target_transform = target_transform
 
-    def load_img_labels(self, train: bool):
+    def load_img_labels(self, subset: str):
         img_labels = pd.read_csv(f"{self.dataset_dir}/FETAL_PLANES_DB_data.csv", sep=";")
-        img_labels = img_labels[img_labels["Train "] == (1 if train else 0)]
+        if subset == "train":
+            img_labels = img_labels[img_labels["Train "] == 1]
+        elif subset == "test":
+            img_labels = img_labels[img_labels["Train "] == 0]
         img_labels = img_labels[["Image_name", "Patient_num", "Brain_plane"]]
         return img_labels.reset_index(drop=True)
 
@@ -143,7 +146,7 @@ class FetalBrainPlanesSamplesDataset(FetalBrainPlanesDataset):
     def __init__(
         self,
         data_dir: str,
-        train: bool = True,
+        subset: Literal["train", "test", "all"] = "train",
         transform: Callable | None = None,
         target_transform: Callable | None = None,
     ):
@@ -154,7 +157,7 @@ class FetalBrainPlanesSamplesDataset(FetalBrainPlanesDataset):
         super().__init__(
             data_dir=data_dir,
             data_name=data_name,
-            train=train,
+            subset=subset,
             transform=transform,
             target_transform=target_transform,
         )
@@ -514,6 +517,70 @@ class USVideosSsimFrameDataset(Dataset):
     def __iter__(self) -> Iterator[VideosSsimFrameDataset]:
         for i in range(len(self)):
             yield self[i]
+
+
+class SsimFrameDataset(Dataset):
+    labels = FetalBrainPlanesDataset.labels
+
+    def __init__(
+        self,
+        data_dir: str,
+        dataset_name: str = "FETAL_PLANES",
+        min_probabilities: Sequence[float] = [0.8, 0.8, 0.8, 0.8, 0.8],
+        transform: Callable | None = None,
+        target_transform: Callable | None = None,
+    ):
+        self.dataset_dir = f"{data_dir}/{dataset_name}"
+        self.img_labels = self.load_img_labels(min_probabilities)
+        self.ssim_dataset = USVideosSsimFrameDataset(
+            data_dir=data_dir,
+            dataset_name=dataset_name,
+            transform=transform,
+        )
+        self.target_transform = target_transform
+
+    def load_img_labels(self, min_probabilities: list[float]):
+        img_labels = pd.read_csv(f"{self.dataset_dir}/data.csv")
+        idxs = None
+        for class_idx, min_prob in enumerate(min_probabilities):
+            if idxs is None:
+                idxs = (img_labels["Class_idx"] == class_idx) & (img_labels["Probability"] > min_prob)
+            else:
+                idxs = idxs | ((img_labels["Class_idx"] == class_idx) & (img_labels["Probability"] > min_prob))
+
+        img_labels = img_labels[idxs]
+        return img_labels.reset_index(drop=True)
+
+    def __len__(self):
+        return len(self.img_labels)
+
+    def __getitem__(self, idx):
+        if isinstance(idx, tuple):
+            idx, sub_idx = idx
+            if sub_idx == 0:
+                return self.get_image(idx)
+            elif sub_idx == 1:
+                return self.get_label(idx)
+
+        return self.get_image(idx), self.get_label(idx)
+
+    def get_image(self, idx):
+        if isinstance(idx, torch.Tensor):
+            idx = idx.item()
+
+        video_idx = self.img_labels.Video_idx[idx]
+        frame_idx = self.img_labels.Frame_idx[idx]
+        return self.ssim_dataset[video_idx, frame_idx]
+
+    def get_label(self, idx):
+        if isinstance(idx, torch.Tensor):
+            idx = idx.item()
+
+        label = self.img_labels.Class_name[idx]
+
+        if self.target_transform:
+            label = self.target_transform(label)
+        return label
 
 
 class USVideosDataset(Dataset):

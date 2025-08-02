@@ -126,7 +126,7 @@ data:
       p: 0.5
 
     - _target_: torchvision.transforms.RandomAffine
-      degrees: 15
+      degrees: 20
       translate: [0.1, 0.1]
       scale: [1.0, 1.2]
 
@@ -165,4 +165,4 @@ logger:
 extras:
   after_test_plots:
     enabled: false
-    video_dataset_dir: "US_VIDEOS_0.3"
+    video_dataset_dir: "US_VIDEOS_ssim_0.7"
