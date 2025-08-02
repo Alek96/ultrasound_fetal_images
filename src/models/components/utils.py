@@ -5,6 +5,7 @@ from src.models.components.efficientnet import EfficientNet
 from src.models.components.mobilenet import MobileNet
 from src.models.components.resnet import ResNet
 from src.models.components.resnext import ResNeXt
+from src.models.components.sononet import SonoNet
 
 
 def get_model(
@@ -23,5 +24,7 @@ def get_model(
         return ResNeXt(name=name, output_size=output_size, pretrain=pretrain)
     if name in EfficientNet.supported_models:
         return EfficientNet(name=name, output_size=output_size, pretrain=pretrain, **kwargs)
+    if name in SonoNet.supported_models:
+        return SonoNet(name=name, output_size=output_size, pretrain=pretrain)
 
     raise KeyError(f"Model with name {name} is not supported")
