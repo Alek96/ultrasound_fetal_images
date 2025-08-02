@@ -57,6 +57,8 @@ test_transforms:
   #  mean: 0.449
   #  std: 0.226
 
+train_test_split:
+train_test_split_seed:
 train_val_split: 0.2
 train_val_split_seed: 79
 ssim: False

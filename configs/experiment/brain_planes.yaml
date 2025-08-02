@@ -93,6 +93,10 @@ data:
   input_size: [165, 240]
   train_val_split: 0.2
   train_val_split_seed: 5724
+  #train_test_split: 0.1
+  #train_test_split_seed: 6106
+  #train_val_split: 0.114
+  #train_val_split_seed: 6277
   batch_size: 32
   num_workers: 12
   pin_memory: True

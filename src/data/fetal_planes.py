@@ -60,6 +60,8 @@ class FetalPlanesDataModule(LightningDataModule):
         input_size: tuple[int, int] = (55, 80),
         train_transforms: list = None,
         test_transforms: list = None,
+        train_test_split: float = None,
+        train_test_split_seed: float = None,
         train_val_split: float = 0.2,
         train_val_split_seed: float = 79,
         ssim: bool = False,
@@ -157,32 +159,65 @@ class FetalPlanesDataModule(LightningDataModule):
         """
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
-            train = self.dataset(
-                data_dir=self.hparams.data_dir,
-                subset="train",
-            )
-            data_train, data_val = group_split(
-                dataset=train,
-                test_size=self.hparams.train_val_split,
-                groups=train.img_labels["Patient_num"],
-                random_state=self.hparams.train_val_split_seed,
-            )
-            self.data_train = TransformDataset(
-                dataset=data_train,
-                transform=self.train_transforms,
-                target_transform=self.target_transform,
-            )
-            self.data_val = TransformDataset(
-                dataset=data_val,
-                transform=self.test_transforms,
-                target_transform=self.target_transform,
-            )
-            self.data_test = self.dataset(
-                data_dir=self.hparams.data_dir,
-                subset="test",
-                transform=self.test_transforms,
-                target_transform=self.target_transform,
-            )
+            if self.hparams.train_test_split is None:
+                train = self.dataset(
+                    data_dir=self.hparams.data_dir,
+                    subset="train",
+                )
+                data_train, data_val = group_split(
+                    dataset=train,
+                    test_size=self.hparams.train_val_split,
+                    groups=train.img_labels["Patient_num"],
+                    random_state=self.hparams.train_val_split_seed,
+                )
+                self.data_train = TransformDataset(
+                    dataset=data_train,
+                    transform=self.train_transforms,
+                    target_transform=self.target_transform,
+                )
+                self.data_val = TransformDataset(
+                    dataset=data_val,
+                    transform=self.test_transforms,
+                    target_transform=self.target_transform,
+                )
+                self.data_test = self.dataset(
+                    data_dir=self.hparams.data_dir,
+                    subset="test",
+                    transform=self.test_transforms,
+                    target_transform=self.target_transform,
+                )
+            else:
+                data_all = self.dataset(
+                    data_dir=self.hparams.data_dir,
+                    subset="all",
+                )
+                data_train, data_test = group_split(
+                    dataset=data_all,
+                    test_size=self.hparams.train_test_split,
+                    groups=data_all.img_labels["Patient_num"],
+                    random_state=self.hparams.train_test_split_seed,
+                )
+                data_train, data_val = group_split(
+                    dataset=data_train,
+                    test_size=self.hparams.train_val_split,
+                    groups=data_all.img_labels.iloc[data_train.indices].reset_index(drop=True)["Patient_num"],
+                    random_state=self.hparams.train_val_split_seed,
+                )
+                self.data_train = TransformDataset(
+                    dataset=data_train,
+                    transform=self.train_transforms,
+                    target_transform=self.target_transform,
+                )
+                self.data_val = TransformDataset(
+                    dataset=data_val,
+                    transform=self.test_transforms,
+                    target_transform=self.target_transform,
+                )
+                self.data_test = TransformDataset(
+                    dataset=data_test,
+                    transform=self.test_transforms,
+                    target_transform=self.target_transform,
+                )
 
             self.data_train_base = self.data_train
             if self.hparams.ssim:
