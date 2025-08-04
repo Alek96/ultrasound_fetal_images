@@ -6,7 +6,7 @@ after_test_plots:
   _target_: src.utils.plots.PlotVideosProbabilities
   enabled: false
   data_dir: ${paths.data_dir}
-  video_dataset_dir: null
+  video_dataset_dir: ""
   batch_size: ${data.batch_size}
   input_size: ${data.input_size}
   min_probabilities:

@@ -491,7 +491,7 @@ class USVideosSsimFrameDataset(Dataset):
     ):
         self.dataset_dir = Path(data_dir) / dataset_name
         videos_dir = self.dataset_dir / "images"
-        self.videos = sorted(videos_dir.iterdir())
+        self.videos = sorted(videos_dir.iterdir()) if videos_dir.exists() else []
         self.transform = transform
 
     def __len__(self):
