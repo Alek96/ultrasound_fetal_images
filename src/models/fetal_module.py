@@ -3,7 +3,7 @@ from collections.abc import Callable
 from typing import Any
 
 import torch
-import torchvision.transforms as T
+import torchvision.transforms.v2 as T
 from lightning import LightningModule
 from torch import Tensor
 from torchmetrics import Accuracy, ConfusionMatrix, F1Score, MaxMetric, MeanMetric
@@ -56,7 +56,7 @@ class FetalLitModule(LightningModule):
         criterion: torch.nn.Module,
         lr: float,
         optimizer: torch.optim.Optimizer,
-        scheduler: torch.optim.lr_scheduler,
+        scheduler: torch.optim.lr_scheduler.LRScheduler,
     ):
         super().__init__()
 

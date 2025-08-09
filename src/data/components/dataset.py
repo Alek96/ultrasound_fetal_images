@@ -4,12 +4,14 @@ from math import ceil
 from pathlib import Path
 from typing import Literal
 
-import cv2
-import pandas as pd
 import PIL
+import cv2
+import numpy as np
+import pandas as pd
 import torch
-import torchvision.transforms.functional as TF
+import torchvision.transforms.v2.functional as TF
 from torch.utils.data import Dataset
+from torchvision import tv_tensors
 from torchvision.io import read_image
 
 
@@ -69,6 +71,112 @@ class TransformDataset(Dataset):
                 rs = (rs[0], self.target_transform(rs[1]))
 
         return rs
+
+
+class HeadSegmentationDataset(Dataset):
+    labels = [
+        "Not A Brain",
+        "Brain",
+    ]
+
+    def __init__(
+            self,
+            data_dir: str,
+            dataset_name: str = "Fetal-Head-Segmentation",
+            subset: Literal["train", "val", "test", "all"] | None = "train",
+            transform: Callable | None = None,
+    ):
+        self.dataset_dir = f"{data_dir}/{dataset_name}"
+        self.labels = self.load_labels(subset)
+        self.transform = transform
+
+    def load_labels(self, subset: str | None):
+        labels = pd.read_csv(f"{self.dataset_dir}/data.csv", dtype={"Patient_num": str})
+        labels = labels.where(pd.notnull(labels), None)
+        if subset is None or subset == "all":
+            labels = labels[labels["Subset"] == subset]
+        return labels.reset_index(drop=True)
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        if isinstance(idx, tuple):
+            idx, sub_idx = idx
+            if sub_idx == 0:
+                image = self.get_image(idx)
+                return self._transform(image)
+            elif sub_idx == 1:
+                mask = self.get_mask(idx)
+                return self._transform(mask)
+            elif sub_idx == 2:
+                return self.get_label(idx)
+
+        image = self.get_image(idx)
+        mask = self.get_mask(idx)
+        label = self.get_label(idx)
+        return *self._transform(image, mask), label
+
+    def get_image(self, idx):
+        if isinstance(idx, torch.Tensor):
+            idx = idx.item()
+
+        img_path = os.path.join(self.dataset_dir, self.labels.Ultrasound_path[idx])
+        image = read_image(img_path)
+        if image.shape[0] == 4:
+            image = image[:3, :, :]
+
+        return tv_tensors.Image(image)
+
+    def get_mask(self, idx):
+        if isinstance(idx, torch.Tensor):
+            idx = idx.item()
+
+        if self.labels.Segmentation_path[idx] is not None:
+            img_path = os.path.join(self.dataset_dir, self.labels.Segmentation_path[idx])
+            image = read_image(img_path)
+            image = image[:1, :, :]  # single-channel for mask
+            image = image // 255
+        else:
+            image = self.get_image(idx)
+            image = torch.zeros((1, *image.shape[1:]), dtype=torch.uint8)
+
+        return tv_tensors.Mask(image)
+
+    def get_label(self, idx):
+        if isinstance(idx, torch.Tensor):
+            idx = idx.item()
+
+        label = self.labels.Brain_plane[idx]
+        label = np.array(label)
+        label = torch.from_numpy(label)
+        return label.int()
+
+    def _transform(self, *images):
+        if self.transform:
+            return self.transform(*images)
+        return images
+
+
+class HeadSegmentationSamplesDataset(HeadSegmentationDataset):
+    google_file_id = "123"
+
+    def __init__(
+        self,
+        data_dir: str,
+        subset: Literal["train", "val", "test", "all"] | None = "train",
+        transform: Callable | None = None,
+    ):
+        from src.data.utils.google import download
+
+        dataset_name = "Fetal-Head-Segmentation-Samples"
+        download(data_dir, dataset_name, FetalBrainPlanesSamplesDataset.google_file_id)
+        super().__init__(
+            data_dir=data_dir,
+            dataset_name=dataset_name,
+            subset=subset,
+            transform=transform,
+        )
 
 
 class FetalBrainPlanesDataset(Dataset):

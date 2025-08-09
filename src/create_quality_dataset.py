@@ -11,8 +11,8 @@ import PIL
 import rootutils
 import torch
 import torch.nn.functional as F
-import torchvision.transforms as T
-import torchvision.transforms.functional as TF
+import torchvision.transforms.v2 as T
+import torchvision.transforms.v2.functional as TF
 from lightning import LightningModule
 from omegaconf import DictConfig
 from torch import Tensor

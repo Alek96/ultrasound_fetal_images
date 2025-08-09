@@ -8,8 +8,8 @@ import hydra
 import PIL
 import rootutils
 import torch
-import torchvision.transforms as T
-import torchvision.transforms.functional as F
+import torchvision.transforms.v2 as T
+import torchvision.transforms.v2.functional as TF
 from lightning import LightningModule
 from omegaconf import DictConfig
 from tqdm import tqdm
@@ -96,7 +96,7 @@ def get_frames_tensor(frame_paths):
     for frame_path in frame_paths:
         frame = cv2.imread(str(frame_path))
         frame = PIL.Image.fromarray(frame)
-        frame = F.to_tensor(frame)
+        frame = TF.to_tensor(frame)
         frame = frame.unsqueeze(0)
         frames.append(frame)
     return torch.cat(frames)
