@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from typing import Any, Literal
 
 import torch
-import torchvision.transforms as T
+import torchvision.transforms.v2 as T
 from lightning import LightningDataModule
 from torch.utils.data import ConcatDataset, DataLoader, Dataset
 

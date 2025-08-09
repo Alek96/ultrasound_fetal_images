@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
-import torchvision.transforms.functional as TF
+import torchvision.transforms.v2.functional as TF
 from sklearn.model_selection import GroupShuffleSplit
 from torch import Tensor
 from torch.utils.data import Dataset, WeightedRandomSampler

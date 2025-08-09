@@ -1,0 +1,80 @@
+_target_: src.data.head_segmentation.HeadSegmentationDataModule
+data_dir: ${paths.data_dir}
+sample: false
+input_size: [55, 80]
+
+train_transforms:
+  - _target_: torchvision.transforms.v2.Grayscale
+  - _target_: torchvision.transforms.v2.Resize
+    size: ${data.input_size}
+    interpolation:
+      _target_: src.utils.utils.import_object
+      name: torchvision.transforms.v2.InterpolationMode.NEAREST
+
+  #- _target_: torchvision.transforms.v2.AutoAugment
+  #  policy:
+  #    _target_: src.utils.utils.import_object
+  #    name: torchvision.transforms.v2.AutoAugmentPolicy.IMAGENET
+  #- _target_: torchvision.transforms.v2.RandAugment
+  #  magnitude: 9
+  #- _target_: torchvision.transforms.v2.TrivialAugmentWide
+  #- _target_: torchvision.transforms.v2.AugMix
+
+  - _target_: torchvision.transforms.v2.RandomHorizontalFlip
+    p: 0.5
+  - _target_: torchvision.transforms.v2.RandomVerticalFlip
+    p: 0.5
+
+  - _target_: torchvision.transforms.v2.RandomAffine
+    degrees: 20
+    translate: [0.1, 0.1]
+    scale: [1.0, 1.2]
+
+  - _target_: torchvision.transforms.v2.ToDtype
+    dtype:
+      _target_: dict
+      image:
+        _target_: src.utils.utils.import_object
+        name: torch.float32
+      mask:
+        _target_: src.utils.utils.import_object
+        name: torch.float32
+      other:
+    scale: True
+
+  #- _target_: torchvision.transforms.v2.Normalize  # FetalBrain
+  #  mean: 0.17
+  #  std: 0.19
+  #- _target_: torchvision.transforms.v2.Normalize  # ImageNet
+  #  mean: 0.449
+  #  std: 0.226
+
+test_transforms:
+  - _target_: torchvision.transforms.v2.Grayscale
+  - _target_: torchvision.transforms.v2.Resize
+    size: ${data.input_size}
+    interpolation:
+      _target_: src.utils.utils.import_object
+      name: torchvision.transforms.v2.InterpolationMode.NEAREST
+  - _target_: torchvision.transforms.v2.ToDtype
+    dtype:
+      _target_: dict
+      image:
+        _target_: src.utils.utils.import_object
+        name: torch.float32
+      mask:
+        _target_: src.utils.utils.import_object
+        name: torch.float32
+      other:
+    scale: True
+
+  #- _target_: torchvision.transforms.v2.Normalize  # FetalBrain
+  #  mean: 0.17
+  #  std: 0.19
+  #- _target_: torchvision.transforms.v2.Normalize  # ImageNet
+  #  mean: 0.449
+  #  std: 0.226
+
+batch_size: 64
+num_workers: 8
+pin_memory: false

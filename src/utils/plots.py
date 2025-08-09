@@ -4,8 +4,8 @@ from typing import Any
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import torchvision.transforms as T
-import torchvision.transforms.functional as TF
+import torchvision.transforms.v2 as T
+import torchvision.transforms.v2.functional as TF
 import wandb
 from lightning import LightningModule, Trainer
 from lightning.pytorch.loggers import Logger, WandbLogger

@@ -5,8 +5,8 @@ from math import floor
 import albumentations as A
 import torch
 import torch.nn.functional as F
-import torchvision.transforms as T
-import torchvision.transforms.functional as TF
+import torchvision.transforms.v2 as T
+import torchvision.transforms.v2.functional as TF
 from torch import Tensor
 
 
