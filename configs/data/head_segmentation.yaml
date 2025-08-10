@@ -1,15 +1,15 @@
 _target_: src.data.head_segmentation.HeadSegmentationDataModule
 data_dir: ${paths.data_dir}
 sample: false
-input_size: [55, 80]
+input_size: [ 55, 80 ]
 
 train_transforms:
   - _target_: torchvision.transforms.v2.Grayscale
   - _target_: torchvision.transforms.v2.Resize
     size: ${data.input_size}
     interpolation:
-      _target_: src.utils.utils.import_object
-      name: torchvision.transforms.v2.InterpolationMode.NEAREST
+      _target_: hydra.utils.get_object
+      path: torchvision.transforms.v2.InterpolationMode.NEAREST
 
   #- _target_: torchvision.transforms.v2.AutoAugment
   #  policy:
@@ -32,14 +32,18 @@ train_transforms:
 
   - _target_: torchvision.transforms.v2.ToDtype
     dtype:
-      _target_: dict
-      image:
-        _target_: src.utils.utils.import_object
-        name: torch.float32
-      mask:
-        _target_: src.utils.utils.import_object
-        name: torch.float32
-      other:
+      _target_: src.utils.utils.new_dict
+      args:
+        - - _target_: src.utils.utils.import_object
+            name: torchvision.tv_tensors.Image
+          - _target_: src.utils.utils.import_object
+            name: torch.float32
+        - - _target_: src.utils.utils.import_object
+            name: torchvision.tv_tensors.Mask
+          - _target_: src.utils.utils.import_object
+            name: torch.float32
+        - - other
+          -
     scale: True
 
   #- _target_: torchvision.transforms.v2.Normalize  # FetalBrain
@@ -58,14 +62,18 @@ test_transforms:
       name: torchvision.transforms.v2.InterpolationMode.NEAREST
   - _target_: torchvision.transforms.v2.ToDtype
     dtype:
-      _target_: dict
-      image:
-        _target_: src.utils.utils.import_object
-        name: torch.float32
-      mask:
-        _target_: src.utils.utils.import_object
-        name: torch.float32
-      other:
+      _target_: src.utils.utils.new_dict
+      args:
+        - - _target_: src.utils.utils.import_object
+            name: torchvision.tv_tensors.Image
+          - _target_: src.utils.utils.import_object
+            name: torch.float32
+        - - _target_: src.utils.utils.import_object
+            name: torchvision.tv_tensors.Mask
+          - _target_: src.utils.utils.import_object
+            name: torch.float32
+        - - other
+          -
     scale: True
 
   #- _target_: torchvision.transforms.v2.Normalize  # FetalBrain

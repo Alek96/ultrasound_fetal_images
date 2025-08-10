@@ -65,6 +65,9 @@ class HeadSegmentationDataModule(LightningDataModule):
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
 
+        print(train_transforms)
+        print(train_transforms[5].dtype)
+
         self.dataset = HeadSegmentationSamplesDataset if sample else HeadSegmentationDataset
 
         if train_transforms is not None:
@@ -102,11 +105,7 @@ class HeadSegmentationDataModule(LightningDataModule):
                     T.Grayscale(),
                     T.Resize(input_size, interpolation=T.InterpolationMode.NEAREST),
                     T.ToDtype(
-                        dtype={
-                            tv_tensors.Image: torch.float32,
-                            tv_tensors.Mask: torch.float32,
-                            "other": None,
-                        },
+                        dtype={tv_tensors.Image: torch.float32,tv_tensors.Mask: torch.float32,"other": None,},
                         scale=True),
                     # T.Normalize(mean=0.17, std=0.19),  # FetalBrain
                     # T.Normalize(mean=0.449, std=0.226),  # ImageNet
