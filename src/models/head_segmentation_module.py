@@ -44,6 +44,7 @@ class HeadSegmentationLitModule(LightningModule):
 
     def __init__(
         self,
+        model: dict,
         criterion: torch.nn.Module,
         lr: float,
         optimizer: torch.optim.Optimizer,
@@ -56,8 +57,8 @@ class HeadSegmentationLitModule(LightningModule):
         self.save_hyperparameters(logger=False)
 
         self.model = smp.Unet(
-            encoder_name="mobilenet_v2",
-            encoder_weights="imagenet",
+            encoder_name=model["encoder"],
+            encoder_weights="imagenet" if model["pretrain"] else None,
             in_channels=1,
             classes=1,
             activation=None,

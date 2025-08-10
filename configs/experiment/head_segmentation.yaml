@@ -34,6 +34,9 @@ callbacks:
     #patience: ${trainer.max_epochs}
 
 model:
+  model:
+    encoder: mobilenet_v2
+    pretrain: True
   criterion:
     smooth: 1.0
   lr: 1e-03
