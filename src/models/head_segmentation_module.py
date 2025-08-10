@@ -118,7 +118,7 @@ class HeadSegmentationLitModule(LightningModule):
 
         return loss, logits, prediction_mask, masks, prediction_label, labels
 
-    def training_step(self, batch: tuple[Tensor, Tensor, Tensor], batch_idx: int) -> Union[Tensor, dict]:
+    def training_step(self, batch: tuple[Tensor, Tensor, Tensor], batch_idx: int) -> Tensor | dict:
         """Perform a single training step on a batch of data from the training set.
 
         :param batch: A batch of data (a tuple) containing the input tensor of images and target

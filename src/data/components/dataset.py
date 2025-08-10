@@ -4,10 +4,10 @@ from math import ceil
 from pathlib import Path
 from typing import Literal
 
-import PIL
 import cv2
 import numpy as np
 import pandas as pd
+import PIL
 import torch
 import torchvision.transforms.v2.functional as TF
 from torch.utils.data import Dataset
@@ -80,11 +80,11 @@ class HeadSegmentationDataset(Dataset):
     ]
 
     def __init__(
-            self,
-            data_dir: str,
-            dataset_name: str = "Fetal-Head-Segmentation",
-            subset: Literal["train", "val", "test", "all"] | None = "train",
-            transform: Callable | None = None,
+        self,
+        data_dir: str,
+        dataset_name: str = "Fetal-Head-Segmentation",
+        subset: Literal["train", "val", "test", "all"] | None = "train",
+        transform: Callable | None = None,
     ):
         self.dataset_dir = f"{data_dir}/{dataset_name}"
         self.labels = self.load_labels(subset)

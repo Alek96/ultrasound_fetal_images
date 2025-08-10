@@ -1,23 +1,23 @@
 import re
-import subprocess
+from pathlib import Path
 
-import toml
-
-
-def get_poetry_top_level():
-    result = subprocess.run(["poetry", "show", "--top-level"], stdout=subprocess.PIPE, text=True, check=True)
-    packages = {}
-    prog = re.compile(r"^(\S+)\s+(\S+)\s+")
-    for line in result.stdout.splitlines():
-        match = prog.match(line)
-        if match:
-            name, version = match.groups()
-            packages[name] = version
-    return packages
+from poetry.factory import Factory
 
 
-def update_pyproject_toml_text(packages, toml_path="pyproject.toml"):
-    with open(toml_path) as f:
+def get_installed_top_level_versions(pyproject_path="pyproject.toml"):
+    poetry = Factory().create_poetry(Path(pyproject_path))
+    top_level = {dep.name for dep in poetry.package.requires}
+    lock_data = poetry.locker.lock_data
+    installed = {}
+    for pkg in lock_data["package"]:
+        name = pkg["name"]
+        if name in top_level:
+            installed[name] = pkg["version"]
+    return installed
+
+
+def update_pyproject(packages, pyproject_path="pyproject.toml"):
+    with open(pyproject_path) as f:
         lines = f.readlines()
 
     dep_section = False
@@ -36,7 +36,7 @@ def update_pyproject_toml_text(packages, toml_path="pyproject.toml"):
 
     # for line in new_lines:
     #     print(line, end="")
-    with open(toml_path, "w") as f:
+    with open(pyproject_path, "w") as f:
         f.writelines(new_lines)
     print("pyproject.toml updated.")
 
@@ -56,5 +56,5 @@ def replace_version(line, packages):
 
 
 if __name__ == "__main__":
-    pkgs = get_poetry_top_level()
-    update_pyproject_toml_text(pkgs)
+    pkgs = get_installed_top_level_versions()
+    update_pyproject(pkgs)
