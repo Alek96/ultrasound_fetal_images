@@ -65,9 +65,6 @@ class HeadSegmentationDataModule(LightningDataModule):
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
 
-        print(train_transforms)
-        print(train_transforms[5].dtype)
-
         self.dataset = HeadSegmentationSamplesDataset if sample else HeadSegmentationDataset
 
         if train_transforms is not None:
