@@ -37,6 +37,21 @@ from src.utils.plots import PlotExtras, log_to_wandb
 log = utils.get_pylogger(__name__)
 
 
+def retry_train(cfg: DictConfig) -> tuple[dict[str, Any], dict[str, Any]]:
+    seed = cfg.get("seed")
+    while True:
+        try:
+            # train the model
+            cfg.seed = seed
+            return train(cfg)
+        except IndexError:
+            print("IndexError: index is out of bounds")
+            clear_log_directory(cfg)
+        except KeyError:
+            print("KeyError: index is out of bounds")
+            clear_log_directory(cfg)
+
+
 @utils.task_wrapper
 def train(cfg: DictConfig) -> tuple[dict[str, Any], dict[str, Any]]:
     """Trains the model. Can additionally evaluate on a testset, using best weights obtained during
@@ -163,17 +178,13 @@ def main(cfg: DictConfig) -> float | None:
     # (e.g. ask for tags if none are provided in cfg, print cfg tree, etc.)
     utils.extras(cfg)
 
-    while True:
-        try:
-            # train the model
-            metric_dict, _ = train(cfg)
-            break
-        except IndexError:
-            print("IndexError: index is out of bounds")
-            clear_log_directory(cfg)
-        except KeyError:
-            print("KeyError: index is out of bounds")
-            clear_log_directory(cfg)
+    if cfg.get("retry"):
+        metric_dict, _ = retry_train(cfg)
+    else:
+        metric_dict, _ = train(cfg)
+
+    if cfg.get("clean-up"):
+        clear_log_directory(cfg)
 
     # safely retrieve metric value for hydra-based hyperparameter optimization
     metric_value = utils.get_metric_value(metric_dict=metric_dict, metric_name=cfg.get("optimized_metric"))

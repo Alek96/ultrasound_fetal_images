@@ -30,7 +30,7 @@ callbacks:
   early_stopping:
     monitor: "val/pixel/f1"
     mode: "max"
-    patience: 40
+    patience: 10
     #patience: ${trainer.max_epochs}
 
 model:

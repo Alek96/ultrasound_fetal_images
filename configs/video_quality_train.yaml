@@ -31,7 +31,7 @@ defaults:
   - debug: null
 
 # task name, determines output directory path
-task_name: "train"
+task_name: "video_quality_train"
 
 # tags to help you identify your experiments
 # you can overwrite this in experiment configs
@@ -61,3 +61,7 @@ seed: "rand"
 
 # use Learning Rate Finder to find best lr
 find_lr: false
+
+retry: false
+
+clean-up: true

@@ -1,4 +1,4 @@
-from typing import Any, Union
+from typing import Any
 
 import segmentation_models_pytorch as smp
 import torch
@@ -6,7 +6,7 @@ from lightning import LightningModule
 from torch import Tensor
 from torchmetrics import Accuracy, ConfusionMatrix, F1Score, MaxMetric, MeanMetric
 
-from src.data.components.dataset import FetalBrainPlanesDataset
+from src.data.components.dataset import HeadSegmentationDataset
 from src.models.utils.wandb import wandb_confusion_matrix
 from src.utils.plots import log_to_wandb
 
@@ -219,7 +219,7 @@ class HeadSegmentationLitModule(LightningModule):
 
     def on_test_epoch_end(self) -> None:
         """Lightning hook that is called when a test epoch ends."""
-        self.log_confusion_matrix("test/pixel/conf", self.test_label_cm.compute())
+        self.log_confusion_matrix("test/label/conf", self.test_label_cm.compute())
 
     @staticmethod
     def confusion_matrix_acc(confusion_matrix, class_idx):
@@ -231,7 +231,7 @@ class HeadSegmentationLitModule(LightningModule):
             lambda: {
                 name: wandb_confusion_matrix(
                     cm=confusion_matrix,
-                    class_names=FetalBrainPlanesDataset.labels,
+                    class_names=HeadSegmentationDataset.labels,
                     title=title,
                 )
             },
@@ -268,4 +268,4 @@ class HeadSegmentationLitModule(LightningModule):
 
 
 if __name__ == "__main__":
-    _ = HeadSegmentationLitModule(None, None, None, None)
+    _ = HeadSegmentationLitModule(None, None, None, None, None)
