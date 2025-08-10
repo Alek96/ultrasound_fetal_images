@@ -1,5 +1,9 @@
 _target_: src.models.head_segmentation_module.HeadSegmentationLitModule
 
+model:
+  encoder: mobilenet_v2
+  pretrain: True
+
 criterion:
   _target_: src.models.components.loss.BinaryDiceCrossEntropyLoss
   _partial_: true
