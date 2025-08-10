@@ -22,6 +22,10 @@ def import_object(name: str):
         return getattr(module, obj)
 
 
+def new_dict(args):
+    return dict(args)
+
+
 def extras(cfg: DictConfig) -> None:
     """Applies optional utilities before the task is started.
 
