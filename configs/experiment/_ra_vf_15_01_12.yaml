@@ -12,8 +12,8 @@ data:
 
     #- _target_: torchvision.transforms.AutoAugment
     #  policy:
-    #    _target_: src.utils.utils.import_object
-    #    name: torchvision.transforms.AutoAugmentPolicy.IMAGENET
+    #    _target_: hydra.utils.get_object
+    #    path: torchvision.transforms.AutoAugmentPolicy.IMAGENET
     - _target_: torchvision.transforms.RandAugment
       magnitude: 11
     #- _target_: torchvision.transforms.TrivialAugmentWide
@@ -31,8 +31,8 @@ data:
 
     - _target_: torchvision.transforms.ConvertImageDtype
       dtype:
-        _target_: src.utils.utils.import_object
-        name: torch.float32
+        _target_: hydra.utils.get_object
+        path: torch.float32
 
   #  - _target_: torchvision.transforms.Normalize  # FetalBrain
   #    mean: 0.17
