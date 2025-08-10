@@ -91,7 +91,8 @@ class HeadSegmentationDataModule(LightningDataModule):
                             tv_tensors.Mask: torch.float32,
                             "other": None,
                         },
-                        scale=True),
+                        scale=True,
+                    ),
                     # T.Normalize(mean=0.17, std=0.19),  # FetalBrain
                     # T.Normalize(mean=0.449, std=0.226),  # ImageNet
                 ]
@@ -105,8 +106,13 @@ class HeadSegmentationDataModule(LightningDataModule):
                     T.Grayscale(),
                     T.Resize(input_size, interpolation=T.InterpolationMode.NEAREST),
                     T.ToDtype(
-                        dtype={tv_tensors.Image: torch.float32,tv_tensors.Mask: torch.float32,"other": None,},
-                        scale=True),
+                        dtype={
+                            tv_tensors.Image: torch.float32,
+                            tv_tensors.Mask: torch.float32,
+                            "other": None,
+                        },
+                        scale=True,
+                    ),
                     # T.Normalize(mean=0.17, std=0.19),  # FetalBrain
                     # T.Normalize(mean=0.449, std=0.226),  # ImageNet
                 ]

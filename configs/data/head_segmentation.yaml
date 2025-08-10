@@ -1,7 +1,7 @@
 _target_: src.data.head_segmentation.HeadSegmentationDataModule
 data_dir: ${paths.data_dir}
 sample: false
-input_size: [ 55, 80 ]
+input_size: [55, 80]
 
 train_transforms:
   - _target_: torchvision.transforms.v2.Grayscale

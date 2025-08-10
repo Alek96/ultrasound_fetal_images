@@ -22,8 +22,8 @@ class WeightedMSELoss(torch.nn.Module):
 
 class BinaryDiceLoss(torch.nn.Module):
     def __init__(
-            self,
-            smooth: float = 1.0,
+        self,
+        smooth: float = 1.0,
     ):
         super().__init__()
         self.smooth = smooth
@@ -31,19 +31,19 @@ class BinaryDiceLoss(torch.nn.Module):
     def forward(self, inputs: Tensor, targets: Tensor):
         inputs = torch.sigmoid(inputs)
         intersection = (inputs * targets).sum()
-        dice = (2. * intersection + self.smooth) / (inputs.sum() + targets.sum() + self.smooth)
+        dice = (2.0 * intersection + self.smooth) / (inputs.sum() + targets.sum() + self.smooth)
         return 1 - dice
 
 
 class BinaryDiceCrossEntropyLoss(torch.nn.Module):
     def __init__(
-            self,
-            smooth: float = 1.0,
-            weight: Optional[Tensor] = None,
-            size_average=None,
-            reduce=None,
-            reduction: str = "mean",
-            pos_weight: Optional[Tensor] = None,
+        self,
+        smooth: float = 1.0,
+        weight: Tensor | None = None,
+        size_average=None,
+        reduce=None,
+        reduction: str = "mean",
+        pos_weight: Tensor | None = None,
     ):
         super().__init__()
         self.dice = BinaryDiceLoss(
