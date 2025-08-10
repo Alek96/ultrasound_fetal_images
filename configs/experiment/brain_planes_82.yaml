@@ -109,8 +109,8 @@ data:
 
     - _target_: torchvision.transforms.ConvertImageDtype
       dtype:
-        _target_: src.utils.utils.import_object
-        name: torch.float32
+        _target_: hydra.utils.get_object
+        path: torch.float32
 
   test_transforms:
     - _target_: torchvision.transforms.Grayscale
@@ -119,8 +119,8 @@ data:
       antialias: False
     - _target_: torchvision.transforms.ConvertImageDtype
       dtype:
-        _target_: src.utils.utils.import_object
-        name: torch.float32
+        _target_: hydra.utils.get_object
+        path: torch.float32
 
 logger:
   wandb:

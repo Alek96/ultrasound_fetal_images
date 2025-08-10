@@ -10,18 +10,6 @@ from src.utils import pylogger, rich_utils
 log = pylogger.get_pylogger(__name__)
 
 
-def import_object(name: str):
-    module, obj = name.rsplit(".", 1)
-    try:
-        # module is a module
-        module = importlib.import_module(module)
-        return getattr(module, obj)
-    except ModuleNotFoundError as err:
-        # module is combination of module & object
-        module = import_object(module)
-        return getattr(module, obj)
-
-
 def new_dict(args):
     return dict(args)
 

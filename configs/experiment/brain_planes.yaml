@@ -62,8 +62,8 @@ model:
       data: [1.37, 0.46, 1.08, 5.26, 0.5]
       #data: [2.68, 0.91, 2.11, 10.29, 1.12]
       dtype:
-        _target_: src.utils.utils.import_object
-        name: torch.float32
+        _target_: hydra.utils.get_object
+        path: torch.float32
     reduction: "none"
     label_smoothing: 0.02
   lr: 1e-03
@@ -105,14 +105,14 @@ data:
 
     #- _target_: torchvision.transforms.AutoAugment
     #  policy:
-    #    _target_: src.utils.utils.import_object
-    #    name: torchvision.transforms.AutoAugmentPolicy.IMAGENET
+    #    _target_: hydra.utils.get_object
+    #    path: torchvision.transforms.AutoAugmentPolicy.IMAGENET
     - _target_: torchvision.transforms.RandAugment
       magnitude: 11
     #- _target_: src.data.components.transforms.RandAugment
     #  policy:
-    #    _target_: src.utils.utils.import_object
-    #    name: src.data.components.transforms.RandAugmentPolicy.RAND_AUGMENT_CUTOUT
+    #    _target_: hydra.utils.get_object
+    #    path: src.data.components.transforms.RandAugmentPolicy.RAND_AUGMENT_CUTOUT
     #  num_ops: 3
     #  magnitude: 10
     #  arg1: 0.7
@@ -137,8 +137,8 @@ data:
 
     - _target_: torchvision.transforms.ConvertImageDtype
       dtype:
-        _target_: src.utils.utils.import_object
-        name: torch.float32
+        _target_: hydra.utils.get_object
+        path: torch.float32
 
     #- _target_: torchvision.transforms.Normalize  # FetalBrain
     #  mean: 0.17
@@ -154,8 +154,8 @@ data:
       antialias: False
     - _target_: torchvision.transforms.ConvertImageDtype
       dtype:
-        _target_: src.utils.utils.import_object
-        name: torch.float32
+        _target_: hydra.utils.get_object
+        path: torch.float32
 
 logger:
   wandb:
