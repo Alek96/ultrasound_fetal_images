@@ -15,13 +15,13 @@ defaults:
 # this allows you to overwrite only specified parameters
 
 find_lr: False
-
 seed: "rand"
+clean-up: true
 
 trainer:
   min_epochs: 0
   max_epochs: 100
-  #precision: 16-mixed
+  precision: 16-mixed
 
 callbacks:
   model_checkpoint:
@@ -30,18 +30,17 @@ callbacks:
   early_stopping:
     monitor: "val/pixel/f1"
     mode: "max"
-    patience: 10
+    patience: 40
     #patience: ${trainer.max_epochs}
 
 model:
   model:
     encoder: mobilenet_v2
     pretrain: True
-  criterion:
-    smooth: 1.0
   lr: 1e-03
   optimizer:
     weight_decay: 0.0
+    amsgrad: false
 
 data:
   input_size: [165, 240]
