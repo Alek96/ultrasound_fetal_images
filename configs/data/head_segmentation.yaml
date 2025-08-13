@@ -16,7 +16,12 @@ train_transforms:
   #    _target_: hydra.utils.get_object
   #    path: torchvision.transforms.v2.AutoAugmentPolicy.IMAGENET
   #- _target_: torchvision.transforms.v2.RandAugment
-  #  magnitude: 9
+  #  magnitude: 11
+  - _target_: src.data.components.transforms.RandAugment
+    policy:
+      _target_: hydra.utils.get_object
+      path: src.data.components.transforms.RandAugmentPolicy.RAND_AUGMENT
+    magnitude: 11
   #- _target_: torchvision.transforms.v2.TrivialAugmentWide
   #- _target_: torchvision.transforms.v2.AugMix
 
