@@ -1,6 +1,7 @@
 import math
 from enum import Enum
 from math import floor
+from typing import Any
 
 import albumentations as A
 import torch
@@ -8,6 +9,7 @@ import torch.nn.functional as F
 import torchvision.transforms.v2 as T
 import torchvision.transforms.v2.functional as TF
 from torch import Tensor
+from torchvision import tv_tensors
 
 
 class RandomPercentCrop(torch.nn.Module):
@@ -212,20 +214,21 @@ def speckle_noise(img: Tensor, mean: float = 0, std: float = 0.1):
 
 def _apply_op(
     img: Tensor,
-    op_name: str,
+    transform_id: str,
     magnitude: float,
     interpolation: TF.InterpolationMode,
     fill: list[float] | None,
-    arg=None,
 ):
-    if op_name == "ShearX":
+    if transform_id == "Identity":
+        return img
+    if transform_id == "ShearX":
         # magnitude should be arctan(magnitude)
         # official autoaug: (1, level, 0, 0, 1, 0)
         # https://github.com/tensorflow/models/blob/dd02069717128186b88afa8d857ce57d17957f03/research/autoaugment/augmentation_transforms.py#L290
         # compared to
         # torchvision:      (1, tan(level), 0, 0, 1, 0)
         # https://github.com/pytorch/vision/blob/0c2373d0bba3499e95776e7936e207d8a1676e65/torchvision/transforms/functional.py#L976
-        img = TF.affine(
+        return TF.affine(
             img,
             angle=0.0,
             translate=[0, 0],
@@ -235,10 +238,10 @@ def _apply_op(
             fill=fill,
             center=[0, 0],
         )
-    elif op_name == "ShearY":
+    elif transform_id == "ShearY":
         # magnitude should be arctan(magnitude)
         # See above
-        img = TF.affine(
+        return TF.affine(
             img,
             angle=0.0,
             translate=[0, 0],
@@ -248,8 +251,8 @@ def _apply_op(
             fill=fill,
             center=[0, 0],
         )
-    elif op_name == "TranslateX":
-        img = TF.affine(
+    elif transform_id == "TranslateX":
+        return TF.affine(
             img,
             angle=0.0,
             translate=[int(magnitude), 0],
@@ -258,8 +261,8 @@ def _apply_op(
             shear=[0.0, 0.0],
             fill=fill,
         )
-    elif op_name == "TranslateY":
-        img = TF.affine(
+    elif transform_id == "TranslateY":
+        return TF.affine(
             img,
             angle=0.0,
             translate=[0, int(magnitude)],
@@ -268,47 +271,41 @@ def _apply_op(
             shear=[0.0, 0.0],
             fill=fill,
         )
-    elif op_name == "Rotate":
-        img = TF.rotate(img, magnitude, interpolation=interpolation, fill=fill)
-    elif op_name == "Brightness":
-        img = TF.adjust_brightness(img, 1.0 + magnitude)
-    elif op_name == "Color":
-        img = TF.adjust_saturation(img, 1.0 + magnitude)
-    elif op_name == "Contrast":
-        img = TF.adjust_contrast(img, 1.0 + magnitude)
-    elif op_name == "Sharpness":
-        img = TF.adjust_sharpness(img, 1.0 + magnitude)
-    elif op_name == "Posterize":
-        img = TF.posterize(img, int(magnitude))
-    elif op_name == "Solarize":
-        img = TF.solarize(img, magnitude)
-    elif op_name == "AutoContrast":
-        img = TF.autocontrast(img)
-    elif op_name == "Equalize":
-        img = TF.equalize(img)
-    elif op_name == "Invert":
-        img = TF.invert(img)
-    elif op_name == "Gamma":
-        img = TF.adjust_gamma(img, 1.0 + magnitude)
-    elif op_name == "Cutout":
-        arg = arg if arg is not None else 5
-        img = cutout(img, n_holes=arg, length=int(magnitude), fill=fill)
-    elif op_name == "RandomErasing":
-        img = T.RandomErasing(p=1.0, scale=(magnitude, magnitude), ratio=(0.3, 3.3), value=0)(img)
-    elif op_name == "Elastic":
-        arg = arg if arg is not None else 24
-        img = elastic_transform(img, magnitude, scale=arg)
-    elif op_name == "GridDistortion":
-        arg = arg if arg is not None else 5
-        img = grid_distortion(img, magnitude, num_steps=arg)
-    elif op_name == "Speckle":
-        img = speckle_noise(img, mean=0, std=magnitude)
-
-    elif op_name == "Identity":
-        pass
+    elif transform_id == "Rotate":
+        return TF.rotate(img, angle=magnitude, interpolation=interpolation, fill=fill)
+    elif transform_id == "Brightness":
+        return TF.adjust_brightness(img, brightness_factor=1.0 + magnitude)
+    elif transform_id == "Color":
+        return TF.adjust_saturation(img, saturation_factor=1.0 + magnitude)
+    elif transform_id == "Contrast":
+        return TF.adjust_contrast(img, contrast_factor=1.0 + magnitude)
+    elif transform_id == "Sharpness":
+        return TF.adjust_sharpness(img, sharpness_factor=1.0 + magnitude)
+    elif transform_id == "Posterize":
+        return TF.posterize(img, bits=int(magnitude))
+    elif transform_id == "Solarize":
+        return TF.solarize(img, threshold=magnitude)
+    elif transform_id == "AutoContrast":
+        return TF.autocontrast(img)
+    elif transform_id == "Equalize":
+        return TF.equalize(img)
+    elif transform_id == "Invert":
+        return TF.invert(img)
+    # new
+    elif transform_id == "Gamma":
+        return TF.adjust_gamma(img, gamma=1.0 + magnitude)
+    elif transform_id == "Cutout":
+        return cutout(img, n_holes=5, length=int(magnitude), fill=fill)
+    elif transform_id == "RandomErasing":
+        return T.RandomErasing(p=1.0, scale=(magnitude, magnitude), ratio=(0.3, 3.3), value=0)(img)
+    elif transform_id == "Elastic":
+        return elastic_transform(img, magnitude=magnitude, scale=24)
+    elif transform_id == "GridDistortion":
+        return grid_distortion(img, magnitude=magnitude, num_steps=5)
+    elif transform_id == "Speckle":
+        return speckle_noise(img, mean=0, std=magnitude)
     else:
-        raise ValueError(f"The provided operator {op_name} is not recognized.")
-    return img
+        raise ValueError(f"No transform available for {transform_id}")
 
 
 class RandAugmentPolicy(Enum):
@@ -320,8 +317,6 @@ class RandAugmentPolicy(Enum):
     RAND_AUGMENT_ELASTIC = "RandAugmentElastic"
     RAND_AUGMENT_GRID_DISTORTION = "RandAugmentGridDistortion"
     RAND_AUGMENT_SPECKLE = "RandAugmentSpeckle"
-    RAND_AUGMENT_14 = "RandAugment14"
-    RAND_AUGMENT_18 = "RandAugment18"
 
 
 class RandAugment(torch.nn.Module):
@@ -351,8 +346,6 @@ class RandAugment(torch.nn.Module):
         num_magnitude_bins: int = 31,
         interpolation: TF.InterpolationMode = TF.InterpolationMode.NEAREST,
         fill: list[float] | None = None,
-        arg1=None,
-        arg2=None,
     ) -> None:
         super().__init__()
         self.policy = policy
@@ -361,141 +354,86 @@ class RandAugment(torch.nn.Module):
         self.num_magnitude_bins = num_magnitude_bins
         self.interpolation = interpolation
         self.fill = fill
-        self.arg1 = arg1
-        self.arg2 = arg2
 
     def _augmentation_space(
         self, policy: RandAugmentPolicy, num_bins: int, image_size: tuple[int, int]
-    ) -> dict[str, tuple[Tensor, bool]]:
-        if policy == RandAugmentPolicy.RAND_AUGMENT:
-            return {
-                # op_name: (magnitudes, signed)
-                "Identity": (torch.tensor(0.0), False),
-                "ShearX": (torch.linspace(0.0, 0.3, num_bins), True),
-                "ShearY": (torch.linspace(0.0, 0.3, num_bins), True),
-                "TranslateX": (torch.linspace(0.0, 150.0 / 331.0 * image_size[1], num_bins), True),
-                "TranslateY": (torch.linspace(0.0, 150.0 / 331.0 * image_size[0], num_bins), True),
-                "Rotate": (torch.linspace(0.0, 30.0, num_bins), True),
-                "Brightness": (torch.linspace(0.0, 0.9, num_bins), True),
-                "Color": (torch.linspace(0.0, 0.9, num_bins), True),
-                "Contrast": (torch.linspace(0.0, 0.9, num_bins), True),
-                "Sharpness": (torch.linspace(0.0, 0.9, num_bins), True),
-                "Posterize": (8 - (torch.arange(num_bins) / ((num_bins - 1) / 4)).round().int(), False),
-                "Solarize": (torch.linspace(255.0, 0.0, num_bins), False),
-                "AutoContrast": (torch.tensor(0.0), False),
-                "Equalize": (torch.tensor(0.0), False),
-            }
-        elif policy == RandAugmentPolicy.RAND_AUGMENT_INVERT:
-            op_meta = self._augmentation_space(RandAugmentPolicy.RAND_AUGMENT, num_bins, image_size)
-            op_meta["Invert"] = (torch.tensor(0.0), False)
-            return op_meta
-        elif policy == RandAugmentPolicy.RAND_AUGMENT_GAMMA:
-            op_meta = self._augmentation_space(RandAugmentPolicy.RAND_AUGMENT, num_bins, image_size)
-            op_meta["Gamma"] = (torch.linspace(0.0, 0.9, num_bins), True)
-            return op_meta
-        elif policy == RandAugmentPolicy.RAND_AUGMENT_CUTOUT:
-            op_meta = self._augmentation_space(RandAugmentPolicy.RAND_AUGMENT, num_bins, image_size)
-            arg = self.arg1 if self.arg1 is not None else 0.5
-            op_meta["Cutout"] = (torch.linspace(0.0, arg * min(image_size), num_bins), False)
-            return op_meta
-        elif policy == RandAugmentPolicy.RAND_AUGMENT_RANDOM_ERASING:
-            op_meta = self._augmentation_space(RandAugmentPolicy.RAND_AUGMENT, num_bins, image_size)
-            arg = self.arg1 if self.arg1 is not None else 0.5
-            op_meta["RandomErasing"] = (torch.linspace(0.0, arg * image_size[0] / image_size[1], num_bins), False)
-            return op_meta
-        elif policy == RandAugmentPolicy.RAND_AUGMENT_ELASTIC:
-            op_meta = self._augmentation_space(RandAugmentPolicy.RAND_AUGMENT, num_bins, image_size)
-            arg = self.arg1 if self.arg1 is not None else 100.0
-            op_meta["Elastic"] = (torch.linspace(0.0, arg, num_bins), False)
-            return op_meta
-        elif policy == RandAugmentPolicy.RAND_AUGMENT_GRID_DISTORTION:
-            op_meta = self._augmentation_space(RandAugmentPolicy.RAND_AUGMENT, num_bins, image_size)
-            arg = self.arg1 if self.arg1 is not None else 0.5
-            op_meta["GridDistortion"] = (torch.linspace(0.0, arg, num_bins), False)
-            return op_meta
-        elif policy == RandAugmentPolicy.RAND_AUGMENT_SPECKLE:
-            op_meta = self._augmentation_space(RandAugmentPolicy.RAND_AUGMENT, num_bins, image_size)
-            arg = self.arg1 if self.arg1 is not None else 0.9
-            op_meta["Speckle"] = (torch.linspace(0.0, arg, num_bins), False)
-            return op_meta
+    ) -> dict[str, tuple[Tensor, bool, bool]]:
+        op_meta = {
+            # op_name: (magnitudes, signed, support_mask)
+            "Identity": (torch.tensor(0.0), False, True),
+            "ShearX": (torch.linspace(0.0, 0.3, num_bins), True, True),
+            "ShearY": (torch.linspace(0.0, 0.3, num_bins), True, True),
+            "TranslateX": (torch.linspace(0.0, 150.0 / 331.0 * image_size[1], num_bins), True, True),
+            "TranslateY": (torch.linspace(0.0, 150.0 / 331.0 * image_size[0], num_bins), True, True),
+            "Rotate": (torch.linspace(0.0, 30.0, num_bins), True, True),
+            "Brightness": (torch.linspace(0.0, 0.9, num_bins), True, False),
+            "Color": (torch.linspace(0.0, 0.9, num_bins), True, False),
+            "Contrast": (torch.linspace(0.0, 0.9, num_bins), True, False),
+            "Sharpness": (torch.linspace(0.0, 0.9, num_bins), True, False),
+            "Posterize": (8 - (torch.arange(num_bins) / ((num_bins - 1) / 4)).round().int(), False, False),
+            "Solarize": (torch.linspace(255.0, 0.0, num_bins), False, False),
+            "AutoContrast": (torch.tensor(0.0), False, False),
+            "Equalize": (torch.tensor(0.0), False, False),
+        }
 
-        elif policy == RandAugmentPolicy.RAND_AUGMENT_14:
-            return {
-                # op_name: (magnitudes, signed)
-                "Identity": (torch.tensor(0.0), False),
-                "ShearX": (torch.linspace(0.0, 0.3, num_bins), True),
-                "ShearY": (torch.linspace(0.0, 0.3, num_bins), True),
-                "TranslateX": (torch.linspace(0.0, 150.0 / 331.0 * image_size[1], num_bins), True),
-                "TranslateY": (torch.linspace(0.0, 150.0 / 331.0 * image_size[0], num_bins), True),
-                "Rotate": (torch.linspace(0.0, 30.0, num_bins), True),
-                "Brightness": (torch.linspace(0.0, 0.9, num_bins), True),
-                "Color": (torch.linspace(0.0, 0.9, num_bins), True),
-                "Contrast": (torch.linspace(0.0, 0.9, num_bins), True),
-                "Sharpness": (torch.linspace(0.0, 0.9, num_bins), True),
-                "Posterize": (8 - (torch.arange(num_bins) / ((num_bins - 1) / 4)).round().int(), False),
-                "Solarize": (torch.linspace(255.0, 0.0, num_bins), False),
-                "AutoContrast": (torch.tensor(0.0), False),
-                "Equalize": (torch.tensor(0.0), False),
-                "Invert": (torch.tensor(0.0), False),
-                "Gamma": (torch.linspace(0.0, 0.9, num_bins), True),
-                "Cutout": (torch.linspace(0.0, 0.7 * min(image_size), num_bins), False),
-                # "RandomErasing": (torch.linspace(0.0, 0.5 * image_size[0] / image_size[1], num_bins), False),
-                # "Elastic": (torch.linspace(0.0, 400.0, num_bins), False),
-                "Speckle": (torch.linspace(0.0, 0.9, num_bins), False),
-            }
+        if policy == RandAugmentPolicy.RAND_AUGMENT_INVERT:
+            op_meta["Invert"] = (torch.tensor(0.0), False, False)
+        if policy == RandAugmentPolicy.RAND_AUGMENT_GAMMA:
+            op_meta["Gamma"] = (torch.linspace(0.0, 0.9, num_bins), True, False)
+        if policy == RandAugmentPolicy.RAND_AUGMENT_CUTOUT:
+            op_meta = self._augmentation_space(RandAugmentPolicy.RAND_AUGMENT, num_bins, image_size)
+            op_meta["Cutout"] = (torch.linspace(0.0, 0.5 * min(image_size), num_bins), False, False)
+        if policy == RandAugmentPolicy.RAND_AUGMENT_RANDOM_ERASING:
+            op_meta["RandomErasing"] = (
+                torch.linspace(0.0, 0.5 * image_size[0] / image_size[1], num_bins),
+                False,
+                False,
+            )
+        if policy == RandAugmentPolicy.RAND_AUGMENT_ELASTIC:
+            op_meta["Elastic"] = (torch.linspace(0.0, 100.0, num_bins), False, True)
+        if policy == RandAugmentPolicy.RAND_AUGMENT_GRID_DISTORTION:
+            op_meta["GridDistortion"] = (torch.linspace(0.0, 0.5, num_bins), False, True)
+        if policy == RandAugmentPolicy.RAND_AUGMENT_SPECKLE:
+            op_meta["Speckle"] = (torch.linspace(0.0, 0.9, num_bins), False, False)
 
-        elif policy == RandAugmentPolicy.RAND_AUGMENT_18:
-            return {
-                # op_name: (magnitudes, signed)
-                "Identity": (torch.tensor(0.0), False),
-                "ShearX": (torch.linspace(0.0, 0.3, num_bins), True),
-                "ShearY": (torch.linspace(0.0, 0.3, num_bins), True),
-                "TranslateX": (torch.linspace(0.0, 150.0 / 331.0 * image_size[1], num_bins), True),
-                "TranslateY": (torch.linspace(0.0, 150.0 / 331.0 * image_size[0], num_bins), True),
-                "Rotate": (torch.linspace(0.0, 30.0, num_bins), True),
-                "Brightness": (torch.linspace(0.0, 0.9, num_bins), True),
-                "Color": (torch.linspace(0.0, 0.9, num_bins), True),
-                "Contrast": (torch.linspace(0.0, 0.9, num_bins), True),
-                "Sharpness": (torch.linspace(0.0, 0.9, num_bins), True),
-                "Posterize": (8 - (torch.arange(num_bins) / ((num_bins - 1) / 4)).round().int(), False),
-                "Solarize": (torch.linspace(255.0, 0.0, num_bins), False),
-                "AutoContrast": (torch.tensor(0.0), False),
-                "Equalize": (torch.tensor(0.0), False),
-                "Invert": (torch.tensor(0.0), False),
-                "Gamma": (torch.linspace(0.0, 0.9, num_bins), True),
-                "Cutout": (torch.linspace(0.0, 0.5 * min(image_size), num_bins), False),
-                "RandomErasing": (torch.linspace(0.0, 0.5 * image_size[0] / image_size[1], num_bins), False),
-                "Elastic": (torch.linspace(0.0, 400.0, num_bins), False),
-                "Speckle": (torch.linspace(0.0, 0.9, num_bins), False),
-            }
-        else:
-            raise ValueError(f"The provided policy {policy} is not recognized.")
+        return op_meta
 
-    def forward(self, img: Tensor) -> Tensor:
+    def forward(self, *images: Any) -> Any:
         """Img (PIL Image or Tensor): Image to be transformed.
 
         Returns:
             PIL Image or Tensor: Transformed image.
         """
         fill = self.fill
-        channels, height, width = TF.get_dimensions(img)
-        if isinstance(img, Tensor):
-            if isinstance(fill, (int, float)):
-                fill = [float(fill)] * channels
-            elif fill is not None:
-                fill = [float(f) for f in fill]
+        channels, height, width = TF.get_dimensions(images[0])
+        # if isinstance(img, Tensor):
+        #     if isinstance(fill, (int, float)):
+        #         fill = [float(fill)] * channels
+        #     elif fill is not None:
+        #         fill = [float(f) for f in fill]
 
         op_meta = self._augmentation_space(self.policy, self.num_magnitude_bins, (height, width))
         for _ in range(self.num_ops):
             op_index = int(torch.randint(len(op_meta), (1,)).item())
             op_name = list(op_meta.keys())[op_index]
-            magnitudes, signed = op_meta[op_name]
+            magnitudes, signed, support_mask = op_meta[op_name]
             magnitude = float(magnitudes[self.magnitude].item()) if magnitudes.ndim > 0 else 0.0
-            if signed and torch.randint(2, (1,)):
+            if signed and torch.rand(()) <= 0.5:
                 magnitude *= -1.0
-            img = _apply_op(img, op_name, magnitude, interpolation=self.interpolation, fill=fill, arg=self.arg2)
 
-        return img
+            images_rs = []
+            for img in images:
+                if not isinstance(img, tv_tensors.Mask) or support_mask:
+                    img = _apply_op(
+                        img,
+                        transform_id=op_name,
+                        magnitude=magnitude,
+                        interpolation=self.interpolation,
+                        fill=fill,
+                    )
+                images_rs.append(img)
+
+        return images
 
     def __repr__(self) -> str:
         s = (
