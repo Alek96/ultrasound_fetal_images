@@ -20,7 +20,7 @@ clean-up: true
 
 trainer:
   min_epochs: 0
-  max_epochs: 100
+  max_epochs: 60
   precision: 16-mixed
 
 callbacks:
@@ -35,11 +35,10 @@ callbacks:
 
 model:
   model:
-    encoder: mobilenet_v2
-    pretrain: True
+    encoder_name: tu-mobilenetv4_conv_small
   lr: 1e-03
   optimizer:
-    weight_decay: 0.0
+    weight_decay: 1e-5
     amsgrad: false
 
 data:

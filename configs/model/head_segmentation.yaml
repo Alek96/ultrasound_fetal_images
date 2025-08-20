@@ -1,11 +1,16 @@
 _target_: src.models.head_segmentation_module.HeadSegmentationLitModule
 
 model:
-  encoder: mobilenet_v2
-  pretrain: True
+  _target_: segmentation_models_pytorch.Unet
+  _partial_: true
+  encoder_name: mobilenet_v2
+  encoder_weights: imagenet
+  in_channels: 1
+  classes: 1
+  activation:
 
 criterion:
-  _target_: torch.nn.BCEWithLogitsLoss
+  _target_: src.models.components.loss.BinaryDiceCrossEntropyLoss
   _partial_: true
 
 lr: 0.001

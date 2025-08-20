@@ -44,7 +44,7 @@ class HeadSegmentationLitModule(LightningModule):
 
     def __init__(
         self,
-        model: dict,
+        model: torch.nn.Module,
         criterion: torch.nn.Module,
         lr: float,
         optimizer: torch.optim.Optimizer,
@@ -56,13 +56,7 @@ class HeadSegmentationLitModule(LightningModule):
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
 
-        self.model = smp.Unet(
-            encoder_name=model["encoder"],
-            encoder_weights="imagenet" if model["pretrain"] else None,
-            in_channels=1,
-            classes=1,
-            activation=None,
-        )
+        self.model = model()
 
         # loss function
         self.criterion_fn = criterion()
