@@ -61,15 +61,15 @@ class ClassImageSampler(Callback):
                 else:
                     idx = torch.randint(0, len(cell), ())
                     image_idx = cell[idx]
-                    image, _ = dataset[image_idx]
+                    image = dataset[image_idx, 0]
                     images.append(image)
 
         fig = show_pytorch_images(
             images=images,
             title="        Predicted",
             ylabel="Actual      ",
-            cols_names=FetalBrainPlanesDataset.labels,
-            rows_names=FetalBrainPlanesDataset.labels,
+            cols_names=self.class_names,
+            rows_names=self.class_names,
         )
 
         log_to_wandb(lambda: {"test/samples": wandb.Image(fig)}, loggers=pl_module.loggers)
