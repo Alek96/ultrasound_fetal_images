@@ -93,7 +93,7 @@ class HeadSegmentationDataset(Dataset):
     def load_labels(self, subset: str | None):
         labels = pd.read_csv(f"{self.dataset_dir}/data.csv", dtype={"Patient_num": str})
         labels = labels.where(pd.notnull(labels), None)
-        if subset is None or subset == "all":
+        if subset is not None and subset != "all":
             labels = labels[labels["Subset"] == subset]
         return labels.reset_index(drop=True)
 
