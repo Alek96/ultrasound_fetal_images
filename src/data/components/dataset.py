@@ -82,8 +82,8 @@ class HeadSegmentationDataset(Dataset):
     def __init__(
         self,
         data_dir: str,
-        dataset_name: str = "Fetal-Head-Segmentation",
-        subset: Literal["train", "val", "test", "all"] | None = "train",
+        dataset_name: str = "FETAL_HEAD_SEGMENTATION",
+        subset: Literal["train", "val", "test"] | None = None,
         transform: Callable | None = None,
     ):
         self.dataset_dir = f"{data_dir}/{dataset_name}"
@@ -93,7 +93,7 @@ class HeadSegmentationDataset(Dataset):
     def load_labels(self, subset: str | None):
         labels = pd.read_csv(f"{self.dataset_dir}/data.csv", dtype={"Patient_num": str})
         labels = labels.where(pd.notnull(labels), None)
-        if subset is not None and subset != "all":
+        if subset is not None:
             labels = labels[labels["Subset"] == subset]
         return labels.reset_index(drop=True)
 
@@ -164,12 +164,12 @@ class HeadSegmentationSamplesDataset(HeadSegmentationDataset):
     def __init__(
         self,
         data_dir: str,
-        subset: Literal["train", "val", "test", "all"] | None = "train",
+        subset: Literal["train", "val", "test"] | None = None,
         transform: Callable | None = None,
     ):
         from src.data.utils.google import download
 
-        dataset_name = "Fetal-Head-Segmentation-Samples"
+        dataset_name = "FETAL_HEAD_SEGMENTATION_SAMPLES"
         download(data_dir, dataset_name, FetalBrainPlanesSamplesDataset.google_file_id)
         super().__init__(
             data_dir=data_dir,
@@ -192,22 +192,26 @@ class FetalBrainPlanesDataset(Dataset):
         self,
         data_dir: str,
         data_name: str = "FETAL_PLANES",
-        subset: Literal["train", "test", "all"] = "train",
+        subset: Literal["train", "val", "test"] | None = None,
+        train: bool | None = None,
+        identified: bool | None = False,
         transform: Callable | None = None,
         target_transform: Callable | None = None,
     ):
         self.dataset_dir = f"{data_dir}/{data_name}"
-        self.img_labels = self.load_img_labels(subset)
+        self.img_labels = self.load_img_labels(subset, train, identified)
         self.img_dir = f"{self.dataset_dir}/Images"
         self.transform = transform
         self.target_transform = target_transform
 
-    def load_img_labels(self, subset: str):
+    def load_img_labels(self, subset: str, train: bool, identified: bool):
         img_labels = pd.read_csv(f"{self.dataset_dir}/data.csv")
-        if subset == "train":
-            img_labels = img_labels[img_labels["Train"] == 1]
-        elif subset == "test":
-            img_labels = img_labels[img_labels["Train"] == 0]
+        if subset is not None:
+            img_labels = img_labels[img_labels["Subset"] == subset]
+        if train is not None:
+            img_labels = img_labels[img_labels["Train"] == (1 if train else 0)]
+        if identified is not None:
+            img_labels = img_labels[img_labels["Identified"] == (1 if identified else 0)]
         img_labels = img_labels[["Image_name", "Patient_num", "Brain_plane"]]
         return img_labels.reset_index(drop=True)
 
@@ -254,7 +258,9 @@ class FetalBrainPlanesSamplesDataset(FetalBrainPlanesDataset):
     def __init__(
         self,
         data_dir: str,
-        subset: Literal["train", "test", "all"] = "train",
+        subset: Literal["train", "val", "test"] | None = None,
+        train: bool | None = None,
+        identified: bool | None = False,
         transform: Callable | None = None,
         target_transform: Callable | None = None,
     ):
@@ -266,6 +272,8 @@ class FetalBrainPlanesSamplesDataset(FetalBrainPlanesDataset):
             data_dir=data_dir,
             data_name=data_name,
             subset=subset,
+            train=train,
+            identified=identified,
             transform=transform,
             target_transform=target_transform,
         )
