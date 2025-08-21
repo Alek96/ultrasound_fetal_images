@@ -203,11 +203,11 @@ class FetalBrainPlanesDataset(Dataset):
         self.target_transform = target_transform
 
     def load_img_labels(self, subset: str):
-        img_labels = pd.read_csv(f"{self.dataset_dir}/FETAL_PLANES_DB_data.csv", sep=";")
+        img_labels = pd.read_csv(f"{self.dataset_dir}/data.csv")
         if subset == "train":
-            img_labels = img_labels[img_labels["Train "] == 1]
+            img_labels = img_labels[img_labels["Train"] == 1]
         elif subset == "test":
-            img_labels = img_labels[img_labels["Train "] == 0]
+            img_labels = img_labels[img_labels["Train"] == 0]
         img_labels = img_labels[["Image_name", "Patient_num", "Brain_plane"]]
         return img_labels.reset_index(drop=True)
 
