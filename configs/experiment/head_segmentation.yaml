@@ -21,7 +21,8 @@ clean-up: true
 trainer:
   min_epochs: 0
   max_epochs: 60
-  precision: 16-mixed
+  #precision: 16-mixed
+  #accumulate_grad_batches: 2
 
 callbacks:
   model_checkpoint:
@@ -30,11 +31,12 @@ callbacks:
   early_stopping:
     monitor: "val/pixel/f1"
     mode: "max"
-    patience: 40
-    #patience: ${trainer.max_epochs}
+    #patience: 15
+    patience: ${trainer.max_epochs}
 
 model:
   model:
+    _target_: segmentation_models_pytorch.Unet
     encoder_name: tu-mobilenetv4_conv_small
   lr: 1e-03
   optimizer:
@@ -42,7 +44,7 @@ model:
     amsgrad: false
 
 data:
-  input_size: [165, 240]
+  input_size: [192, 256]
   batch_size: 64
   num_workers: 12
   pin_memory: True
