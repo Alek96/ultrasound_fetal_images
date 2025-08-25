@@ -22,6 +22,13 @@ def _flatten_inputs(inputs: Any):
     return inputs
 
 
+def _wrap_inputs(inputs: Any):
+    inputs = _flatten_inputs(inputs)
+    if isinstance(inputs, tuple):
+        return inputs
+    return (inputs,)
+
+
 def get_image_shape(*inputs: Any):
     inputs = _flatten_inputs(inputs)
     if isinstance(inputs, Sequence):
@@ -93,10 +100,11 @@ class PadResize(torch.nn.Module):
         size: Sequence[int],
         fill: TF._utils._FillType | dict[type | str, TF._utils._FillType] = 0,
         padding_mode: Literal["constant", "edge", "reflect", "symmetric"] = "constant",
-        interpolation: T.InterpolationMode | int = T.InterpolationMode.BILINEAR,
+        interpolation: T.InterpolationMode | int | Dict[Union[Type, str], Optional[Union[T.InterpolationMode, int]]] = T.InterpolationMode.BILINEAR,
         antialias: bool | None = True,
     ) -> None:
         super().__init__()
+        self.size = size
         self.fill = fill
         self.padding_mode = padding_mode
         self.height, self.width = size
@@ -107,7 +115,8 @@ class PadResize(torch.nn.Module):
 
     def forward(self, *inputs: Any):
         inputs = self._pad(*inputs)
-        return self.resize(inputs)
+        inputs = self._resize(*inputs)
+        return _flatten_inputs(inputs)
 
     def _pad(self, *inputs: Any):
         original_height, original_width = get_image_shape(*inputs)
@@ -140,17 +149,34 @@ class PadResize(torch.nn.Module):
             return inputs
 
         pad = T.Pad(padding=[left_pad, top_pad, right_pad, bottom_pad], fill=self.fill, padding_mode=self.padding_mode)
-        return pad(*inputs)
+        inputs = pad(*inputs)
+        return _wrap_inputs(inputs)
+
+    def _resize(self, *inputs: Any):
+        outputs = []
+        for inp in inputs:
+            interpolation = self._get_interpolation_mode(inp)
+            output = inp.as_subclass(torch.Tensor)
+            output = TF.resize(output, size=self.size, interpolation=interpolation, antialias=self.antialias)
+            output = tv_tensors.wrap(output, like=inp)
+            outputs.append(output)
+        return tuple(outputs)
+
+    def _get_interpolation_mode(self, inp: torch.Tensor):
+        if not isinstance(self.interpolation, dict):
+            return self.interpolation
+        default = self.interpolation.get("others")
+        return self.interpolation.get(type(inp), default)
 
     def __repr__(self) -> str:
         s = f"{self.__class__.__name__} ("
+        s += f"size={self.size}, "
         s += f"fill={self.fill}, "
         s += f"padding_mode={self.padding_mode}, "
         s += f"interpolation={self.interpolation}, "
         s += f"antialias={self.antialias})"
 
         return s
-
 
 class HorizontalFlip(torch.nn.Module):
     def __init__(self, flip: bool = True) -> None:
