@@ -43,6 +43,7 @@ pytest-cov = "^6.2.1"
 sh = { version = "^2.2.2", markers = "sys_platform == 'linux' or sys_platform == 'darwin'" }
 gdown = "^5.2.0"
 fastapi = "^0.115.14"
+ipympl = "^0.9.7"
 
 [tool.pytest.ini_options]
 addopts = [
