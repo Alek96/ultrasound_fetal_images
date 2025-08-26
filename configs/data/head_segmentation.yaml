@@ -6,7 +6,7 @@ input_size: [55, 80]
 train_transforms:
   - _target_: torchvision.transforms.v2.Grayscale
 
-  - _target_: src.data.components.transforms.PadResize
+  - _target_: src.data.components.transforms.PadToAspectRation
     size: ${data.input_size}
     fill:
       _target_: src.utils.utils.new_dict
@@ -19,6 +19,8 @@ train_transforms:
           - 0
         - - other
           -
+  - _target_: src.data.components.transforms.Resize
+    size: ${data.input_size}
     interpolation:
       _target_: src.utils.utils.new_dict
       args:
@@ -82,7 +84,7 @@ train_transforms:
 
 test_transforms:
   - _target_: torchvision.transforms.v2.Grayscale
-  - _target_: src.data.components.transforms.PadResize
+  - _target_: src.data.components.transforms.PadToAspectRation
     size: ${data.input_size}
     fill:
       _target_: src.utils.utils.new_dict
@@ -95,6 +97,8 @@ test_transforms:
           - 0
         - - other
           -
+  - _target_: src.data.components.transforms.Resize
+    size: ${data.input_size}
     interpolation:
       _target_: src.utils.utils.new_dict
       args:
