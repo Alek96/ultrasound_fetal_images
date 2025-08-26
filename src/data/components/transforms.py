@@ -94,6 +94,107 @@ class RandomPercentCrop(torch.nn.Module):
         return f"{self.__class__.__name__}(max_percent={self.max_percent})"
 
 
+class PadToAspectRation(torch.nn.Module):
+    def __init__(
+        self,
+        size: Sequence[int],
+        fill: TF._utils._FillType | dict[type | str, TF._utils._FillType] = 0,
+        padding_mode: Literal["constant", "edge", "reflect", "symmetric"] = "constant"
+    ) -> None:
+        super().__init__()
+        self.size = size
+        self.fill = fill
+        self.padding_mode = padding_mode
+        self.height, self.width = size
+        self.aspect_ratio = self.height / self.width
+
+    def forward(self, *inputs: Any):
+        original_height, original_width = get_image_shape(*inputs)
+        # Calculate the current aspect ratio of the image
+        current_aspect_ratio = original_height / original_width
+
+        # Determine which dimension needs padding
+        if current_aspect_ratio > self.aspect_ratio:
+            # Image is too tall, need to pad width
+            new_width = int(original_height / self.aspect_ratio)
+            padding_needed = new_width - original_width
+
+            # Calculate padding on left and right sides
+            left_pad = padding_needed // 2
+            right_pad = padding_needed - left_pad
+            top_pad, bottom_pad = 0, 0
+
+        elif current_aspect_ratio < self.aspect_ratio:
+            # Image is too wide, need to pad height
+            new_height = int(original_width * self.aspect_ratio)
+            padding_needed = new_height - original_height
+
+            # Calculate padding on top and bottom sides
+            top_pad = padding_needed // 2
+            bottom_pad = padding_needed - top_pad
+            left_pad, right_pad = 0, 0
+
+        else:
+            # Image already has the correct aspect ratio, no padding needed
+            inputs = _flatten_inputs(inputs)
+            return inputs
+
+        pad = T.Pad(padding=[left_pad, top_pad, right_pad, bottom_pad], fill=self.fill, padding_mode=self.padding_mode)
+        inputs = pad(*inputs)
+        return _flatten_inputs(inputs)
+
+    def __repr__(self) -> str:
+        s = f"{self.__class__.__name__} ("
+        s += f"size={self.size}, "
+        s += f"fill={self.fill}, "
+        s += f"padding_mode={self.padding_mode})"
+
+        return s
+
+
+class Resize(torch.nn.Module):
+    def __init__(
+        self,
+        size: Sequence[int],
+        interpolation: T.InterpolationMode | int | Dict[Union[Type, str], Optional[Union[T.InterpolationMode, int]]] = T.InterpolationMode.BILINEAR,
+        antialias: bool | None = True,
+    ) -> None:
+        super().__init__()
+        self.size = size
+        self.interpolation = interpolation
+        self.antialias = antialias
+
+    def forward(self, *inputs: Any):
+        outputs = []
+        for inp in inputs:
+            interpolation = self._get_interpolation_mode(inp)
+            output = inp.as_subclass(torch.Tensor)
+            output = TF.resize(output, size=self.size, interpolation=interpolation, antialias=self.antialias)
+            # if interpolation in ('linear', 'bilinear', 'bicubic', 'trilinear'):
+            #     inp = F.interpolate(inp.unsqueeze(0), size=self.size, mode=interpolation, align_corners=False, antialias=True).squeeze(0)
+            # else:
+            #     inp = F.interpolate(inp.unsqueeze(0), size=self.size, mode=interpolation).squeeze(0)
+            output = tv_tensors.wrap(output, like=inp)
+            outputs.append(output)
+
+        outputs = tuple(outputs)
+        return _flatten_inputs(outputs)
+
+    def _get_interpolation_mode(self, inp: torch.Tensor):
+        if not isinstance(self.interpolation, dict):
+            return self.interpolation
+        default = self.interpolation.get("others")
+        return self.interpolation.get(type(inp), default)
+
+    def __repr__(self) -> str:
+        s = f"{self.__class__.__name__} ("
+        s += f"size={self.size}, "
+        s += f"interpolation={self.interpolation}, "
+        s += f"antialias={self.antialias})"
+
+        return s
+
+
 class PadResize(torch.nn.Module):
     def __init__(
         self,
@@ -177,6 +278,7 @@ class PadResize(torch.nn.Module):
         s += f"antialias={self.antialias})"
 
         return s
+
 
 class HorizontalFlip(torch.nn.Module):
     def __init__(self, flip: bool = True) -> None:
