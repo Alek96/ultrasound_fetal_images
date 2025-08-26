@@ -3,14 +3,14 @@ from pathlib import Path
 import pytest
 import torch
 
-from src.data.fetal_planes import FetalPlanesDataModule
+from src.data.brain_planes import BrainPlanesDataModule
 
 
 @pytest.mark.parametrize("batch_size", [16, 32])
 def test_fetal_planes_datamodule(batch_size):
     data_dir = "data"
 
-    dm = FetalPlanesDataModule(data_dir=data_dir, sample=True, batch_size=batch_size)
+    dm = BrainPlanesDataModule(data_dir=data_dir, sample=True, batch_size=batch_size)
     dm.prepare_data()
 
     assert not dm.data_train and not dm.data_val and not dm.data_test

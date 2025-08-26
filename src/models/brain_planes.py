@@ -15,7 +15,7 @@ from src.models.utils.wandb import wandb_confusion_matrix
 from src.utils.plots import log_to_wandb
 
 
-class FetalLitModule(LightningModule):
+class BrainPlanesLitModule(LightningModule):
     """A `LightningModule` implements 8 key methods:
 
     ```python
@@ -327,4 +327,4 @@ class FetalLitModule(LightningModule):
 
 
 if __name__ == "__main__":
-    _ = FetalLitModule(None, None, None, None)
+    _ = BrainPlanesLitModule(None, None, None, None)

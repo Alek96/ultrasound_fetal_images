@@ -194,7 +194,7 @@ class FetalBrainPlanesDataset(Dataset):
         data_name: str = "FETAL_PLANES",
         subset: Literal["train", "val", "test"] | None = None,
         train: bool | None = None,
-        identified: bool | None = False,
+        identified: bool | None = None,
         transform: Callable | None = None,
         target_transform: Callable | None = None,
     ):
@@ -204,7 +204,7 @@ class FetalBrainPlanesDataset(Dataset):
         self.transform = transform
         self.target_transform = target_transform
 
-    def load_img_labels(self, subset: str, train: bool, identified: bool):
+    def load_img_labels(self, subset: str | None, train: bool, identified: bool):
         img_labels = pd.read_csv(f"{self.dataset_dir}/data.csv")
         if subset is not None:
             img_labels = img_labels[img_labels["Subset"] == subset]

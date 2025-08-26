@@ -34,7 +34,7 @@ rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
 from src import utils
 from src.data.components.dataset import FetalBrainPlanesDataset
-from src.models.fetal_module import FetalLitModule
+from src.models.brain_planes import BrainPlanesLitModule
 
 log = utils.get_pylogger(__name__)
 
@@ -145,7 +145,7 @@ def main(cfg: DictConfig):
 
     log.info(f"Load model from <{model_path}>")
     checkpoint_file = sorted(model_path.glob("checkpoints/epoch_*.ckpt"))[-1]
-    model = FetalLitModule.load_from_checkpoint(checkpoint_file)
+    model = BrainPlanesLitModule.load_from_checkpoint(checkpoint_file)
     # disable randomness, dropout, etc...
     model.eval()
     model.to(device)

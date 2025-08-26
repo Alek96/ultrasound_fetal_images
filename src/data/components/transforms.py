@@ -99,7 +99,7 @@ class PadToAspectRation(torch.nn.Module):
         self,
         size: Sequence[int],
         fill: TF._utils._FillType | dict[type | str, TF._utils._FillType] = 0,
-        padding_mode: Literal["constant", "edge", "reflect", "symmetric"] = "constant"
+        padding_mode: Literal["constant", "edge", "reflect", "symmetric"] = "constant",
     ) -> None:
         super().__init__()
         self.size = size
@@ -156,7 +156,9 @@ class Resize(torch.nn.Module):
     def __init__(
         self,
         size: Sequence[int],
-        interpolation: T.InterpolationMode | int | Dict[Union[Type, str], Optional[Union[T.InterpolationMode, int]]] = T.InterpolationMode.BILINEAR,
+        interpolation: (
+            T.InterpolationMode | int | dict[type | str, T.InterpolationMode | int | None]
+        ) = T.InterpolationMode.BILINEAR,
         antialias: bool | None = True,
     ) -> None:
         super().__init__()
@@ -201,7 +203,9 @@ class PadResize(torch.nn.Module):
         size: Sequence[int],
         fill: TF._utils._FillType | dict[type | str, TF._utils._FillType] = 0,
         padding_mode: Literal["constant", "edge", "reflect", "symmetric"] = "constant",
-        interpolation: T.InterpolationMode | int | Dict[Union[Type, str], Optional[Union[T.InterpolationMode, int]]] = T.InterpolationMode.BILINEAR,
+        interpolation: (
+            T.InterpolationMode | int | dict[type | str, T.InterpolationMode | int | None]
+        ) = T.InterpolationMode.BILINEAR,
         antialias: bool | None = True,
     ) -> None:
         super().__init__()

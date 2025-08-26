@@ -4,8 +4,8 @@
 # python train.py experiment=example
 
 defaults:
-  - override /data: fetal_planes
-  - override /model: fetal_module
+  - override /data: brain_planes
+  - override /model: brain_planes
   - override /callbacks: brain_planes
   - override /logger: many_loggers
   - override /trainer: gpu

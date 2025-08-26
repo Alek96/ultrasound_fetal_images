@@ -1,4 +1,4 @@
-_target_: src.models.fetal_module.FetalLitModule
+_target_: src.models.brain_planes.BrainPlanesLitModule
 
 criterion:
   _target_: torch.nn.CrossEntropyLoss

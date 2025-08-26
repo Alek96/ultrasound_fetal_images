@@ -1,4 +1,3 @@
-import importlib
 import warnings
 from collections.abc import Callable
 from importlib.util import find_spec
