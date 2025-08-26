@@ -17,7 +17,7 @@ from src.data.utils import group_split
 from src.data.utils.utils import get_over_sampler, get_under_sampler
 
 
-class FetalPlanesDataModule(LightningDataModule):
+class BrainPlanesDataModule(LightningDataModule):
     """A `LightningDataModule` implements 7 key methods:
 
     ```python
@@ -159,7 +159,7 @@ class FetalPlanesDataModule(LightningDataModule):
         if not self.data_train and not self.data_val and not self.data_test:
             train = self.dataset(
                 data_dir=self.hparams.data_dir,
-                subset="train",
+                train=True,
             )
             data_train, data_val = group_split(
                 dataset=train,
@@ -179,7 +179,7 @@ class FetalPlanesDataModule(LightningDataModule):
             )
             self.data_test = self.dataset(
                 data_dir=self.hparams.data_dir,
-                subset="test",
+                train=False,
                 transform=self.test_transforms,
                 target_transform=self.target_transform,
             )
@@ -282,4 +282,4 @@ class FetalPlanesDataModule(LightningDataModule):
 
 
 if __name__ == "__main__":
-    _ = FetalPlanesDataModule()
+    _ = BrainPlanesDataModule()

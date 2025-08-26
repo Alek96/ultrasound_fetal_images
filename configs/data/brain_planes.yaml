@@ -1,4 +1,4 @@
-_target_: src.data.fetal_planes.FetalPlanesDataModule
+_target_: src.data.brain_planes.BrainPlanesDataModule
 data_dir: ${paths.data_dir}
 sample: false
 input_size: [55, 80]

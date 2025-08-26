@@ -8,7 +8,6 @@ from lightning.pytorch.utilities.types import STEP_OUTPUT
 from torch import Tensor
 from torch.distributions.beta import Beta
 
-from src.data.components.dataset import FetalBrainPlanesDataset
 from src.data.components.transforms import OneHotEncoder
 from src.data.utils.utils import show_pytorch_images
 from src.utils.plots import log_to_wandb

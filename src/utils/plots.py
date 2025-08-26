@@ -16,7 +16,6 @@ from src.data.components.dataset import (
     USVideosFrameDataset,
     USVideosSsimFrameDataset,
     VideoQualityDataset,
-    VideosSsimFrameDataset,
     batch_tensor,
 )
 

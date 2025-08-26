@@ -40,7 +40,7 @@ from src import utils
 from src.data.components.dataset import FetalBrainPlanesDataset
 from src.data.components.transforms import Affine, HorizontalFlip, VerticalFlip
 from src.data.utils.google import download
-from src.models.fetal_module import FetalLitModule
+from src.models.brain_planes import BrainPlanesLitModule
 
 log = utils.get_pylogger(__name__)
 
@@ -238,7 +238,7 @@ def create_quality_dataset(cfg: DictConfig):
 
     checkpoint_file = sorted((root / cfg.model_path / "checkpoints").glob("epoch_*.ckpt"))[-1]
     log.info(f"Load model from <{checkpoint_file}>")
-    model = FetalLitModule.load_from_checkpoint(checkpoint_file)
+    model = BrainPlanesLitModule.load_from_checkpoint(checkpoint_file)
     # disable randomness, dropout, etc...
     model.eval()
     device = cfg.device if (cfg.device != "auto") else ("cuda" if torch.cuda.is_available() else "cpu")
