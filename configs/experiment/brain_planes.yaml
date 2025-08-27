@@ -21,8 +21,8 @@ seed: "rand"
 trainer:
   min_epochs: 0
   max_epochs: 100
-  val_check_interval: 0.25
-  accumulate_grad_batches: 2
+  #val_check_interval: 0.25
+  accumulate_grad_batches: 4
   #precision: 16-mixed
 
 callbacks:
@@ -42,7 +42,7 @@ callbacks:
   early_stopping:
     monitor: "val/acc"
     mode: "max"
-    patience: 40
+    patience: 10
     #patience: ${trainer.max_epochs}
   class_image_sampler:
     _target_: src.models.utils.callbacks.ClassImageSampler
@@ -90,15 +90,20 @@ model:
     scales: [1.0, 1.10]
 
 data:
-  input_size: [165, 240]
-  train_val_split: 0.2
-  train_val_split_seed: 5724
-  batch_size: 32
+  data_name: FETAL_BRAIN_PLANES
+  input_size: [192, 256]
+#  input_size: [96, 128]
+#  input_size: [165, 240]
+  batch_size: 16
   num_workers: 12
   pin_memory: True
   sampler: "under"
+  sampler_max_sizes: [[-1, -1, -1, -1, 500]]
   train_transforms:
     - _target_: torchvision.transforms.Grayscale
+    - _target_: src.data.components.transforms.PadToAspectRation
+      size: ${data.input_size}
+      fill: 0
     - _target_: torchvision.transforms.Resize
       size: ${data.input_size}
       antialias: False
@@ -149,6 +154,9 @@ data:
 
   test_transforms:
     - _target_: torchvision.transforms.Grayscale
+    - _target_: src.data.components.transforms.PadToAspectRation
+      size: ${data.input_size}
+      fill: 0
     - _target_: torchvision.transforms.Resize
       size: ${data.input_size}
       antialias: False
@@ -159,7 +167,7 @@ data:
 
 logger:
   wandb:
-    project: "brain_planes"
+    project: "brain_planes_v2"
     tags: ${tags}
     group: "brain_planes"
 extras:

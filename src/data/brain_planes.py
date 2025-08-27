@@ -4,16 +4,13 @@ from typing import Any, Literal
 import torch
 import torchvision.transforms.v2 as T
 from lightning import LightningDataModule
-from torch.utils.data import ConcatDataset, DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset
 
 from src.data.components.dataset import (
     FetalBrainPlanesDataset,
     FetalBrainPlanesSamplesDataset,
-    SsimFrameDataset,
-    TransformDataset,
 )
-from src.data.components.transforms import LabelEncoder
-from src.data.utils import group_split
+from src.data.components.transforms import LabelEncoder, PadToAspectRation
 from src.data.utils.utils import get_over_sampler, get_under_sampler
 
 
@@ -56,15 +53,11 @@ class BrainPlanesDataModule(LightningDataModule):
     def __init__(
         self,
         data_dir: str = "data/",
+        data_name: str = "FETAL_PLANES",
         sample: bool = False,
         input_size: tuple[int, int] = (55, 80),
         train_transforms: list = None,
         test_transforms: list = None,
-        train_val_split: float = 0.2,
-        train_val_split_seed: float = 79,
-        ssim: bool = False,
-        ssim_dataset_name: str = "US_VIDEOS_ssim_0.6",
-        ssim_min_probabilities: Sequence[float] = (0.8, 0.8, 0.8, 0.8, 0.8),
         batch_size: int = 64,
         num_workers: int = 0,
         pin_memory: bool = False,
@@ -72,11 +65,6 @@ class BrainPlanesDataModule(LightningDataModule):
         sampler_max_sizes: Sequence[Sequence[int]] = ((-1, -1, -1, -1, 500),),
     ):
         super().__init__()
-
-        if not ssim:
-            assert len(sampler_max_sizes) == 1
-        else:
-            assert len(sampler_max_sizes) == 2
 
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
@@ -90,6 +78,7 @@ class BrainPlanesDataModule(LightningDataModule):
             self.train_transforms = T.Compose(
                 [
                     T.Grayscale(),
+                    PadToAspectRation(input_size),
                     # RandomPercentCrop(max_percent=20),
                     T.Resize(input_size),
                     # T.AutoAugment(T.AutoAugmentPolicy.IMAGENET),
@@ -111,6 +100,7 @@ class BrainPlanesDataModule(LightningDataModule):
             self.test_transforms = T.Compose(
                 [
                     T.Grayscale(),
+                    PadToAspectRation(input_size),
                     T.Resize(input_size),
                     T.ConvertImageDtype(torch.float32),
                     # T.Normalize(mean=0.17, std=0.19),  # FetalBrain
@@ -121,8 +111,6 @@ class BrainPlanesDataModule(LightningDataModule):
         self.labels = FetalBrainPlanesDataset.labels
         self.target_transform = LabelEncoder(labels=self.labels)
 
-        self.data_train_base: Dataset | None = None
-        self.data_train_ssim: Dataset | None = None
         self.data_train: Dataset | None = None
         self.data_val: Dataset | None = None
         self.data_test: Dataset | None = None
@@ -157,43 +145,30 @@ class BrainPlanesDataModule(LightningDataModule):
         """
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
-            train = self.dataset(
+            self.data_train = self.dataset(
                 data_dir=self.hparams.data_dir,
-                train=True,
-            )
-            data_train, data_val = group_split(
-                dataset=train,
-                test_size=self.hparams.train_val_split,
-                groups=train.img_labels["Patient_num"],
-                random_state=self.hparams.train_val_split_seed,
-            )
-            self.data_train = TransformDataset(
-                dataset=data_train,
+                data_name=self.hparams.data_name,
+                subset="train",
+                identified=True,
                 transform=self.train_transforms,
                 target_transform=self.target_transform,
             )
-            self.data_val = TransformDataset(
-                dataset=data_val,
-                transform=self.test_transforms,
+            self.data_val = self.dataset(
+                data_dir=self.hparams.data_dir,
+                data_name=self.hparams.data_name,
+                subset="val",
+                identified=True,
+                transform=self.train_transforms,
                 target_transform=self.target_transform,
             )
             self.data_test = self.dataset(
                 data_dir=self.hparams.data_dir,
-                train=False,
+                data_name=self.hparams.data_name,
+                subset="test",
+                identified=True,
                 transform=self.test_transforms,
                 target_transform=self.target_transform,
             )
-
-            self.data_train_base = self.data_train
-            if self.hparams.ssim:
-                self.data_train_ssim = SsimFrameDataset(
-                    data_dir=self.hparams.data_dir,
-                    dataset_name=self.hparams.ssim_dataset_name,
-                    min_probabilities=self.hparams.ssim_min_probabilities,
-                    transform=self.train_transforms,
-                    target_transform=self.target_transform,
-                )
-                self.data_train = ConcatDataset([self.data_train_base, self.data_train_ssim])
 
     def train_dataloader(self) -> DataLoader[Any]:
         """Create and return the train dataloader.
@@ -207,9 +182,8 @@ class BrainPlanesDataModule(LightningDataModule):
                 num_workers=self.hparams.num_workers,
                 pin_memory=False,
                 sampler=get_under_sampler(
-                    datasets=[self.data_train_base, self.data_train_ssim],
+                    datasets=[self.data_train],
                     labels=torch.arange(self.num_classes),
-                    # max_sizes=[[-1, -1, -1, -1, 500]],
                     max_sizes=self.hparams.sampler_max_sizes,
                 ),
             )
