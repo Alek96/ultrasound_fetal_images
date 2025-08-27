@@ -6,7 +6,15 @@ import torch
 import torchvision.transforms.v2 as T
 from lightning import LightningModule
 from torch import Tensor
-from torchmetrics import Accuracy, ConfusionMatrix, F1Score, MaxMetric, MeanMetric
+from torchmetrics import (
+    Accuracy,
+    ConfusionMatrix,
+    F1Score,
+    MaxMetric,
+    MeanMetric,
+    Metric,
+)
+from torchmetrics.classification import MulticlassConfusionMatrix
 
 from src.data.components.dataset import FetalBrainPlanesDataset
 from src.data.components.transforms import Affine, HorizontalFlip, VerticalFlip
@@ -71,27 +79,31 @@ class BrainPlanesLitModule(LightningModule):
         # softmax function for aggregation
         self.softmax = torch.nn.Softmax(dim=1)
 
-        # metric objects for calculating and averaging accuracy across batches
-        self.train_acc = Accuracy(task="multiclass", num_classes=num_classes, average="macro")
-        self.val_acc = Accuracy(task="multiclass", num_classes=num_classes, average="macro")
-        self.val_acc_cm = ConfusionMatrix(task="multiclass", num_classes=num_classes, normalize="true")
-        self.val_f1 = F1Score(task="multiclass", num_classes=num_classes, average="macro")
-        self.test_acc = Accuracy(task="multiclass", num_classes=num_classes, average="macro")
-        self.test_acc_cm = ConfusionMatrix(task="multiclass", num_classes=num_classes, normalize="true")
-        self.test_acc_tta = Accuracy(task="multiclass", num_classes=num_classes, average="macro")
-        self.test_f1 = F1Score(task="multiclass", num_classes=num_classes, average="macro")
-
-        # for averaging loss across batches
+        # metric
         self.train_loss = MeanMetric()
-        self.val_loss = MeanMetric()
-        self.test_loss = MeanMetric()
-
-        # for tracking best so far validation accuracy
-        self.val_acc_best = MaxMetric()
-
-        # for tracking confusion matrix
+        self.train_acc = Accuracy(task="multiclass", num_classes=num_classes, average="macro")
+        self.train_f1 = F1Score(task="multiclass", num_classes=num_classes, average="macro")
         self.train_cm = ConfusionMatrix(task="multiclass", num_classes=num_classes, normalize="none")
-        self.test_cm = ConfusionMatrix(task="multiclass", num_classes=num_classes, normalize="none")
+
+        self.val_loss = MeanMetric()
+        self.val_base_acc = Accuracy(task="multiclass", num_classes=num_classes, average="macro")
+        self.val_base_acc_cm = ConfusionMatrix(task="multiclass", num_classes=num_classes, normalize="true")
+        self.val_base_f1 = F1Score(task="multiclass", num_classes=num_classes, average="macro")
+        self.val_tta_acc = Accuracy(task="multiclass", num_classes=num_classes, average="macro")
+        self.val_tta_acc_best = MaxMetric()
+        self.val_tta_acc_cm = ConfusionMatrix(task="multiclass", num_classes=num_classes, normalize="true")
+        self.val_tta_f1 = F1Score(task="multiclass", num_classes=num_classes, average="macro")
+        self.val_tta_f1_best = MaxMetric()
+
+        self.test_loss = MeanMetric()
+        self.test_base_acc = Accuracy(task="multiclass", num_classes=num_classes, average="macro")
+        self.test_base_acc_cm = ConfusionMatrix(task="multiclass", num_classes=num_classes, normalize="true")
+        self.test_base_f1 = F1Score(task="multiclass", num_classes=num_classes, average="macro")
+        self.test_base_cm = ConfusionMatrix(task="multiclass", num_classes=num_classes, normalize="none")
+        self.test_tta_acc = Accuracy(task="multiclass", num_classes=num_classes, average="macro")
+        self.test_tta_acc_cm = ConfusionMatrix(task="multiclass", num_classes=num_classes, normalize="true")
+        self.test_tta_f1 = F1Score(task="multiclass", num_classes=num_classes, average="macro")
+        self.test_tta_cm = ConfusionMatrix(task="multiclass", num_classes=num_classes, normalize="none")
 
         # tta
         self.vta_transforms = self.create_transforms(vta_transforms)
@@ -115,14 +127,6 @@ class BrainPlanesLitModule(LightningModule):
                 transforms["scales"] if "scales" in transforms else [1.0],
             )
         ]
-
-    def on_train_start(self) -> None:
-        """Lightning hook that is called when training begins."""
-        # by default lightning executes validation step sanity checks before training starts,
-        # so we need to make sure val_acc_best doesn't store accuracy from these checks
-        self.val_acc_best.reset()
-        # reset train_cm before every run
-        self.train_cm.reset()
 
     def forward(self, x: Tensor) -> Tensor:
         return self.net(x)
@@ -177,12 +181,25 @@ class BrainPlanesLitModule(LightningModule):
 
         return loss, true_y
 
-    def model_tta_step(self, batch: tuple[Tensor, Tensor], transforms) -> tuple[Tensor, Tensor, Tensor]:
+    def model_tta_step(self, batch: tuple[Tensor, Tensor], transforms) -> tuple[Tensor, Tensor, Tensor, Tensor]:
         x, y = batch
         logits, y_hat = self.forward_tta(x, transforms)
-        preds = torch.argmax(y_hat, dim=1)
         loss, y = self.criterion(logits, y)
-        return loss, preds, y
+        preds = torch.argmax(logits, dim=1)
+        tta_preds = torch.argmax(y_hat, dim=1)
+        return loss, preds, tta_preds, y
+
+    def on_train_start(self) -> None:
+        """Lightning hook that is called when training begins."""
+        # by default lightning executes validation step sanity checks before training starts,
+        # so we need to make sure *_best doesn't store accuracy from these checks
+        self.val_tta_acc_best.reset()
+        self.val_tta_f1_best.reset()
+
+    def on_train_epoch_start(self) -> None:
+        """Lightning hook that is called in the training loop at the very beginning of the epoch."""
+        # reset train_cm before every run
+        self.train_cm.reset()
 
     def training_step(self, batch: tuple[Tensor, Tensor], batch_idx: int) -> dict:
         """Perform a single training step on a batch of data from the training set.
@@ -194,11 +211,13 @@ class BrainPlanesLitModule(LightningModule):
         loss, preds, targets = self.model_step(batch)
 
         # update and log metrics
-        self.train_loss(loss, weight=preds.shape[0])
+        self.train_loss(loss, weight=targets.shape[0])
         self.train_acc(preds, targets)
+        self.train_f1(preds, targets)
         self.train_cm.update(preds, targets)
         self.log("train/loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("train/acc", self.train_acc, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("train/f1", self.train_f1, on_step=False, on_epoch=True, prog_bar=True)
 
         # remember to always return loss from `training_step()` or backpropagation will fail!
         return {"loss": loss, "preds": preds, "targets": targets}
@@ -209,7 +228,8 @@ class BrainPlanesLitModule(LightningModule):
 
     def on_validation_start(self) -> None:
         """Lightning hook that is called when a validation epoch ends."""
-        self.val_acc_cm.reset()
+        self.val_base_acc_cm.reset()
+        self.val_tta_acc_cm.reset()
 
     def validation_step(self, batch: tuple[Tensor, Tensor], batch_idx: int, dataloader_idx: int = 0) -> dict:
         """Perform a single validation step on a batch of data from the validation set.
@@ -219,35 +239,52 @@ class BrainPlanesLitModule(LightningModule):
         :param batch_idx: The index of the current batch.
         :param dataloader_idx: The index of the current dataloader.
         """
-        loss, preds, targets = self.model_tta_step(batch, transforms=self.vta_transforms)
+        loss, preds, tta_preds, targets = self.model_tta_step(batch, transforms=self.vta_transforms)
 
         # update and log metrics
-        self.val_loss(loss, weight=preds.shape[0])
-        self.val_acc(preds, targets)
-        self.val_acc_cm.update(preds, targets)
-        self.val_f1(preds, targets)
+        self.val_loss(loss, weight=targets.shape[0])
+        self.val_base_acc(preds, targets)
+        self.val_base_acc_cm.update(preds, targets)
+        self.val_base_f1(preds, targets)
+        self.val_tta_acc(tta_preds, targets)
+        self.val_tta_acc_cm.update(tta_preds, targets)
+        self.val_tta_f1(tta_preds, targets)
         self.log("val/loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("val/acc", self.val_acc, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("val/f1", self.val_f1, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("val/base/acc", self.val_base_acc, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("val/base/f1", self.val_base_f1, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("val/tta/acc", self.val_tta_acc, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("val/tta/f1", self.val_tta_f1, on_step=False, on_epoch=True, prog_bar=True)
 
-        return {"loss": loss, "preds": preds, "targets": targets}
+        return {"loss": loss, "preds": tta_preds, "targets": targets}
 
     def on_validation_epoch_end(self) -> None:
         """Lightning hook that is called when a validation epoch ends."""
-        acc = self.val_acc.compute()  # get current val acc
-        self.val_acc_best(acc)  # update best so far val acc
-        confusion_matrix = self.val_acc_cm.compute()
-        val_acc_brain_planes = self.confusion_matrix_acc(confusion_matrix, [0, 1, 2])
+        val_base_acc_brain = self.brain_acc(self.val_base_acc_cm)
+        val_base_acc_head = self.head_acc(self.val_base_acc_cm)
+        val_tta_acc_brain = self.brain_acc(self.val_tta_acc_cm)
+        val_tta_acc_head = self.head_acc(self.val_tta_acc_cm)
+        self.val_tta_acc_best(self.val_tta_acc.compute())
+        self.val_tta_f1_best(self.val_tta_f1.compute())
 
-        # log `val_acc_best` as a value through `.compute()` method, instead of as a metric object
+        # log value through `.compute()` method, instead of as a metric object
         # otherwise metric would be reset by lightning after each epoch
-        self.log("val/acc_best", self.val_acc_best.compute(), sync_dist=True, prog_bar=True)
-        self.log("val/acc_brain_planes", val_acc_brain_planes, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("val/base/acc_brain", val_base_acc_brain, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("val/base/acc_head", val_base_acc_head, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("val/tta/acc_brain", val_tta_acc_brain, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("val/tta/acc_head", val_tta_acc_head, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("val/tta/acc_best", self.val_tta_acc_best.compute(), sync_dist=True, prog_bar=True)
+        self.log("val/tta/f1_best", self.val_tta_f1_best.compute(), sync_dist=True, prog_bar=True)
+
+    def on_train_end(self) -> None:
+        """Lightning hook that is called when training ends."""
+        self.log_confusion_matrix("train/conf", self.train_cm.compute())
 
     def on_test_start(self) -> None:
         """Lightning hook that is called when testing begins."""
-        self.test_acc_cm.reset()
-        self.test_cm.reset()
+        self.test_base_acc_cm.reset()
+        self.test_base_cm.reset()
+        self.test_tta_acc_cm.reset()
+        self.test_tta_cm.reset()
 
     def test_step(self, batch: tuple[Tensor, Tensor], batch_idx: int) -> dict:
         """Perform a single test step on a batch of data from the test set.
@@ -256,30 +293,47 @@ class BrainPlanesLitModule(LightningModule):
             labels.
         :param batch_idx: The index of the current batch.
         """
-        loss, preds, targets = self.model_step(batch)
-        _, tta_preds, _ = self.model_tta_step(batch, transforms=self.tta_transforms)
+        loss, preds, tta_preds, targets = self.model_tta_step(batch, transforms=self.tta_transforms)
 
         # update and log metrics
-        self.test_loss(loss, weight=preds.shape[0])
-        self.test_acc(preds, targets)
-        self.test_acc_cm.update(preds, targets)
-        self.test_acc_tta(tta_preds, targets)
-        self.test_f1(preds, targets)
-        self.test_cm.update(preds, targets)
+        self.test_loss(loss, weight=targets.shape[0])
+        self.test_base_acc(preds, targets)
+        self.test_base_acc_cm.update(preds, targets)
+        self.test_base_f1(preds, targets)
+        self.test_base_cm.update(preds, targets)
+        self.test_tta_acc(tta_preds, targets)
+        self.test_tta_acc_cm.update(tta_preds, targets)
+        self.test_tta_f1(tta_preds, targets)
+        self.test_tta_cm.update(tta_preds, targets)
         self.log("test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("test/acc", self.test_acc, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("test/acc_tta", self.test_acc_tta, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("test/f1", self.test_f1, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("test/base/acc", self.test_base_acc, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("test/base/f1", self.test_base_f1, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("test/tta/acc", self.test_tta_acc, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("test/tta/f1", self.test_tta_f1, on_step=False, on_epoch=True, prog_bar=True)
 
-        return {"loss": loss, "preds": preds, "targets": targets}
+        return {"loss": loss, "preds": tta_preds, "targets": targets}
 
     def on_test_epoch_end(self) -> None:
         """Lightning hook that is called when a test epoch ends."""
-        confusion_matrix = self.test_acc_cm.compute()
-        test_acc_brain_planes = self.confusion_matrix_acc(confusion_matrix, [0, 1, 2])
-        self.log("test/acc_brain_planes", test_acc_brain_planes, on_step=False, on_epoch=True, prog_bar=True)
-        self.log_confusion_matrix("train/conf", self.train_cm.compute())
-        self.log_confusion_matrix("test/conf", self.test_cm.compute())
+        test_base_acc_brain = self.brain_acc(self.test_base_acc_cm)
+        test_base_acc_head = self.head_acc(self.test_base_acc_cm)
+        test_tta_acc_brain = self.brain_acc(self.test_tta_acc_cm)
+        test_tta_acc_head = self.head_acc(self.test_tta_acc_cm)
+
+        self.log("test/base/acc_brain", test_base_acc_brain, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("test/base/acc_head", test_base_acc_head, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("test/tta/acc_brain", test_tta_acc_brain, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("test/tta/acc_head", test_tta_acc_head, on_step=False, on_epoch=True, prog_bar=True)
+        self.log_confusion_matrix("test/base/conf", self.test_base_cm.compute())
+        self.log_confusion_matrix("test/tta/conf", self.test_tta_cm.compute())
+
+    def brain_acc(self, cm: Metric):
+        confusion_matrix = cm.compute()
+        return self.confusion_matrix_acc(confusion_matrix, [0, 1, 2])
+
+    def head_acc(self, cm: Metric):
+        confusion_matrix = cm.compute()
+        return self.confusion_matrix_acc(confusion_matrix, [0, 1, 2, 3])
 
     @staticmethod
     def confusion_matrix_acc(confusion_matrix, class_idx):
