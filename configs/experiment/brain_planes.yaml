@@ -15,8 +15,8 @@ defaults:
 # this allows you to overwrite only specified parameters
 
 find_lr: False
-
 seed: "rand"
+clean-up: true
 
 trainer:
   min_epochs: 0
@@ -37,10 +37,10 @@ callbacks:
     swa_lrs:
     swa_epoch_start:
   model_checkpoint:
-    monitor: "val/acc"
+    monitor: "val/tta/acc"
     mode: "max"
   early_stopping:
-    monitor: "val/acc"
+    monitor: "val/tta/acc"
     mode: "max"
     patience: 10
     #patience: ${trainer.max_epochs}
@@ -92,8 +92,8 @@ model:
 data:
   data_name: FETAL_BRAIN_PLANES
   input_size: [192, 256]
-#  input_size: [96, 128]
-#  input_size: [165, 240]
+  #  input_size: [96, 128]
+  #  input_size: [165, 240]
   batch_size: 16
   num_workers: 12
   pin_memory: True
