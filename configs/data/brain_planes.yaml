@@ -1,10 +1,14 @@
 _target_: src.data.brain_planes.BrainPlanesDataModule
 data_dir: ${paths.data_dir}
+data_name: FETAL_PLANES
 sample: false
-input_size: [55, 80]
+input_size: [64, 64]
 
 train_transforms:
   - _target_: torchvision.transforms.Grayscale
+  - _target_: src.data.components.transforms.PadToAspectRation
+    size: ${data.input_size}
+    fill: 0
   - _target_: torchvision.transforms.Resize
     size: ${data.input_size}
     antialias: true
@@ -42,6 +46,9 @@ train_transforms:
 
 test_transforms:
   - _target_: torchvision.transforms.Grayscale
+  - _target_: src.data.components.transforms.PadToAspectRation
+    size: ${data.input_size}
+    fill: 0
   - _target_: torchvision.transforms.Resize
     size: ${data.input_size}
     antialias: true
@@ -57,11 +64,6 @@ test_transforms:
   #  mean: 0.449
   #  std: 0.226
 
-train_val_split: 0.2
-train_val_split_seed: 79
-ssim: False
-ssim_dataset_name: "US_VIDEOS_ssim_0.6"
-ssim_min_probabilities: [0.8, 0.8, 0.8, 0.8, 0.8]
 batch_size: 128
 num_workers: 8
 pin_memory: false

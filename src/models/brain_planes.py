@@ -194,7 +194,7 @@ class BrainPlanesLitModule(LightningModule):
         loss, preds, targets = self.model_step(batch)
 
         # update and log metrics
-        self.train_loss(loss)
+        self.train_loss(loss, weight=preds.shape[0])
         self.train_acc(preds, targets)
         self.train_cm.update(preds, targets)
         self.log("train/loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True)
@@ -222,7 +222,7 @@ class BrainPlanesLitModule(LightningModule):
         loss, preds, targets = self.model_tta_step(batch, transforms=self.vta_transforms)
 
         # update and log metrics
-        self.val_loss(loss)
+        self.val_loss(loss, weight=preds.shape[0])
         self.val_acc(preds, targets)
         self.val_acc_cm.update(preds, targets)
         self.val_f1(preds, targets)
@@ -260,7 +260,7 @@ class BrainPlanesLitModule(LightningModule):
         _, tta_preds, _ = self.model_tta_step(batch, transforms=self.tta_transforms)
 
         # update and log metrics
-        self.test_loss(loss)
+        self.test_loss(loss, weight=preds.shape[0])
         self.test_acc(preds, targets)
         self.test_acc_cm.update(preds, targets)
         self.test_acc_tta(tta_preds, targets)
