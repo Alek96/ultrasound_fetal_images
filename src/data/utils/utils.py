@@ -85,6 +85,7 @@ def get_over_sampler(dataset: Dataset) -> WeightedRandomSampler:
 
 def show_pytorch_images(
     images: list[tuple[Tensor, str]],
+    gray: bool = True,
     tick_labels: bool = False,
     cols_names=None,
     rows_names=None,
@@ -106,16 +107,23 @@ def show_pytorch_images(
 
             img = images[i * n + j]
             label = None
+            if isinstance(img, tuple):
+                img, label = img
 
             if img is None:
                 continue
 
-            if isinstance(img, tuple):
-                img, label = img
             img = img.detach()
             img = TF.to_pil_image(img)
-            img = TF.to_grayscale(img)
-            axes[i, j].imshow(np.asarray(img), cmap="gray")
+
+            if gray:
+                img = TF.to_grayscale(img)
+                img = np.asarray(img)
+                axes[i, j].imshow(img, cmap="gray")
+            else:
+                img = np.asarray(img)
+                axes[i, j].imshow(img)
+
             if label is not None:
                 axes[i, j].set_xlabel(label)
 

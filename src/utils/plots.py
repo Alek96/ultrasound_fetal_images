@@ -11,7 +11,7 @@ from lightning import LightningModule, Trainer
 from lightning.pytorch.loggers import Logger, WandbLogger
 from tqdm import tqdm
 
-from data.components.transforms import PadToAspectRation
+from src.data.components.transforms import PadToAspectRation
 from src.data.components.dataset import (
     FetalBrainPlanesDataset,
     USVideosFrameDataset,
