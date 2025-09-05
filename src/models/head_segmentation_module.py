@@ -6,6 +6,7 @@ from torch import Tensor
 from torchmetrics import Accuracy, ConfusionMatrix, F1Score, MaxMetric, MeanMetric
 
 from src.data.components.dataset import HeadSegmentationDataset
+from src.models.components.loss import BinaryDiceScore
 from src.models.utils.wandb import wandb_confusion_matrix
 from src.utils.plots import log_to_wandb
 
@@ -59,15 +60,19 @@ class HeadSegmentationLitModule(LightningModule):
 
         # loss function
         self.criterion_fn = criterion()
+        self.dice = BinaryDiceScore()
 
         # metric
         self.train_loss = MeanMetric()
+        self.train_dice = MeanMetric()
         self.train_label_f1 = F1Score(task="binary")
         self.train_label_acc = Accuracy(task="binary")
         self.train_pixel_f1 = F1Score(task="binary")
         self.train_pixel_acc = Accuracy(task="binary")
 
         self.val_loss = MeanMetric()
+        self.val_dice = MeanMetric()
+        self.val_dice_best = MaxMetric()
         self.val_label_f1 = F1Score(task="binary")
         self.val_label_f1_best = MaxMetric()
         self.val_label_acc = Accuracy(task="binary")
@@ -78,6 +83,7 @@ class HeadSegmentationLitModule(LightningModule):
         self.val_pixel_acc_best = MaxMetric()
 
         self.test_loss = MeanMetric()
+        self.test_dice = MeanMetric()
         self.test_label_f1 = F1Score(task="binary")
         self.test_label_acc = Accuracy(task="binary")
         self.test_label_cm = ConfusionMatrix(task="binary", normalize="none")
@@ -88,6 +94,7 @@ class HeadSegmentationLitModule(LightningModule):
         """Lightning hook that is called when training begins."""
         # by default lightning executes validation step sanity checks before training starts,
         # so we need to make sure *_best metrics didn't store accuracy from these checks
+        self.val_dice_best.reset()
         self.val_label_f1_best.reset()
         self.val_label_acc_best.reset()
         self.val_pixel_f1_best.reset()
@@ -120,14 +127,17 @@ class HeadSegmentationLitModule(LightningModule):
         :param batch_idx: The index of the current batch.
         """
         loss, logits, prediction_mask, masks, prediction_label, labels = self.model_step(batch)
+        dice = self.dice(prediction_mask, masks)
 
         # update and log metrics
         self.train_loss(loss, weight=logits.shape[0])
+        self.train_dice(dice, weight=logits.shape[0])
         self.train_label_f1(prediction_label, labels)
         self.train_label_acc(prediction_label, labels)
         self.train_pixel_f1(prediction_mask, masks)
         self.train_pixel_acc(prediction_mask, masks)
         self.log("train/loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("train/dice", self.train_dice, on_step=False, on_epoch=True, prog_bar=True)
         self.log("train/label/f1", self.train_label_f1, on_step=False, on_epoch=True, prog_bar=True)
         self.log("train/label/acc", self.train_label_acc, on_step=False, on_epoch=True, prog_bar=True)
         self.log("train/pixel/f1", self.train_pixel_f1, on_step=False, on_epoch=True, prog_bar=True)
@@ -153,14 +163,17 @@ class HeadSegmentationLitModule(LightningModule):
         :param dataloader_idx: The index of the current dataloader.
         """
         loss, logits, prediction_mask, masks, prediction_label, labels = self.model_step(batch)
+        dice = self.dice(prediction_mask, masks)
 
         # update and log metrics
         self.val_loss(loss, weight=logits.shape[0])
+        self.val_dice(dice, weight=logits.shape[0])
         self.val_label_f1(prediction_label, labels)
         self.val_label_acc(prediction_label, labels)
         self.val_pixel_f1(prediction_mask, masks)
         self.val_pixel_acc(prediction_mask, masks)
         self.log("val/loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("val/dice", self.val_dice, on_step=False, on_epoch=True, prog_bar=True)
         self.log("val/label/f1", self.val_label_f1, on_step=False, on_epoch=True, prog_bar=True)
         self.log("val/label/acc", self.val_label_acc, on_step=False, on_epoch=True, prog_bar=True)
         self.log("val/pixel/f1", self.val_pixel_f1, on_step=False, on_epoch=True, prog_bar=True)
@@ -170,6 +183,7 @@ class HeadSegmentationLitModule(LightningModule):
 
     def on_validation_epoch_end(self) -> None:
         """Lightning hook that is called when a validation epoch ends."""
+        self.val_dice_best(self.val_dice.compute())
         self.val_label_f1_best(self.val_label_f1.compute())
         self.val_label_acc_best(self.val_label_acc.compute())
         self.val_pixel_f1_best(self.val_pixel_f1.compute())
@@ -177,6 +191,7 @@ class HeadSegmentationLitModule(LightningModule):
 
         # log a value through `.compute()` method, instead of as a metric object
         # otherwise metric would be reset by lightning after each epoch
+        self.log("val/dice_best", self.val_dice_best.compute(), sync_dist=True, prog_bar=True)
         self.log("val/label/f1_best", self.val_label_f1_best.compute(), sync_dist=True, prog_bar=True)
         self.log("val/label/acc_best", self.val_label_acc_best.compute(), sync_dist=True, prog_bar=True)
         self.log("val/pixel/f1_best", self.val_pixel_f1_best.compute(), sync_dist=True, prog_bar=True)
@@ -194,15 +209,18 @@ class HeadSegmentationLitModule(LightningModule):
         :param batch_idx: The index of the current batch.
         """
         loss, logits, prediction_mask, masks, prediction_label, labels = self.model_step(batch)
+        dice = self.dice(prediction_mask, masks)
 
         # update and log metrics
         self.test_loss(loss, weight=logits.shape[0])
+        self.test_dice(dice, weight=logits.shape[0])
         self.test_label_f1(prediction_label, labels)
         self.test_label_acc(prediction_label, labels)
         self.test_label_cm.update(prediction_label, labels)
         self.test_pixel_f1(prediction_mask, masks)
         self.test_pixel_acc(prediction_mask, masks)
         self.log("test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("test/dice", self.test_dice, on_step=False, on_epoch=True, prog_bar=True)
         self.log("test/label/f1", self.test_label_f1, on_step=False, on_epoch=True, prog_bar=True)
         self.log("test/label/acc", self.test_label_acc, on_step=False, on_epoch=True, prog_bar=True)
         self.log("test/pixel/f1", self.test_pixel_f1, on_step=False, on_epoch=True, prog_bar=True)

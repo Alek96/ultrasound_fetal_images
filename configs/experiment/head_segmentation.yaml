@@ -20,7 +20,7 @@ clean-up: true
 
 trainer:
   min_epochs: 0
-  max_epochs: 60
+  max_epochs: 50
   #precision: 16-mixed
   #accumulate_grad_batches: 2
 
@@ -39,9 +39,11 @@ model:
     _target_: segmentation_models_pytorch.Unet
     encoder_name: tu-mobilenetv4_conv_small
   lr: 1e-03
+  criterion:
+    smooth: 1e-6
   optimizer:
     weight_decay: 1e-5
-    amsgrad: false
+    amsgrad: True
 
 data:
   input_size: [192, 256]
