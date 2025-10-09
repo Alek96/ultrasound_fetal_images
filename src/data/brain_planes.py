@@ -149,7 +149,6 @@ class BrainPlanesDataModule(LightningDataModule):
                 data_dir=self.hparams.data_dir,
                 data_name=self.hparams.data_name,
                 subset="train",
-                identified=True,
                 transform=self.train_transforms,
                 target_transform=self.target_transform,
             )
@@ -157,7 +156,6 @@ class BrainPlanesDataModule(LightningDataModule):
                 data_dir=self.hparams.data_dir,
                 data_name=self.hparams.data_name,
                 subset="val",
-                identified=True,
                 transform=self.train_transforms,
                 target_transform=self.target_transform,
             )
@@ -165,7 +163,6 @@ class BrainPlanesDataModule(LightningDataModule):
                 data_dir=self.hparams.data_dir,
                 data_name=self.hparams.data_name,
                 subset="test",
-                identified=True,
                 transform=self.test_transforms,
                 target_transform=self.target_transform,
             )

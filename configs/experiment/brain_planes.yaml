@@ -9,7 +9,7 @@ defaults:
   - override /callbacks: brain_planes
   - override /logger: many_loggers
   - override /trainer: gpu
-#  - override /extras: plot_video_probabilities
+  - override /extras: plot_video_probabilities
 
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
@@ -37,10 +37,12 @@ callbacks:
     swa_lrs:
     swa_epoch_start:
   model_checkpoint:
-    monitor: "val/tta/acc"
+    #monitor: "val/tta/f1"
+    monitor: "val/tta/acc_head"
     mode: "max"
   early_stopping:
-    monitor: "val/tta/acc"
+    #monitor: "val/tta/f1"
+    monitor: "val/tta/acc_head"
     mode: "max"
     patience: 10
     #patience: ${trainer.max_epochs}
@@ -58,9 +60,7 @@ model:
     weight:
       _target_: torch.tensor
       #"Trans-ventricular" "Trans-thalamic" "Trans-cerebellum" "Other" "Not A Brain"
-      #data: [4.83, 1.63, 3.80, 18.52, 0.26]
       data: [1.37, 0.46, 1.08, 5.26, 0.5]
-      #data: [2.68, 0.91, 2.11, 10.29, 1.12]
       dtype:
         _target_: hydra.utils.get_object
         path: torch.float32
@@ -75,6 +75,7 @@ model:
   #  patience: 5
   net_spec:
     name: "efficientnet_v2_m"
+  num_classes: 5
   softmax_target: True
   vta_transforms:
     horizontal_flips: [False, True]
@@ -90,10 +91,10 @@ model:
     scales: [1.0, 1.10]
 
 data:
-  data_name: FETAL_BRAIN_PLANES
+  data_name: FETAL_BRAIN_PLANES_2
   input_size: [192, 256]
-  #  input_size: [96, 128]
-  #  input_size: [165, 240]
+  #input_size: [96, 128]
+  #input_size: [165, 240]
   batch_size: 16
   num_workers: 12
   pin_memory: True
@@ -173,4 +174,4 @@ logger:
 extras:
   after_test_plots:
     enabled: false
-    video_dataset_dir: "US_VIDEOS_ssim_0.7"
+    video_dataset_dir: "US_VIDEOS_ssim_0.7_crop"
