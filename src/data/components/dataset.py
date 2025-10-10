@@ -189,7 +189,6 @@ class FetalBrainPlanesDataset(Dataset):
         "Trans-ventricular",
         "Trans-thalamic",
         "Trans-cerebellum",
-        "Other",
         "Not A Brain",
     ]
 
@@ -214,8 +213,8 @@ class FetalBrainPlanesDataset(Dataset):
             img_labels = img_labels[img_labels["Subset"] == subset]
         if train is not None:
             img_labels = img_labels[img_labels["Train"] == (1 if train else 0)]
-        img_labels = img_labels[img_labels["Identified"] == 1]
-        img_labels = img_labels[["Image_name", "Image_crop_name", "Patient_num", "Brain_plane", "Brain_plane_fix"]]
+        img_labels = img_labels[img_labels["Valid"] == 1]
+        img_labels = img_labels[["Image_name", "Image_crop_name", "Patient_num", "Brain_plane"]]
         return img_labels.reset_index(drop=True)
 
     def __len__(self):

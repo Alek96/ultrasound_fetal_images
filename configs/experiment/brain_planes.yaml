@@ -22,7 +22,7 @@ trainer:
   min_epochs: 0
   max_epochs: 100
   #val_check_interval: 0.25
-  accumulate_grad_batches: 4
+  accumulate_grad_batches: 2
   #precision: 16-mixed
 
 callbacks:
@@ -32,17 +32,17 @@ callbacks:
     #_target_: src.models.utils.callbacks.VHMixUpCallback
     alpha: 0.4
     softmax_target: ${model.softmax_target}
-    labels: 5
+    labels: 4
   stochastic_weight_averaging:
     swa_lrs:
     swa_epoch_start:
   model_checkpoint:
     #monitor: "val/tta/f1"
-    monitor: "val/tta/acc_head"
+    monitor: "val/tta/acc_brain"
     mode: "max"
   early_stopping:
     #monitor: "val/tta/f1"
-    monitor: "val/tta/acc_head"
+    monitor: "val/tta/acc_brain"
     mode: "max"
     patience: 10
     #patience: ${trainer.max_epochs}
@@ -52,15 +52,14 @@ callbacks:
       - "Trans-thalamic"
       - "Trans-cerebellum"
       - "Trans-ventricular"
-      - "Other"
       - "Not A Brain"
 
 model:
   criterion:
     weight:
       _target_: torch.tensor
-      #"Trans-ventricular" "Trans-thalamic" "Trans-cerebellum" "Other" "Not A Brain"
-      data: [1.37, 0.46, 1.08, 5.26, 0.5]
+      #"Trans-ventricular" "Trans-thalamic" "Trans-cerebellum" "Not A Brain"
+      data: [1.37, 0.46, 1.08, 0.5]
       dtype:
         _target_: hydra.utils.get_object
         path: torch.float32
@@ -75,7 +74,7 @@ model:
   #  patience: 5
   net_spec:
     name: "efficientnet_v2_m"
-  num_classes: 5
+  num_classes: 4
   softmax_target: True
   vta_transforms:
     horizontal_flips: [False, True]
@@ -95,11 +94,11 @@ data:
   input_size: [192, 256]
   #input_size: [96, 128]
   #input_size: [165, 240]
-  batch_size: 16
+  batch_size: 32
   num_workers: 12
   pin_memory: True
   sampler: "under"
-  sampler_max_sizes: [[-1, -1, -1, -1, 500]]
+  sampler_max_sizes: [[-1, -1, -1, 500]]
   train_transforms:
     - _target_: torchvision.transforms.Grayscale
     - _target_: src.data.components.transforms.PadToAspectRation

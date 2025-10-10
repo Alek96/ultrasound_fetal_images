@@ -4,15 +4,13 @@
 #  debug=fdr
 
 #python src/head_segmentation_train.py experiment=head_segmentation \
-#  tags='["rerun"]' \
+#  tags='["test10", "rerun"]' \
 #  +logger.wandb.notes="rerun" \
 #  logger.wandb.group="MobileNetV4" \
-#  model.optimizer.weight_decay="1e-5" \
-#  model.optimizer.amsgrad="True" \
-#  seed=1838639280 \
+#  seed=2314826881 \
 #  clean-up=false
 
-for i in {10..200}; do
+for i in {21..200}; do
   echo "test ${i}"
   python src/head_segmentation_train.py experiment=head_segmentation \
     tags='["test10"]' \
@@ -68,7 +66,7 @@ done
 #for i in {1..200}; do
 #  echo "test ${i}"
 #  python src/brain_planes_train.py experiment=brain_planes \
-#    tags='["test5"]' \
+#    tags='["test7"]' \
 #    +logger.wandb.notes="t ${i}"
 #done
 
