@@ -10,7 +10,7 @@
 #  seed=2314826881 \
 #  clean-up=false
 
-for i in {21..200}; do
+for i in {10..200}; do
   echo "test ${i}"
   python src/head_segmentation_train.py experiment=head_segmentation \
     tags='["test10"]' \

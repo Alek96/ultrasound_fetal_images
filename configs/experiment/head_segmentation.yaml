@@ -16,7 +16,7 @@ defaults:
 
 find_lr: False
 seed: "rand"
-clean-up: true
+#clean-up: true
 
 trainer:
   min_epochs: 0
