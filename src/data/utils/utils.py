@@ -1,6 +1,8 @@
 from collections.abc import Sequence
 from math import ceil, sqrt
+from pathlib import Path
 
+import PIL
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,12 +12,29 @@ import torchvision.transforms.v2.functional as TF
 from sklearn.model_selection import GroupShuffleSplit
 from torch import Tensor
 from torch.utils.data import Dataset, WeightedRandomSampler
+from torchvision.io import read_image
 
 from src import utils
 from src.data.components.dataset import Subset
 from src.data.components.samplers import UnderSampler
 
 log = utils.get_pylogger(__name__)
+
+
+def read_image_tensor(image_path: str | Path):
+    image = read_image(image_path)
+    if image.shape[0] == 1:
+        image = image.repeat(3, 1, 1)
+    elif image.shape[0] == 4:
+        image = image[:3, :, :]
+    return image
+
+
+def save_image_tensor(image: Tensor, output_path: str | Path):
+    image = image.permute(1, 2, 0).numpy()
+    image = PIL.Image.fromarray(image)
+    image.save(output_path)
+    return image
 
 
 def group_split(
@@ -95,17 +114,18 @@ def show_pytorch_images(
     cols_names = cols_names if cols_names else []
     rows_names = rows_names if rows_names else []
 
-    n = ceil(sqrt(len(images)))
+    ncols = ceil(sqrt(len(images)))
+    nrows = ceil(len(images) / ncols)
     figsize = 16
-    scale = 165 / 230
-    fig, axes = plt.subplots(ncols=n, nrows=n, squeeze=False, figsize=(figsize, figsize * scale))
+    scale = 192 / 256
+    fig, axes = plt.subplots(ncols=ncols, nrows=nrows, squeeze=False, figsize=(figsize, figsize * scale))
 
-    for i in range(n):
-        for j in range(n):
-            if i * n + j >= len(images):
+    for i in range(nrows):
+        for j in range(ncols):
+            if i * ncols + j >= len(images):
                 continue
 
-            img = images[i * n + j]
+            img = images[i * ncols + j]
             label = None
             if isinstance(img, tuple):
                 img, label = img
@@ -138,8 +158,8 @@ def show_pytorch_images(
         ax.set_ylabel(row, rotation=90, size="large")
 
     if not tick_labels:
-        for i in range(n):
-            for j in range(n):
+        for i in range(nrows):
+            for j in range(ncols):
                 axes[i, j].set(xticklabels=[], yticklabels=[], xticks=[], yticks=[])
 
     fig.tight_layout(h_pad=0.1, w_pad=0.1)
@@ -147,19 +167,29 @@ def show_pytorch_images(
 
 
 def show_numpy_images(images: list[tuple[np.ndarray, str]]):
-    n = ceil(sqrt(len(images)))
+    ncols = ceil(sqrt(len(images)))
+    nrows = ceil(len(images) / ncols)
 
-    fig, axes = plt.subplots(ncols=n, nrows=n, squeeze=False, figsize=(20, 15))
+    fig, axes = plt.subplots(ncols=ncols, nrows=nrows, squeeze=False, figsize=(20, 15))
 
-    for i in range(n):
-        for j in range(n):
-            if i * n + j >= len(images):
+    for i in range(nrows):
+        for j in range(ncols):
+            if i * ncols + j >= len(images):
                 continue
 
-            img, label = images[i * n + j]
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            img = images[i * ncols + j]
+            label = None
+            if isinstance(img, tuple):
+                img, label = img
+
+            if len(img.shape) == 3:
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
             axes[i, j].imshow(np.asarray(img), cmap="gray")
-            axes[i, j].set_xlabel(label)
+
+            if label is not None:
+                axes[i, j].set_xlabel(label)
+
             axes[i, j].set(xticklabels=[], yticklabels=[], xticks=[], yticks=[])
 
     fig.tight_layout()

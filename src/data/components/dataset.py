@@ -82,7 +82,7 @@ class HeadSegmentationDataset(Dataset):
     def __init__(
         self,
         data_dir: str,
-        dataset_name: str = "FETAL_HEAD_SEGMENTATION",
+        dataset_name: str = "FETAL_HEAD_SEGMENTATION_2",
         subset: Literal["train", "val", "test"] | None = None,
         transform: Callable | None = None,
     ):
@@ -95,6 +95,7 @@ class HeadSegmentationDataset(Dataset):
         labels = labels.where(pd.notnull(labels), None)
         if subset is not None:
             labels = labels[labels["Subset"] == subset]
+        labels = labels[labels["Valid"] == 1]
         return labels.reset_index(drop=True)
 
     def __len__(self):
@@ -157,6 +158,10 @@ class HeadSegmentationDataset(Dataset):
             return self.transform(*images)
         return images
 
+    def get_image_iterator(self) -> Iterator[torch.Tensor]:
+        for i in range(len(self)):
+            yield self[i, 0]
+
 
 class HeadSegmentationSamplesDataset(HeadSegmentationDataset):
     google_file_id = "123"
@@ -184,7 +189,6 @@ class FetalBrainPlanesDataset(Dataset):
         "Trans-ventricular",
         "Trans-thalamic",
         "Trans-cerebellum",
-        "Other",
         "Not A Brain",
     ]
 
@@ -194,25 +198,23 @@ class FetalBrainPlanesDataset(Dataset):
         data_name: str = "FETAL_PLANES",
         subset: Literal["train", "val", "test"] | None = None,
         train: bool | None = None,
-        identified: bool | None = None,
         transform: Callable | None = None,
         target_transform: Callable | None = None,
     ):
         self.dataset_dir = f"{data_dir}/{data_name}"
-        self.img_labels = self.load_img_labels(subset, train, identified)
+        self.img_labels = self.load_img_labels(subset, train)
         self.img_dir = f"{self.dataset_dir}/Images"
         self.transform = transform
         self.target_transform = target_transform
 
-    def load_img_labels(self, subset: str | None, train: bool, identified: bool):
+    def load_img_labels(self, subset: str | None, train: bool):
         img_labels = pd.read_csv(f"{self.dataset_dir}/data.csv")
         if subset is not None:
             img_labels = img_labels[img_labels["Subset"] == subset]
         if train is not None:
             img_labels = img_labels[img_labels["Train"] == (1 if train else 0)]
-        if identified is not None:
-            img_labels = img_labels[img_labels["Identified"] == (1 if identified else 0)]
-        img_labels = img_labels[["Image_name", "Patient_num", "Brain_plane"]]
+        img_labels = img_labels[img_labels["Valid"] == 1]
+        img_labels = img_labels[["Image_name", "Image_crop_name", "Patient_num", "Brain_plane"]]
         return img_labels.reset_index(drop=True)
 
     def __len__(self):
@@ -232,7 +234,12 @@ class FetalBrainPlanesDataset(Dataset):
         if isinstance(idx, torch.Tensor):
             idx = idx.item()
 
-        img_path = os.path.join(self.img_dir, self.img_labels.Image_name[idx] + ".png")
+        label = self.img_labels.Brain_plane[idx]
+        if label == "Not A Brain":
+            img_path = os.path.join(self.img_dir, self.img_labels.Image_name[idx] + ".png")
+        else:
+            img_path = os.path.join(self.img_dir, self.img_labels.Image_crop_name[idx] + ".png")
+
         image = read_image(img_path)
         if image.shape[0] == 4:
             image = image[:3, :, :]
@@ -260,7 +267,6 @@ class FetalBrainPlanesSamplesDataset(FetalBrainPlanesDataset):
         data_dir: str,
         subset: Literal["train", "val", "test"] | None = None,
         train: bool | None = None,
-        identified: bool | None = False,
         transform: Callable | None = None,
         target_transform: Callable | None = None,
     ):
@@ -273,7 +279,6 @@ class FetalBrainPlanesSamplesDataset(FetalBrainPlanesDataset):
             data_name=data_name,
             subset=subset,
             train=train,
-            identified=identified,
             transform=transform,
             target_transform=target_transform,
         )
@@ -642,7 +647,7 @@ class SsimFrameDataset(Dataset):
         self,
         data_dir: str,
         dataset_name: str = "FETAL_PLANES",
-        min_probabilities: Sequence[float] = [0.8, 0.8, 0.8, 0.8, 0.8],
+        min_probabilities: Sequence[float] = (0.8, 0.8, 0.8, 0.8, 0.8),
         transform: Callable | None = None,
         target_transform: Callable | None = None,
     ):
@@ -655,7 +660,7 @@ class SsimFrameDataset(Dataset):
         )
         self.target_transform = target_transform
 
-    def load_img_labels(self, min_probabilities: list[float]):
+    def load_img_labels(self, min_probabilities: Sequence[float]):
         img_labels = pd.read_csv(f"{self.dataset_dir}/data.csv")
         idxs = None
         for class_idx, min_prob in enumerate(min_probabilities):

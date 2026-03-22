@@ -1,11 +1,73 @@
 #!/bin/bash
 
+#python src/head_segmentation_train.py experiment=head_segmentation \
+#  debug=fdr
+
+#python src/head_segmentation_train.py experiment=head_segmentation \
+#  tags='["test10", "rerun"]' \
+#  +logger.wandb.notes="rerun" \
+#  logger.wandb.group="MobileNetV4" \
+#  seed=2314826881 \
+#  clean-up=false
+
+for i in {10..200}; do
+  echo "test ${i}"
+  python src/head_segmentation_train.py experiment=head_segmentation \
+    tags='["test10"]' \
+    +logger.wandb.notes="t ${i}" \
+    logger.wandb.group="MobileNetV4"
+done
+
+#weights=("1e-5")
+#num_weights=${#weights[@]}
+#amsgrads=("True")
+#num_amsgrads=${#amsgrads[@]}
+#tests=100
+#
+#for (( w=0; w<num_weights; w++ )); do
+#  for (( a=0; a<num_amsgrads; a++ )); do
+#    for (( t=20; t<tests; t++ )); do
+#      python src/head_segmentation_train.py experiment=head_segmentation \
+#        tags='["test7"]' \
+#        +logger.wandb.notes="t $t" \
+#        logger.wandb.group="MobileNetV4" \
+#        model.optimizer.weight_decay="${weights[$w]}" \
+#        model.optimizer.amsgrad="${amsgrads[$a]}"
+#    done
+#  done
+#done
+
+#models=("tu-tf_efficientnetv2_s.in21k")
+#num_models=${#models[@]}
+#tests=20
+#
+#for (( m=0; m<num_models; m++ )); do
+#  for (( t=0; t<tests; t++ )); do
+#    python src/head_segmentation_train.py experiment=head_segmentation \
+#      tags='["test7"]' \
+#      +logger.wandb.notes="t $t" \
+#      logger.wandb.group="EfficientNetV2" \
+#      model.model.encoder_name="${models[$m]}" \
+#      +trainer.accumulate_grad_batches=4 \
+#      data.batch_size=16
+#  done
+#done
+
+
+#python src/brain_planes_train.py experiment=brain_planes \
+#  debug=fdr
+
+#python src/brain_planes_train.py experiment=brain_planes \
+#  tags='["test2"]' \
+#  +logger.wandb.notes="rerun" \
+#  seed=820096712 \
+#  clean-up=false
+
 #for i in {1..200}; do
-#  echo "test 1 ${i}"
-#  python src/brain_planes_train.py experiment=_ra_vf_15_01_12 \
-#    tags='["tta-softmax-test", "rerun"]' \
-#    +logger.wandb.notes="t ${i}" \
-#    logger.wandb.group="_ra_vf_20_01_12"
+#  echo "test ${i}"
+#  python src/brain_planes_train.py experiment=brain_planes \
+#    tags='["test7"]' \
+#    +logger.wandb.notes="t ${i}"
 #done
 
 #python src/brain_planes_train.py experiment=brain_planes_82 \
@@ -43,10 +105,10 @@
 #done
 
 
-for i in {1..20}; do
-  echo "test ${i}"
-  python src/video_quality_train.py experiment=video_quality tags='["test20"]' \
-    +logger.wandb.notes="t 22 ${i}" \
-    data.dataset_name="US_VIDEOS_tran_0500" \
-    logger.wandb.group="g 22"
-done
+#for i in {1..20}; do
+#  echo "test ${i}"
+#  python src/video_quality_train.py experiment=video_quality tags='["test20"]' \
+#    +logger.wandb.notes="t 22 ${i}" \
+#    data.dataset_name="US_VIDEOS_tran_0500" \
+#    logger.wandb.group="g 22"
+#done

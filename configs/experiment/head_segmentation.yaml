@@ -9,14 +9,14 @@ defaults:
   - override /callbacks: head_segmentation
   - override /logger: many_loggers
   - override /trainer: gpu
-#  - override /extras: plot_video_probabilities
+  - override /extras: plot_wrongly_assigned_classes
 
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
 
 find_lr: False
 seed: "rand"
-clean-up: true
+#clean-up: true
 
 trainer:
   min_epochs: 0
@@ -56,3 +56,10 @@ logger:
     project: "head_segmentation"
     tags: ${tags}
     group: "head_segmentation"
+extras:
+  after_test_plots:
+    enabled: true
+    data_dir: ${paths.data_dir}
+    input_size: ${data.input_size}
+    transforms: ${data.test_transforms}
+    batch_size: ${data.batch_size}

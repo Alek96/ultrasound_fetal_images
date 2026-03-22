@@ -1,4 +1,8 @@
+import os
+import random
 from collections.abc import Callable
+from math import ceil
+from pathlib import Path
 from typing import Any
 
 import matplotlib.pyplot as plt
@@ -7,12 +11,16 @@ import torch
 import torchvision.transforms.v2 as T
 import torchvision.transforms.v2.functional as TF
 import wandb
+import pandas as pd
 from lightning import LightningModule, Trainer
 from lightning.pytorch.loggers import Logger, WandbLogger
+from sklearn.model_selection import GroupShuffleSplit
+from torchvision import tv_tensors
 from tqdm import tqdm
 
-from src.data.components.transforms import PadToAspectRation
+from src.data.components.transforms import PadToAspectRation, Resize
 from src.data.components.dataset import (
+    HeadSegmentationDataset,
     FetalBrainPlanesDataset,
     USVideosFrameDataset,
     USVideosSsimFrameDataset,
@@ -41,6 +49,151 @@ class PlotExtras:
 
     def _run(self, trainer: Trainer, model: LightningModule) -> None:
         pass
+
+
+class PlotWronglyAssignedClasses(PlotExtras):
+    def __init__(
+        self,
+        enabled: bool,
+        data_dir: str = "data/",
+        dataset_name: str = "FETAL_HEAD_SEGMENTATION_2",
+        input_size: tuple[int, int] = (55, 80),
+        transforms: list = None,
+        batch_size: int = 32,
+    ):
+        super().__init__(enabled)
+
+        if transforms is not None:
+            self.transforms = T.Compose(transforms)
+        else:
+            self.transforms = T.Compose(
+                [
+                    T.Grayscale(),
+                    PadToAspectRation(input_size),
+                    Resize(input_size, interpolation=T.InterpolationMode.NEAREST),
+                    T.ToDtype(
+                        dtype={
+                            tv_tensors.Image: torch.float32,
+                            tv_tensors.Mask: torch.float32,
+                            "other": None,
+                        },
+                        scale=True,
+                    ),
+                ]
+            )
+
+        self.dataset = HeadSegmentationDataset(
+            data_dir=data_dir,
+            dataset_name=dataset_name,
+            transform=self.transforms,
+        )
+        self.batch_size = batch_size
+        self.file_name = "prediction.csv"
+
+    def _run(self, trainer: Trainer, model: LightningModule) -> None:
+        prediction = self.test_model(model)
+        self.save_prediction(prediction)
+        self.shuffle_dataset()
+
+    def test_model(self, model: LightningModule):
+        predictions = []
+        batch_iterator = batch_tensor(self.dataset.get_image_iterator(), self.batch_size)
+        batch_iterator_len = int(ceil(len(self.dataset) / self.batch_size))
+
+        for batch_idx, images in enumerate(tqdm(batch_iterator, total=batch_iterator_len, desc="Test dataset")):
+            images = images.to(device=model.device)
+            with torch.no_grad():
+                logits = model(images)
+                _, prediction_labels = model.calculate_prediction(logits)
+
+            for i, prediction_label in enumerate(prediction_labels):
+                index = batch_idx * self.batch_size + i
+                is_brain_plane = self.dataset.get_label(index)
+                image_path = self.dataset.labels.Ultrasound_path[index]
+                image_name = Path(image_path).stem
+                if prediction_label == 1:
+                    if not is_brain_plane:
+                        predictions.append((image_name, prediction_label.cpu().item()))
+                else:
+                    if is_brain_plane:
+                        predictions.append((image_name, prediction_label.cpu().item()))
+
+        return predictions
+
+    def save_prediction(self, predictions: list[str]) -> None:
+        file_path = f"{self.dataset.dataset_dir}/{self.file_name}"
+        columns = ["Image_name", "Prediction", "Count"]
+        if os.path.exists(file_path):
+            df = pd.read_csv(file_path)
+        else:
+            df = pd.DataFrame(columns=columns)
+
+        for image_name, prediction_label in predictions:
+            rows = df[df["Image_name"] == image_name]
+            rows = rows[rows["Prediction"] == prediction_label]
+            existing_index = rows.index.to_list()
+            if existing_index:
+                index = existing_index[0]
+                df.loc[index, "Count"] += 1
+            else:
+                index = len(df)
+                df.loc[index] = {
+                    "Image_name": image_name,
+                    "Prediction": prediction_label,
+                    "Count": 1,
+                }
+
+        df = df.sort_values(["Image_name", "Prediction"])
+        df.to_csv(file_path, index=False)
+
+    def shuffle_dataset(self):
+        data_path = f"{self.dataset.dataset_dir}/data.csv"
+        data_df = pd.read_csv(data_path, dtype={"Patient_num": str})
+        data_df = data_df[data_df["Valid"] == 1]
+        data_df = data_df[data_df['Patient_num'].notna()]
+
+        seed_1 = random.randint(1, 10000)
+        seed_2 = random.randint(1, 10000)
+        train_df, val_df, test_df = self.split_dataset(data_df, seed_1, seed_2)
+
+        data_df = pd.read_csv(data_path, dtype={"Patient_num": str})
+        data_df["Subset"] = "train"
+        for index, row in tqdm(data_df.iterrows(), total=len(data_df)):
+            for _ in train_df[train_df["Image_name"] == row["Image_name"]].iterrows():
+                data_df.loc[index, "Subset"] = "train"
+            for _ in val_df[val_df["Image_name"] == row["Image_name"]].iterrows():
+                data_df.loc[index, "Subset"] = "val"
+            for _ in test_df[test_df["Image_name"] == row["Image_name"]].iterrows():
+                data_df.loc[index, "Subset"] = "test"
+
+    def split_dataset(self, df, seed_1, seed_2):
+        train_df, test_df = self.group_split_label(
+            df,
+            test_size=0.4,
+            groups=df["Patient_num"],
+            random_state=seed_1,
+        )
+        train_df = train_df.reset_index(drop=True)
+
+        train_df, val_df = self.group_split_label(
+            train_df,
+            test_size=0.2,
+            groups=train_df["Patient_num"],
+            random_state=seed_2,
+        )
+        return train_df, val_df, test_df
+
+    def group_split_label(
+            self,
+            dataset: pd.DataFrame,
+            test_size: float,
+            groups,
+            random_state: int = None
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        splitter = GroupShuffleSplit(test_size=test_size, n_splits=1, random_state=random_state)
+        split = splitter.split(dataset, groups=groups)
+        train_idx, test_idx = next(split)
+        return dataset.iloc[train_idx].reset_index(drop=True), dataset.iloc[test_idx].reset_index(drop=True)
 
 
 class PlotVideosProbabilities(PlotExtras):

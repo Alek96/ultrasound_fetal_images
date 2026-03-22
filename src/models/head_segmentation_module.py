@@ -109,6 +109,12 @@ class HeadSegmentationLitModule(LightningModule):
         loss = self.criterion_fn(logits, masks)
 
         # calculate prediction label
+        prediction_mask, prediction_label = self.calculate_prediction(logits)
+
+        return loss, logits, prediction_mask, masks, prediction_label, labels
+
+    @staticmethod
+    def calculate_prediction(logits: Tensor) -> tuple[Tensor, Tensor]:
         prediction_mask = torch.sigmoid(logits)  # [B, 1, H, W], values 0-1
         binary_mask = (prediction_mask > 0.5).int()  # [B, 1, H, W], values 0 or 1
         binary_mask = binary_mask.squeeze(1)  # [B, H, W]
@@ -116,8 +122,7 @@ class HeadSegmentationLitModule(LightningModule):
         ones_counts = binary_mask.sum(dim=(1, 2))  # [B]
         ones_percent = ones_counts.float() / total_pixels  # [B]
         prediction_label = (ones_percent >= 0.05).int()  # [B], 1 if >=5% ones, else 0
-
-        return loss, logits, prediction_mask, masks, prediction_label, labels
+        return prediction_mask, prediction_label
 
     def training_step(self, batch: tuple[Tensor, Tensor, Tensor], batch_idx: int) -> Tensor | dict:
         """Perform a single training step on a batch of data from the training set.
