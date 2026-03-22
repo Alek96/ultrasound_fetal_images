@@ -2,11 +2,11 @@ from collections.abc import Sequence
 from math import ceil, sqrt
 from pathlib import Path
 
-import PIL
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import PIL
 import torch
 import torchvision.transforms.v2.functional as TF
 from sklearn.model_selection import GroupShuffleSplit
