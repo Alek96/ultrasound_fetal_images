@@ -39,7 +39,7 @@ net_spec:
   freez_layers: 0
   freez_batch_norm: True
 
-num_classes: 5
+num_classes: 4
 
 softmax_target: False
 

@@ -260,18 +260,14 @@ class BrainPlanesLitModule(LightningModule):
     def on_validation_epoch_end(self) -> None:
         """Lightning hook that is called when a validation epoch ends."""
         val_base_acc_brain = self.brain_acc(self.val_base_acc_cm)
-        val_base_acc_head = self.head_acc(self.val_base_acc_cm)
         val_tta_acc_brain = self.brain_acc(self.val_tta_acc_cm)
-        val_tta_acc_head = self.head_acc(self.val_tta_acc_cm)
         self.val_tta_acc_best(self.val_tta_acc.compute())
         self.val_tta_f1_best(self.val_tta_f1.compute())
 
         # log value through `.compute()` method, instead of as a metric object
         # otherwise metric would be reset by lightning after each epoch
         self.log("val/base/acc_brain", val_base_acc_brain, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("val/base/acc_head", val_base_acc_head, on_step=False, on_epoch=True, prog_bar=True)
         self.log("val/tta/acc_brain", val_tta_acc_brain, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("val/tta/acc_head", val_tta_acc_head, on_step=False, on_epoch=True, prog_bar=True)
         self.log("val/tta/acc_best", self.val_tta_acc_best.compute(), sync_dist=True, prog_bar=True)
         self.log("val/tta/f1_best", self.val_tta_f1_best.compute(), sync_dist=True, prog_bar=True)
 
@@ -316,14 +312,10 @@ class BrainPlanesLitModule(LightningModule):
     def on_test_epoch_end(self) -> None:
         """Lightning hook that is called when a test epoch ends."""
         test_base_acc_brain = self.brain_acc(self.test_base_acc_cm)
-        test_base_acc_head = self.head_acc(self.test_base_acc_cm)
         test_tta_acc_brain = self.brain_acc(self.test_tta_acc_cm)
-        test_tta_acc_head = self.head_acc(self.test_tta_acc_cm)
 
         self.log("test/base/acc_brain", test_base_acc_brain, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("test/base/acc_head", test_base_acc_head, on_step=False, on_epoch=True, prog_bar=True)
         self.log("test/tta/acc_brain", test_tta_acc_brain, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("test/tta/acc_head", test_tta_acc_head, on_step=False, on_epoch=True, prog_bar=True)
         self.log_confusion_matrix("test/base/conf", self.test_base_cm.compute())
         self.log_confusion_matrix("test/tta/conf", self.test_tta_cm.compute())
 
@@ -331,22 +323,18 @@ class BrainPlanesLitModule(LightningModule):
         confusion_matrix = cm.compute()
         return self.confusion_matrix_acc(confusion_matrix, [0, 1, 2])
 
-    def head_acc(self, cm: Metric):
-        confusion_matrix = cm.compute()
-        return self.confusion_matrix_acc(confusion_matrix, [0, 1, 2, 3])
-
     @staticmethod
     def confusion_matrix_acc(confusion_matrix, class_idx):
         true = torch.sum(torch.cat([confusion_matrix[i][i].view(1) for i in class_idx]))
         return true / len(class_idx)
 
-    def log_confusion_matrix(self, name: str, confusion_matrix: Tensor, title: str | None = None):
+    def log_confusion_matrix(self, name: str, confusion_matrix: Tensor):
         log_to_wandb(
             lambda: {
                 name: wandb_confusion_matrix(
                     cm=confusion_matrix,
                     class_names=FetalBrainPlanesDataset.labels,
-                    title=title,
+                    title=name,
                 )
             },
             loggers=self.loggers,

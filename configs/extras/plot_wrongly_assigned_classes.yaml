@@ -1,0 +1,11 @@
+defaults:
+  - default
+
+# log plot to wandb
+after_test_plots:
+  _target_: src.utils.plots.PlotWronglyAssignedClasses
+  enabled: true
+  data_dir: null
+  input_size: [55, 80]
+  transforms: None
+  batch_size: 32

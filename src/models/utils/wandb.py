@@ -22,8 +22,8 @@ def wandb_confusion_matrix(
     }
     title = title or ""
     return wandb.plot_table(
-        "fetal-brain/multi-run_confusion_matrix",
-        wandb.Table(columns=["Actual", "Predicted", "nPredictions"], data=data),
-        fields,
-        {"title": title},
+        vega_spec_name="fetal-brain/multi-run_confusion_matrix",
+        data_table=wandb.Table(columns=["Actual", "Predicted", "nPredictions"], data=data),
+        fields=fields,
+        string_fields={"title": title},
     )
