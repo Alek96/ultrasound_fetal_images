@@ -7,26 +7,26 @@ from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import torch
 import torchvision.transforms.v2 as T
 import torchvision.transforms.v2.functional as TF
 import wandb
-import pandas as pd
 from lightning import LightningModule, Trainer
 from lightning.pytorch.loggers import Logger, WandbLogger
 from sklearn.model_selection import GroupShuffleSplit
 from torchvision import tv_tensors
 from tqdm import tqdm
 
-from src.data.components.transforms import PadToAspectRation, Resize
 from src.data.components.dataset import (
-    HeadSegmentationDataset,
     FetalBrainPlanesDataset,
+    HeadSegmentationDataset,
     USVideosFrameDataset,
     USVideosSsimFrameDataset,
     VideoQualityDataset,
     batch_tensor,
 )
+from src.data.components.transforms import PadToAspectRation, Resize
 
 
 class PlotExtras:
@@ -150,10 +150,10 @@ class PlotWronglyAssignedClasses(PlotExtras):
         data_path = f"{self.dataset.dataset_dir}/data.csv"
         data_df = pd.read_csv(data_path, dtype={"Patient_num": str})
         data_df = data_df[data_df["Valid"] == 1]
-        data_df = data_df[data_df['Patient_num'].notna()]
+        data_df = data_df[data_df["Patient_num"].notna()]
 
-        seed_1 = random.randint(1, 10000)
-        seed_2 = random.randint(1, 10000)
+        seed_1 = random.randint(1, 10000)  # nosec  # B311: acceptable here (non-crypto use)
+        seed_2 = random.randint(1, 10000)  # nosec  # B311: acceptable here (non-crypto use)
         train_df, val_df, test_df = self.split_dataset(data_df, seed_1, seed_2)
 
         data_df = pd.read_csv(data_path, dtype={"Patient_num": str})
@@ -184,11 +184,7 @@ class PlotWronglyAssignedClasses(PlotExtras):
         return train_df, val_df, test_df
 
     def group_split_label(
-            self,
-            dataset: pd.DataFrame,
-            test_size: float,
-            groups,
-            random_state: int = None
+        self, dataset: pd.DataFrame, test_size: float, groups, random_state: int = None
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
         splitter = GroupShuffleSplit(test_size=test_size, n_splits=1, random_state=random_state)
         split = splitter.split(dataset, groups=groups)

@@ -11,7 +11,7 @@ dependencies:
   - mamba
   - pip # pip must be mentioned explicitly, or conda-lock will fail
   - setuptools
-  - poetry=2.1.*
+  - poetry=2.3.*
 
 # Non-standard section listing target platforms for conda-lock:
 platforms:

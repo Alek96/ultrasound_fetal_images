@@ -32,7 +32,7 @@ class BinaryDiceScore(torch.nn.Module):
 
         inputs = (inputs > 0.5).int()
         intersection = (inputs * targets).sum()
-        dice = (2. * intersection + self.smooth) / (inputs.sum() + targets.sum() + self.smooth)
+        dice = (2.0 * intersection + self.smooth) / (inputs.sum() + targets.sum() + self.smooth)
         return dice
 
 
