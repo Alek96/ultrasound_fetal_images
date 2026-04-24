@@ -34,7 +34,7 @@ rootutils = "^1.0.7"       # standardizing the project root setup
 pre-commit = "^4.2.0"      # hooks for applying linters on commit
 rich = "^14.0.0"           # beautiful text formatting in terminal
 pytest = "^8.3.5"          # tests
-pytest-cov = "^6.1.1"
+pytest-cov = "^7.1.0"
 sh = { version = "^2.2.2", markers = "sys_platform == 'linux' or sys_platform == 'darwin'" }
 gdown = "^5.2.0"
 fastapi = "^0.115.12"
