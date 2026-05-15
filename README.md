@@ -12,29 +12,29 @@ Training and evaluation code for a small **ecosystem** of models on fetal ultras
 
 A **planned** (not yet implemented as one script) product flow is: given a fetal ultrasound **video**, run the models end-to-end and export the best still frames for the three main neurosonography planes: **Trans-ventricular**, **Trans-thalamic**, and **Trans-cerebellum**.
 
----
+______________________________________________________________________
 
 ## Stack and layout
 
-| Layer | Role |
-|--------|------|
-| **Conda** | `environment.yml` is locked to `conda-linux-64.lock`; creates `ultrasound_fetal_images_env` with Python and Poetry. |
-| **Poetry** | `pyproject.toml` / `poetry.lock` install PyTorch, Lightning, Hydra, and the rest of the Python dependencies. |
-| **Hydra** | Top-level YAML under `configs/` composes data, model, trainer, callbacks, and optional experiments. |
-| **Lightning** | `src/train.py` instantiates the datamodule and `LightningModule` from `cfg` and runs fit/test. |
+| Layer         | Role                                                                                                                |
+| ------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **Conda**     | `environment.yml` is locked to `conda-linux-64.lock`; creates `ultrasound_fetal_images_env` with Python and Poetry. |
+| **Poetry**    | `pyproject.toml` / `poetry.lock` install PyTorch, Lightning, Hydra, and the rest of the Python dependencies.        |
+| **Hydra**     | Top-level YAML under `configs/` composes data, model, trainer, callbacks, and optional experiments.                 |
+| **Lightning** | `src/train.py` instantiates the datamodule and `LightningModule` from `cfg` and runs fit/test.                      |
 
 Run all CLI entrypoints from the **repository root** so `rootutils` sets `PROJECT_ROOT` (used by `configs/paths/default.yaml` for `data/` and `logs/`).
 
 Important paths:
 
-| Path | Purpose |
-|------|---------|
-| `configs/` | Hydra defaults and experiments per task |
-| `src/` | Training scripts, models, and data modules |
-| `data/` | Datasets (see table below); not necessarily in version control |
-| `logs/` | Typical location for training runs and checkpoints (Hydra output dirs vary by run) |
+| Path       | Purpose                                                                            |
+| ---------- | ---------------------------------------------------------------------------------- |
+| `configs/` | Hydra defaults and experiments per task                                            |
+| `src/`     | Training scripts, models, and data modules                                         |
+| `data/`    | Datasets (see table below); not necessarily in version control                     |
+| `logs/`    | Typical location for training runs and checkpoints (Hydra output dirs vary by run) |
 
----
+______________________________________________________________________
 
 ## How the models connect (training)
 
@@ -72,7 +72,7 @@ flowchart LR
 
 **Class labels (authoritative for the default config):** `FetalBrainPlanesDataset.labels` lists three standard planes plus `"Not A Brain"`. The default `configs/model/brain_planes.yaml` sets `num_classes: 4`. The **product goal** of picking the best frame per **Trans-ventricular**, **Trans-thalamic**, and **Trans-cerebellum** is aligned with the first three indices; non-plane frames are filtered using classifier outputs and (once wired in inference) quality scores.
 
----
+______________________________________________________________________
 
 ## Planned end-to-end inference (single video → three best images)
 
@@ -103,16 +103,16 @@ Intended steps:
 
 Steps 1 and 3–4 map directly to existing modules; step 2, explicit **state resets** on cuts, and the final export script are the main **glue** to implement.
 
----
+______________________________________________________________________
 
 ## Tasks, configs, and data
 
-| Task | Hydra entry script | Top-level config | Datamodule (default) | Default data folder under `data/` |
-|------|-------------------|------------------|----------------------|-------------------------------------|
-| Head segmentation | `python src/head_segmentation_train.py` | `configs/head_segmentation_train.yaml` | `HeadSegmentationDataModule` | `FETAL_HEAD_SEGMENTATION_2` |
-| Brain / fetal planes | `python src/brain_planes_train.py` | `configs/brain_planes_train.yaml` | `BrainPlanesDataModule` | `FETAL_PLANES` (`data_name`) |
-| Video quality (GRU) | `python src/video_quality_train.py` | `configs/video_quality_train.yaml` | `VideoQualityDataModule` | `US_VIDEOS` |
-| Quality dataset build | `python src/create_quality_dataset.py` | `configs/create_quality_dataset.yaml` | (scripted; uses `BrainPlanesLitModule` checkpoint) | reads/writes `US_VIDEOS` layout per script |
+| Task                  | Hydra entry script                      | Top-level config                       | Datamodule (default)                               | Default data folder under `data/`          |
+| --------------------- | --------------------------------------- | -------------------------------------- | -------------------------------------------------- | ------------------------------------------ |
+| Head segmentation     | `python src/head_segmentation_train.py` | `configs/head_segmentation_train.yaml` | `HeadSegmentationDataModule`                       | `FETAL_HEAD_SEGMENTATION_2`                |
+| Brain / fetal planes  | `python src/brain_planes_train.py`      | `configs/brain_planes_train.yaml`      | `BrainPlanesDataModule`                            | `FETAL_PLANES` (`data_name`)               |
+| Video quality (GRU)   | `python src/video_quality_train.py`     | `configs/video_quality_train.yaml`     | `VideoQualityDataModule`                           | `US_VIDEOS`                                |
+| Quality dataset build | `python src/create_quality_dataset.py`  | `configs/create_quality_dataset.yaml`  | (scripted; uses `BrainPlanesLitModule` checkpoint) | reads/writes `US_VIDEOS` layout per script |
 
 Evaluation (test set + checkpoint):
 
@@ -121,7 +121,7 @@ Evaluation (test set + checkpoint):
 
 There is a `configs/video_quality_eval.yaml` but **no** matching `src/video_quality_eval.py` in this tree; use training config overrides or add a small eval wrapper if you need parity.
 
----
+______________________________________________________________________
 
 ## Environment and installation
 
@@ -132,7 +132,7 @@ conda activate ultrasound_fetal_images_env
 
 Updating locks and dependencies is described in [AGENTS.md](AGENTS.md) (`make update`).
 
----
+______________________________________________________________________
 
 ## Training and Hydra overrides
 
@@ -163,7 +163,7 @@ python src/create_quality_dataset.py model_path=/path/to/brain_planes/run_or_ckp
 
 Tunable fields (video roots, augmentation grid, window sizes, etc.) live in `configs/create_quality_dataset.yaml`.
 
----
+______________________________________________________________________
 
 ## Tests and formatting
 
@@ -173,14 +173,14 @@ make test-full   # full pytest
 make format      # pre-commit on all files
 ```
 
----
+______________________________________________________________________
 
 ## Repository map (selected)
 
-| Area | Contents |
-|------|----------|
-| `src/train.py` | Shared `train()` / `retry_train()` for Lightning fit and test |
-| `src/eval.py` | Shared evaluation helper for eval entrypoints |
-| `src/models/` | `head_segmentation_module`, `brain_planes`, `quality_module`, backbones under `components/` |
-| `src/data/` | Lightning datamodules and `components/dataset.py` |
-| `configs/` | Per-task YAML, `configs/experiment/` for pinned hyperparameter sets |
+| Area           | Contents                                                                                    |
+| -------------- | ------------------------------------------------------------------------------------------- |
+| `src/train.py` | Shared `train()` / `retry_train()` for Lightning fit and test                               |
+| `src/eval.py`  | Shared evaluation helper for eval entrypoints                                               |
+| `src/models/`  | `head_segmentation_module`, `brain_planes`, `quality_module`, backbones under `components/` |
+| `src/data/`    | Lightning datamodules and `components/dataset.py`                                           |
+| `configs/`     | Per-task YAML, `configs/experiment/` for pinned hyperparameter sets                         |

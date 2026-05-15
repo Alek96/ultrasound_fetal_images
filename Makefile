@@ -28,7 +28,7 @@ install:
 		poetry install; \
 	else \
 		# Update Conda packages based on generated lock file
-		mamba update --file conda-linux-64.lock; \
+		conda-lock install --name $CONDA_DEFAULT_ENV conda-linux-64.lock; \
 		# Update Poetry packages based on poetry.lock
 		poetry install; \
 	fi
@@ -39,7 +39,7 @@ update: ensure_conda_env
 	# Re-generate Conda lock file(s) based on environment.yml
 	conda-lock -k explicit --conda mamba
 	# Update Conda packages based on re-generated lock file
-	mamba update --file conda-linux-64.lock
+	conda-lock install --name $CONDA_DEFAULT_ENV conda-linux-64.lock
 	# Update Poetry packages and re-generate poetry.lock
 	poetry update
 	# Update pre-commit hook versions in .pre-commit-config.yaml
