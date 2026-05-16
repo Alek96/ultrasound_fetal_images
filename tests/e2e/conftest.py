@@ -10,12 +10,43 @@ from omegaconf import DictConfig, open_dict
 
 
 @pytest.fixture(scope="package")
+def cfg_head_segmentation_train_global() -> DictConfig:
+    """A pytest fixture for setting up a default Hydra DictConfig for head segmentation training.
+
+    :return: A DictConfig object containing a default Hydra configuration for training.
+    """
+    with initialize(version_base="1.3", config_path="../../configs"):
+        cfg = compose(config_name="head_segmentation_train.yaml", return_hydra_config=True, overrides=[])
+
+        with open_dict(cfg):
+            cfg.paths.root_dir = str(rootutils.find_root(indicator=".project-root"))
+            cfg.trainer.max_epochs = 1
+            cfg.trainer.limit_train_batches = 1
+            cfg.trainer.limit_val_batches = 1
+            cfg.trainer.limit_test_batches = 1
+            cfg.trainer.accelerator = "cpu"
+            cfg.trainer.devices = 1
+            cfg.data.sample = True
+            cfg.data.batch_size = 4
+            cfg.data.num_workers = 0
+            cfg.data.pin_memory = False
+            cfg.model.model.encoder_weights = None
+            cfg.extras.print_config = False
+            cfg.extras.enforce_tags = False
+            cfg.logger = None
+            cfg.seed = None
+            cfg.test = False
+
+    return cfg
+
+
+@pytest.fixture(scope="package")
 def cfg_brain_planes_train_global() -> DictConfig:
     """A pytest fixture for setting up a default Hydra DictConfig for training.
 
     :return: A DictConfig object containing a default Hydra configuration for training.
     """
-    with initialize(version_base="1.3", config_path="../configs"):
+    with initialize(version_base="1.3", config_path="../../configs"):
         cfg = compose(config_name="brain_planes_train.yaml", return_hydra_config=True, overrides=[])
 
         # set defaults for all tests
@@ -45,7 +76,7 @@ def cfg_brain_planes_eval_global() -> DictConfig:
 
     :return: A DictConfig containing a default Hydra configuration for evaluation.
     """
-    with initialize(version_base="1.3", config_path="../configs"):
+    with initialize(version_base="1.3", config_path="../../configs"):
         cfg = compose(config_name="brain_planes_eval.yaml", return_hydra_config=True, overrides=["ckpt_path=."])
 
         # set defaults for all tests
@@ -73,7 +104,7 @@ def cfg_create_quality_dataset_global() -> DictConfig:
     :return: A DictConfig object containing a default Hydra configuration for
         create_quality_dataset.
     """
-    with initialize(version_base="1.3", config_path="../configs"):
+    with initialize(version_base="1.3", config_path="../../configs"):
         cfg = compose(config_name="create_quality_dataset.yaml", return_hydra_config=True, overrides=[])
 
         # set defaults for all tests
@@ -90,7 +121,7 @@ def cfg_video_quality_train_global() -> DictConfig:
 
     :return: A DictConfig object containing a default Hydra configuration for training.
     """
-    with initialize(version_base="1.3", config_path="../configs"):
+    with initialize(version_base="1.3", config_path="../../configs"):
         cfg = compose(config_name="video_quality_train.yaml", return_hydra_config=True, overrides=[])
 
         # set defaults for all tests
@@ -120,7 +151,7 @@ def cfg_video_quality_eval_global() -> DictConfig:
 
     :return: A DictConfig containing a default Hydra configuration for evaluation.
     """
-    with initialize(version_base="1.3", config_path="../configs"):
+    with initialize(version_base="1.3", config_path="../../configs"):
         cfg = compose(config_name="video_quality_eval.yaml", return_hydra_config=True, overrides=["ckpt_path=."])
 
         # set defaults for all tests
@@ -139,6 +170,27 @@ def cfg_video_quality_eval_global() -> DictConfig:
             cfg.logger = None
 
     return cfg
+
+
+@pytest.fixture(scope="function")
+def cfg_head_segmentation_train(cfg_head_segmentation_train_global: DictConfig, tmp_path: Path) -> DictConfig:
+    """A pytest fixture built on top of the `cfg_head_segmentation_train_global()` fixture, which
+    accepts a temporary logging path `tmp_path` for generating a temporary logging path.
+
+    :param cfg_head_segmentation_train_global: The input DictConfig object to be modified.
+    :param tmp_path: The temporary logging path.
+
+    :return: A DictConfig with updated output and log directories corresponding to `tmp_path`.
+    """
+    cfg = cfg_head_segmentation_train_global.copy()
+
+    with open_dict(cfg):
+        cfg.paths.output_dir = str(tmp_path)
+        cfg.paths.log_dir = str(tmp_path)
+
+    yield cfg
+
+    GlobalHydra.instance().clear()
 
 
 # this is called by each test which uses `cfg_train` arg
