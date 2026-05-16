@@ -54,8 +54,8 @@ class HeadSegmentationDataModule(LightningDataModule):
         data_dir: str = "data/",
         sample: bool = False,
         input_size: tuple[int, int] = (55, 80),
-        train_transforms: list = None,
-        test_transforms: list = None,
+        train_transforms: list | None = None,
+        test_transforms: list | None = None,
         batch_size: int = 64,
         num_workers: int = 0,
         pin_memory: bool = False,
@@ -126,7 +126,7 @@ class HeadSegmentationDataModule(LightningDataModule):
     def num_classes(self) -> int:
         """Get the number of classes.
 
-        :return: The number of MNIST classes (10).
+        :return: The number of segmentation classes (background / head).
         """
         return 2
 
@@ -151,7 +151,7 @@ class HeadSegmentationDataModule(LightningDataModule):
         :param stage: The stage to setup. Either `"fit"`, `"validate"`, `"test"`, or `"predict"`. Defaults to ``None``.
         """
         # load and split datasets only if not loaded already
-        if not self.data_train and not self.data_val and not self.data_test:
+        if self.data_train is None and self.data_val is None and self.data_test is None:
             self.data_train = self.dataset(
                 data_dir=self.hparams.data_dir,
                 subset="train",
@@ -230,7 +230,3 @@ class HeadSegmentationDataModule(LightningDataModule):
         :param state_dict: The datamodule state returned by `self.state_dict()`.
         """
         pass
-
-
-if __name__ == "__main__":
-    _ = HeadSegmentationDataModule()

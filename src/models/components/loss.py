@@ -8,13 +8,15 @@ class WeightedMSELoss(torch.nn.Module):
         self.weight = weight
 
     def forward(self, y_hat: Tensor, y: Tensor) -> Tensor:
-        loss = y_hat - y
+        residual = y_hat - y
 
-        weight = torch.ones(loss.shape, device=loss.device)
-        weight = torch.masked_fill(weight, loss > 0, self.weight)
-        loss = loss * weight
+        # Build per-element weight: up-weight positive residuals (over-predictions).
+        # The mask must be computed on the raw residual before any squaring.
+        weight = torch.ones(residual.shape, device=residual.device)
+        weight = torch.masked_fill(weight, residual > 0, self.weight)
 
-        loss = torch.mul(loss, loss)
+        # Square first, then apply weight: loss = w * (y_hat - y)²
+        loss = torch.mul(residual, residual) * weight
         return torch.mean(loss)
 
 

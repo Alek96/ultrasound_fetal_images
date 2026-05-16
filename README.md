@@ -43,7 +43,7 @@ Each stage can depend on artifacts or assumptions from the previous one. The dia
 ```mermaid
 flowchart LR
   subgraph dataA [Datasets]
-    HS[FETAL_HEAD_SEGMENTATION_2]
+    HS[FETAL_HEAD_SEGMENTATION]
     FP[FETAL_PLANES]
     VID[US_VIDEOS]
   end
@@ -60,7 +60,7 @@ flowchart LR
   DS --> M3
 ```
 
-1. **Head segmentation** is trained on **`FETAL_HEAD_SEGMENTATION_2`** (`HeadSegmentationDataset` in `src/data/components/dataset.py`). The model is a U-Net (`HeadSegmentationLitModule`, `configs/model/head_segmentation.yaml`): it predicts a **brain mask** and a **binary frame label** (whether the frame is treated as “head” vs not), derived from the predicted mask versus ground truth in the CSV.
+1. **Head segmentation** is trained on **`FETAL_HEAD_SEGMENTATION`** (`HeadSegmentationDataset` in `src/data/components/dataset.py`). The model is a U-Net (`HeadSegmentationLitModule`, `configs/model/head_segmentation.yaml`): it predicts a **brain mask** and a **binary frame label** (whether the frame is treated as “head” vs not), derived from the predicted mask versus ground truth in the CSV.
 
 2. In the intended workflow, the **best** head-segmentation checkpoint is used **outside** this repo’s single train script to **crop or normalize** inputs so that plane classification sees head-centric frames. The **plane classifier** is trained on **`FETAL_PLANES`** (`FetalBrainPlanesDataset`, `configs/data/brain_planes.yaml`).
 
@@ -109,7 +109,7 @@ ______________________________________________________________________
 
 | Task                  | Hydra entry script                      | Top-level config                       | Datamodule (default)                               | Default data folder under `data/`          |
 | --------------------- | --------------------------------------- | -------------------------------------- | -------------------------------------------------- | ------------------------------------------ |
-| Head segmentation     | `python src/head_segmentation_train.py` | `configs/head_segmentation_train.yaml` | `HeadSegmentationDataModule`                       | `FETAL_HEAD_SEGMENTATION_2`                |
+| Head segmentation     | `python src/head_segmentation_train.py` | `configs/head_segmentation_train.yaml` | `HeadSegmentationDataModule`                       | `FETAL_HEAD_SEGMENTATION`                  |
 | Brain / fetal planes  | `python src/brain_planes_train.py`      | `configs/brain_planes_train.yaml`      | `BrainPlanesDataModule`                            | `FETAL_PLANES` (`data_name`)               |
 | Video quality (GRU)   | `python src/video_quality_train.py`     | `configs/video_quality_train.yaml`     | `VideoQualityDataModule`                           | `US_VIDEOS`                                |
 | Quality dataset build | `python src/create_quality_dataset.py`  | `configs/create_quality_dataset.yaml`  | (scripted; uses `BrainPlanesLitModule` checkpoint) | reads/writes `US_VIDEOS` layout per script |

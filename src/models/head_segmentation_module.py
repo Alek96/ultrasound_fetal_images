@@ -1,3 +1,4 @@
+from functools import partial
 from typing import Any
 
 import torch
@@ -48,7 +49,7 @@ class HeadSegmentationLitModule(LightningModule):
         criterion: torch.nn.Module,
         lr: float,
         optimizer: torch.optim.Optimizer,
-        scheduler: torch.optim.lr_scheduler.LRScheduler,
+        scheduler: torch.optim.lr_scheduler.LRScheduler | None,
     ):
         super().__init__()
 
@@ -118,7 +119,7 @@ class HeadSegmentationLitModule(LightningModule):
         prediction_mask = torch.sigmoid(logits)  # [B, 1, H, W], values 0-1
         binary_mask = (prediction_mask > 0.5).int()  # [B, 1, H, W], values 0 or 1
         binary_mask = binary_mask.squeeze(1)  # [B, H, W]
-        total_pixels = binary_mask[0].numel()  # H * W
+        total_pixels = binary_mask.shape[-2] * binary_mask.shape[-1]  # H * W
         ones_counts = binary_mask.sum(dim=(1, 2))  # [B]
         ones_percent = ones_counts.float() / total_pixels  # [B]
         prediction_label = (ones_percent >= 0.05).int()  # [B], 1 if >=5% ones, else 0
@@ -156,7 +157,7 @@ class HeadSegmentationLitModule(LightningModule):
         pass
 
     def on_validation_start(self) -> None:
-        """Lightning hook that is called when a validation epoch ends."""
+        """Lightning hook that is called when a validation epoch starts."""
         pass
 
     def validation_step(self, batch: tuple[Tensor, Tensor, Tensor], batch_idx: int, dataloader_idx: int = 0) -> Any:
@@ -237,11 +238,6 @@ class HeadSegmentationLitModule(LightningModule):
         """Lightning hook that is called when a test epoch ends."""
         self.log_confusion_matrix("test/label/conf", self.test_label_cm.compute())
 
-    @staticmethod
-    def confusion_matrix_acc(confusion_matrix, class_idx):
-        true = torch.sum(torch.cat([confusion_matrix[i][i].view(1) for i in class_idx]))
-        return true / len(class_idx)
-
     def log_confusion_matrix(self, name: str, confusion_matrix: Tensor, title: str | None = None):
         log_to_wandb(
             lambda: {
@@ -281,7 +277,3 @@ class HeadSegmentationLitModule(LightningModule):
             }
 
         return {"optimizer": optimizer}
-
-
-if __name__ == "__main__":
-    _ = HeadSegmentationLitModule(None, None, None, None, None)

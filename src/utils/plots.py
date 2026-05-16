@@ -56,7 +56,7 @@ class PlotWronglyAssignedClasses(PlotExtras):
         self,
         enabled: bool,
         data_dir: str = "data/",
-        dataset_name: str = "FETAL_HEAD_SEGMENTATION_2",
+        dataset_name: str = "FETAL_HEAD_SEGMENTATION",
         input_size: tuple[int, int] = (55, 80),
         transforms: list = None,
         batch_size: int = 32,

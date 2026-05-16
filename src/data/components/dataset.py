@@ -82,7 +82,7 @@ class HeadSegmentationDataset(Dataset):
     def __init__(
         self,
         data_dir: str,
-        dataset_name: str = "FETAL_HEAD_SEGMENTATION_2",
+        dataset_name: str = "FETAL_HEAD_SEGMENTATION",
         subset: Literal["train", "val", "test"] | None = None,
         transform: Callable | None = None,
     ):
@@ -156,6 +156,8 @@ class HeadSegmentationDataset(Dataset):
     def _transform(self, *images):
         if self.transform:
             return self.transform(*images)
+        if len(images) == 1:
+            return images[0]
         return images
 
     def get_image_iterator(self) -> Iterator[torch.Tensor]:
@@ -164,7 +166,7 @@ class HeadSegmentationDataset(Dataset):
 
 
 class HeadSegmentationSamplesDataset(HeadSegmentationDataset):
-    google_file_id = "123"
+    google_file_id = "1abrKmudiNpDd-ofdC4jMFWwqOeOEpSsW"
 
     def __init__(
         self,
@@ -175,7 +177,7 @@ class HeadSegmentationSamplesDataset(HeadSegmentationDataset):
         from src.data.utils.google import download
 
         dataset_name = "FETAL_HEAD_SEGMENTATION_SAMPLES"
-        download(data_dir, dataset_name, FetalBrainPlanesSamplesDataset.google_file_id)
+        download(data_dir, dataset_name, HeadSegmentationSamplesDataset.google_file_id)
         super().__init__(
             data_dir=data_dir,
             dataset_name=dataset_name,
@@ -207,7 +209,7 @@ class FetalBrainPlanesDataset(Dataset):
         self.transform = transform
         self.target_transform = target_transform
 
-    def load_img_labels(self, subset: str | None, train: bool):
+    def load_img_labels(self, subset: str | None, train: bool | None):
         img_labels = pd.read_csv(f"{self.dataset_dir}/data.csv")
         if subset is not None:
             img_labels = img_labels[img_labels["Subset"] == subset]
