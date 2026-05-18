@@ -26,7 +26,7 @@ from src.data.components.dataset import (
     VideoQualityDataset,
     batch_tensor,
 )
-from src.data.components.transforms import PadToAspectRation, Resize
+from src.data.components.transforms import PadToAspectRatio, Resize
 
 
 class PlotExtras:
@@ -69,7 +69,7 @@ class PlotWronglyAssignedClasses(PlotExtras):
             self.transforms = T.Compose(
                 [
                     T.Grayscale(),
-                    PadToAspectRation(input_size),
+                    PadToAspectRatio(input_size),
                     Resize(input_size, interpolation=T.InterpolationMode.NEAREST),
                     T.ToDtype(
                         dtype={
@@ -211,7 +211,7 @@ class PlotVideosProbabilities(PlotExtras):
             transform=T.Compose(
                 [
                     T.Grayscale(),
-                    PadToAspectRation(input_size),
+                    PadToAspectRatio(input_size),
                     T.Resize(input_size, antialias=False),
                     T.ConvertImageDtype(torch.float32),
                 ]

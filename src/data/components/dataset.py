@@ -84,7 +84,7 @@ class FetalPlanesDataset(Dataset):
 
     def __init__(
         self,
-        data_dir: str,
+        data_dir: Path | str,
         data_name: str = "FETAL_PLANES",
         train: bool | None = None,
         transform: Callable | None = None,
@@ -145,7 +145,7 @@ class FetalPlanesSamplesDataset(FetalPlanesDataset):
 
     def __init__(
         self,
-        data_dir: str,
+        data_dir: Path | str,
         train: bool | None = None,
         transform: Callable | None = None,
         target_transform: Callable | None = None,
@@ -171,7 +171,7 @@ class HeadSegmentationDataset(Dataset):
 
     def __init__(
         self,
-        data_dir: str,
+        data_dir: Path | str,
         dataset_name: str = "FETAL_HEAD_SEGMENTATION",
         subset: Literal["train", "val", "test"] | None = None,
         transform: Callable | None = None,
@@ -260,7 +260,7 @@ class HeadSegmentationSamplesDataset(HeadSegmentationDataset):
 
     def __init__(
         self,
-        data_dir: str,
+        data_dir: Path | str,
         subset: Literal["train", "val", "test"] | None = None,
         transform: Callable | None = None,
     ):
@@ -286,7 +286,7 @@ class FetalBrainPlanesDataset(Dataset):
 
     def __init__(
         self,
-        data_dir: str,
+        data_dir: Path | str,
         data_name: str = "FETAL_BRAIN_PLANES",
         subset: Literal["train", "val", "test"] | None = None,
         train: bool | None = None,
@@ -356,7 +356,7 @@ class FetalBrainPlanesSamplesDataset(FetalBrainPlanesDataset):
 
     def __init__(
         self,
-        data_dir: str,
+        data_dir: Path | str,
         subset: Literal["train", "val", "test"] | None = None,
         train: bool | None = None,
         transform: Callable | None = None,
@@ -379,7 +379,7 @@ class FetalBrainPlanesSamplesDataset(FetalBrainPlanesDataset):
 class VideoQualityDataset(Dataset):
     def __init__(
         self,
-        data_dir: str,
+        data_dir: Path | str,
         dataset_name: str = "US_VIDEOS",
         train: bool = True,
         seq_len: int = 32,
@@ -466,7 +466,7 @@ class VideoQualitySamplesDataset(VideoQualityDataset):
 
     def __init__(
         self,
-        data_dir: str,
+        data_dir: Path | str,
         dataset_name: str = "US_VIDEOS",
         train: bool = True,
         seq_len: int = 32,
@@ -498,7 +498,7 @@ class VideoQualitySamplesDataset(VideoQualityDataset):
 class VideoQualityMemoryDataset(Dataset):
     def __init__(
         self,
-        data_dir: str,
+        data_dir: Path | str,
         dataset_name: str = "US_VIDEOS",
         train: bool = True,
         all_transforms: bool = True,
@@ -633,7 +633,7 @@ class VideosFrameDataset(Dataset):
 class USVideosFrameDataset(Dataset):
     def __init__(
         self,
-        data_dir: str,
+        data_dir: Path | str,
         dataset_name: str = "US_VIDEOS",
         train: bool = True,
         transform: Callable | None = None,
@@ -737,7 +737,7 @@ class SsimFrameDataset(Dataset):
 
     def __init__(
         self,
-        data_dir: str,
+        data_dir: Path | str,
         dataset_name: str = "FETAL_PLANES",
         min_probabilities: Sequence[float] = (0.8, 0.8, 0.8, 0.8, 0.8),
         transform: Callable | None = None,
@@ -799,7 +799,7 @@ class SsimFrameDataset(Dataset):
 class USVideosDataset(Dataset):
     def __init__(
         self,
-        data_dir: str,
+        data_dir: Path | str,
         dataset_name: str = "US_VIDEOS",
         transform: Callable | None = None,
         target_transform: Callable | None = None,

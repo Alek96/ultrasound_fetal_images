@@ -6,7 +6,7 @@ input_size: [64, 64]
 
 train_transforms:
   - _target_: torchvision.transforms.Grayscale
-  - _target_: src.data.components.transforms.PadToAspectRation
+  - _target_: src.data.components.transforms.PadToAspectRatio
     size: ${data.input_size}
     fill: 0
   - _target_: torchvision.transforms.Resize
@@ -46,7 +46,7 @@ train_transforms:
 
 test_transforms:
   - _target_: torchvision.transforms.Grayscale
-  - _target_: src.data.components.transforms.PadToAspectRation
+  - _target_: src.data.components.transforms.PadToAspectRatio
     size: ${data.input_size}
     fill: 0
   - _target_: torchvision.transforms.Resize
@@ -68,4 +68,4 @@ batch_size: 128
 num_workers: 8
 pin_memory: false
 sampler:
-sampler_max_sizes: [[-1, -1, -1, -1, 500]]
+sampler_max_sizes: [[-1, -1, -1, 500]]

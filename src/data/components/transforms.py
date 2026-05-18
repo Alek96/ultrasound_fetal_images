@@ -2,7 +2,7 @@ import math
 from collections.abc import Sequence
 from enum import Enum
 from math import floor
-from typing import Any, Dict, Literal, Optional, Type, Union
+from typing import Any, Literal
 
 import albumentations as A
 import torch
@@ -41,60 +41,7 @@ def get_image_shape(*inputs: Any):
         raise TypeError("inputs type not supported")
 
 
-class RandomPercentCrop(torch.nn.Module):
-    """Reduce the given image by percentage. If the image is torch Tensor, it is expected to have.
-
-    [..., H, W] shape, where ... means an arbitrary number of leading dimensions, but if
-    non-constant padding is used, the input is expected to have at most 2 leading dimensions.
-
-    Args:
-        max_percent (int): By what maximal percentage to reduce the image
-    """
-
-    def __init__(self, max_percent: int):
-        super().__init__()
-        self.max_percent = max_percent
-
-    @staticmethod
-    def get_params(img: torch.Tensor, max_percent: int) -> tuple[int, int, int, int]:
-        """Get parameters for ``crop`` for a random percent crop.
-
-        Args:
-            img (PIL Image or Tensor): Image to be cropped.
-            max_percent (int): By what maximal percentage to reduce the image
-
-        Returns:
-            tuple: params (top, left, height, width) to be passed to ``crop`` for random crop.
-        """
-        _, height, width = TF.get_dimensions(img)
-
-        percent = (torch.rand(1) * max_percent).item()
-        crop_height = floor(height * (100 - percent) / 100)
-        crop_weight = floor(width * (100 - percent) / 100)
-
-        if width == crop_weight and height == crop_height:
-            return 0, 0, height, width
-
-        top = torch.randint(0, height - crop_height + 1, size=(1,)).item()
-        left = torch.randint(0, width - crop_weight + 1, size=(1,)).item()
-        return top, left, crop_height, crop_weight
-
-    def forward(self, img):
-        """
-        Args:
-            img (PIL Image or Tensor): Image to be cropped.
-
-        Returns:
-            PIL Image or Tensor: Cropped image.
-        """
-        top, left, crop_height, crop_weight = self.get_params(img, self.max_percent)
-        return TF.crop(img, top, left, crop_height, crop_weight)
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(max_percent={self.max_percent})"
-
-
-class PadToAspectRation(torch.nn.Module):
+class PadToAspectRatio(torch.nn.Module):
     def __init__(
         self,
         size: Sequence[int],
@@ -102,7 +49,7 @@ class PadToAspectRation(torch.nn.Module):
         padding_mode: Literal["constant", "edge", "reflect", "symmetric"] = "constant",
     ) -> None:
         super().__init__()
-        self.size = size
+        self.size = list(size)
         self.fill = fill
         self.padding_mode = padding_mode
         self.height, self.width = size
@@ -162,7 +109,7 @@ class Resize(torch.nn.Module):
         antialias: bool | None = True,
     ) -> None:
         super().__init__()
-        self.size = size
+        self.size = list(size)
         self.interpolation = interpolation
         self.antialias = antialias
 
@@ -172,10 +119,6 @@ class Resize(torch.nn.Module):
             interpolation = self._get_interpolation_mode(inp)
             output = inp.as_subclass(torch.Tensor)
             output = TF.resize(output, size=self.size, interpolation=interpolation, antialias=self.antialias)
-            # if interpolation in ('linear', 'bilinear', 'bicubic', 'trilinear'):
-            #     inp = F.interpolate(inp.unsqueeze(0), size=self.size, mode=interpolation, align_corners=False, antialias=True).squeeze(0)
-            # else:
-            #     inp = F.interpolate(inp.unsqueeze(0), size=self.size, mode=interpolation).squeeze(0)
             output = tv_tensors.wrap(output, like=inp)
             outputs.append(output)
 
@@ -191,93 +134,6 @@ class Resize(torch.nn.Module):
     def __repr__(self) -> str:
         s = f"{self.__class__.__name__} ("
         s += f"size={self.size}, "
-        s += f"interpolation={self.interpolation}, "
-        s += f"antialias={self.antialias})"
-
-        return s
-
-
-class PadResize(torch.nn.Module):
-    def __init__(
-        self,
-        size: Sequence[int],
-        fill: TF._utils._FillType | dict[type | str, TF._utils._FillType] = 0,
-        padding_mode: Literal["constant", "edge", "reflect", "symmetric"] = "constant",
-        interpolation: (
-            T.InterpolationMode | int | dict[type | str, T.InterpolationMode | int | None]
-        ) = T.InterpolationMode.BILINEAR,
-        antialias: bool | None = True,
-    ) -> None:
-        super().__init__()
-        self.size = size
-        self.fill = fill
-        self.padding_mode = padding_mode
-        self.height, self.width = size
-        self.aspect_ratio = self.height / self.width
-        self.interpolation = interpolation
-        self.antialias = antialias
-        self.resize = T.Resize(size=size, interpolation=self.interpolation, antialias=self.antialias)
-
-    def forward(self, *inputs: Any):
-        inputs = self._pad(*inputs)
-        inputs = self._resize(*inputs)
-        return _flatten_inputs(inputs)
-
-    def _pad(self, *inputs: Any):
-        original_height, original_width = get_image_shape(*inputs)
-        # Calculate the current aspect ratio of the image
-        current_aspect_ratio = original_height / original_width
-
-        # Determine which dimension needs padding
-        if current_aspect_ratio > self.aspect_ratio:
-            # Image is too tall, need to pad width
-            new_width = int(original_height / self.aspect_ratio)
-            padding_needed = new_width - original_width
-
-            # Calculate padding on left and right sides
-            left_pad = padding_needed // 2
-            right_pad = padding_needed - left_pad
-            top_pad, bottom_pad = 0, 0
-
-        elif current_aspect_ratio < self.aspect_ratio:
-            # Image is too wide, need to pad height
-            new_height = int(original_width * self.aspect_ratio)
-            padding_needed = new_height - original_height
-
-            # Calculate padding on top and bottom sides
-            top_pad = padding_needed // 2
-            bottom_pad = padding_needed - top_pad
-            left_pad, right_pad = 0, 0
-
-        else:
-            # Image already has the correct aspect ratio, no padding needed
-            return inputs
-
-        pad = T.Pad(padding=[left_pad, top_pad, right_pad, bottom_pad], fill=self.fill, padding_mode=self.padding_mode)
-        inputs = pad(*inputs)
-        return _wrap_inputs(inputs)
-
-    def _resize(self, *inputs: Any):
-        outputs = []
-        for inp in inputs:
-            interpolation = self._get_interpolation_mode(inp)
-            output = inp.as_subclass(torch.Tensor)
-            output = TF.resize(output, size=self.size, interpolation=interpolation, antialias=self.antialias)
-            output = tv_tensors.wrap(output, like=inp)
-            outputs.append(output)
-        return tuple(outputs)
-
-    def _get_interpolation_mode(self, inp: torch.Tensor):
-        if not isinstance(self.interpolation, dict):
-            return self.interpolation
-        default = self.interpolation.get("others")
-        return self.interpolation.get(type(inp), default)
-
-    def __repr__(self) -> str:
-        s = f"{self.__class__.__name__} ("
-        s += f"size={self.size}, "
-        s += f"fill={self.fill}, "
-        s += f"padding_mode={self.padding_mode}, "
         s += f"interpolation={self.interpolation}, "
         s += f"antialias={self.antialias})"
 
@@ -300,7 +156,7 @@ class HorizontalFlip(torch.nn.Module):
         return TF.hflip(img) if self.flip else img
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(flip={self.max_percent})"
+        return f"{self.__class__.__name__}(flip={self.flip})"
 
 
 class VerticalFlip(torch.nn.Module):
@@ -319,22 +175,22 @@ class VerticalFlip(torch.nn.Module):
         return TF.vflip(img) if self.flip else img
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(flip={self.max_percent})"
+        return f"{self.__class__.__name__}(flip={self.flip})"
 
 
 class Affine(torch.nn.Module):
     def __init__(
         self,
-        degrees: float = None,
-        translate: tuple[float, float] = None,
-        scale: float = None,
-        shear: float = None,
+        degrees: float | None = None,
+        translate: tuple[float, float] | None = None,
+        scale: float | None = None,
+        shear: list[float] | None = None,
     ) -> None:
         super().__init__()
-        self.degrees = degrees or 0.0
-        self.translate = translate or [0, 0]
-        self.scale = scale or 1.0
-        self.shear = shear or [0.0, 0.0]
+        self.degrees = degrees if degrees is not None else 0.0
+        self.translate = translate if translate is not None else [0, 0]
+        self.scale = scale if scale is not None else 1.0
+        self.shear = shear if shear is not None else [0.0, 0.0]
 
     def forward(self, img):
         """
@@ -363,6 +219,59 @@ class Affine(torch.nn.Module):
         return s
 
 
+class RandomPercentCrop(torch.nn.Module):
+    """Reduce the given image by percentage. If the image is torch Tensor, it is expected to have.
+
+    [..., H, W] shape, where ... means an arbitrary number of leading dimensions, but if
+    non-constant padding is used, the input is expected to have at most 2 leading dimensions.
+
+    Args:
+        max_percent (int): By what maximal percentage to reduce the image
+    """
+
+    def __init__(self, max_percent: int):
+        super().__init__()
+        self.max_percent = max_percent
+
+    @staticmethod
+    def get_params(img: torch.Tensor, max_percent: int) -> tuple[int, int, int, int]:
+        """Get parameters for ``crop`` for a random percent crop.
+
+        Args:
+            img (PIL Image or Tensor): Image to be cropped.
+            max_percent (int): By what maximal percentage to reduce the image
+
+        Returns:
+            tuple: params (top, left, height, width) to be passed to ``crop`` for random crop.
+        """
+        _, height, width = TF.get_dimensions(img)
+
+        percent = (torch.rand(()) * max_percent).item()
+        crop_height = floor(height * (100 - percent) / 100)
+        crop_width = floor(width * (100 - percent) / 100)
+
+        if width == crop_width and height == crop_height:
+            return 0, 0, height, width
+
+        top = torch.randint(0, height - crop_height + 1, size=(1,)).item()
+        left = torch.randint(0, width - crop_width + 1, size=(1,)).item()
+        return top, left, crop_height, crop_width
+
+    def forward(self, img):
+        """
+        Args:
+            img (PIL Image or Tensor): Image to be cropped.
+
+        Returns:
+            PIL Image or Tensor: Cropped image.
+        """
+        top, left, crop_height, crop_width = self.get_params(img, self.max_percent)
+        return TF.crop(img, top, left, crop_height, crop_width)
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(max_percent={self.max_percent})"
+
+
 class RandomCutout(torch.nn.Module):
     def __init__(self, n_holes: int = 1, length: int = 10, p: float = 0.5) -> None:
         super().__init__()
@@ -378,7 +287,7 @@ class RandomCutout(torch.nn.Module):
         Returns:
             PIL Tensor: Randomly cutout image.
         """
-        if self.p < torch.rand(1):
+        if torch.rand(()) >= self.p:
             return img
         return cutout(img, self.n_holes, self.length)
 
@@ -405,13 +314,13 @@ def cutout(img: Tensor, n_holes: int = 1, length: int = 10, fill: None | list[fl
     for i, value in enumerate(fill):
         img_mask = torch.zeros(img.shape, dtype=torch.bool)
         img_mask[i] = mask
-        img = img.masked_fill(mask, value)
+        img = img.masked_fill(img_mask, value)
 
     return img
 
 
 def elastic_transform(img, magnitude, scale):
-    # 0-100  / 5
+    # 0-100 / 5
     # 0-400 / 10
     sigma = img.size(2) / scale
     alpha = (sigma / 5) ** 2 * magnitude
@@ -419,7 +328,7 @@ def elastic_transform(img, magnitude, scale):
 
 
 def grid_distortion(img, magnitude, num_steps=5):
-    img = img.numpy().transpose(1, 2, 0)  # HWC
+    img = img.cpu().detach().numpy().transpose(1, 2, 0)  # HWC
     img = A.GridDistortion(num_steps=num_steps, distort_limit=magnitude, normalized=False, p=1.0)(image=img)["image"]
     img = torch.from_numpy(img.transpose(2, 0, 1))  # CHW
     return img
@@ -625,12 +534,6 @@ class RandAugment(torch.nn.Module):
         """
         fill = self.fill
         channels, height, width = TF.get_dimensions(images[0])
-        # if isinstance(img, Tensor):
-        #     if isinstance(fill, (int, float)):
-        #         fill = [float(fill)] * channels
-        #     elif fill is not None:
-        #         fill = [float(f) for f in fill]
-
         op_meta = self._augmentation_space(self.policy, self.num_magnitude_bins, (height, width))
         for _ in range(self.num_ops):
             op_index = int(torch.randint(len(op_meta), (1,)).item())
@@ -651,8 +554,9 @@ class RandAugment(torch.nn.Module):
                         fill=fill,
                     )
                 images_rs.append(img)
+            images = tuple(images_rs)
 
-        return images
+        return _flatten_inputs(images)
 
     def __repr__(self) -> str:
         s = (
