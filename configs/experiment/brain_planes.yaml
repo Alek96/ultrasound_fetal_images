@@ -90,7 +90,7 @@ model:
     scales: [1.0, 1.10]
 
 data:
-  data_name: FETAL_BRAIN_PLANES_2
+  data_name: FETAL_BRAIN_PLANES
   input_size: [192, 256]
   #input_size: [96, 128]
   #input_size: [165, 240]

@@ -13,7 +13,15 @@ from torchvision import tv_tensors
 from src.data.components.dataset import HeadSegmentationSamplesDataset
 
 
-@pytest.mark.parametrize("subset, set_len", [("train", 24), ("val", 20), ("test", 20), (None, 64)])
+@pytest.mark.parametrize(
+    "subset, set_len",
+    [
+        ("train", 24),
+        ("val", 20),
+        ("test", 20),
+        (None, 64),
+    ],
+)
 def test_len(data_path: Path, subset: Literal["train", "val", "test"] | None, set_len: int) -> None:
     ds = HeadSegmentationSamplesDataset(data_dir=str(data_path), subset=subset)
 

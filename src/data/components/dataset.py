@@ -73,6 +73,96 @@ class TransformDataset(Dataset):
         return rs
 
 
+class FetalPlanesDataset(Dataset):
+    labels = [
+        "Trans-ventricular",
+        "Trans-thalamic",
+        "Trans-cerebellum",
+        "Other",
+        "Not A Brain",
+    ]
+
+    def __init__(
+        self,
+        data_dir: str,
+        data_name: str = "FETAL_PLANES",
+        train: bool | None = None,
+        transform: Callable | None = None,
+        target_transform: Callable | None = None,
+    ):
+        self.dataset_dir = f"{data_dir}/{data_name}"
+        self.img_labels = self.load_img_labels(train)
+        self.img_dir = f"{self.dataset_dir}/Images"
+        self.transform = transform
+        self.target_transform = target_transform
+
+    def load_img_labels(self, train: bool | None):
+        img_labels = pd.read_csv(f"{self.dataset_dir}/data.csv")
+        if train is not None:
+            img_labels = img_labels[img_labels["Train"] == (1 if train else 0)]
+        img_labels = img_labels[["Image_name", "Patient_num", "Brain_plane"]]
+        return img_labels.reset_index(drop=True)
+
+    def __len__(self):
+        return len(self.img_labels)
+
+    def __getitem__(self, idx):
+        if isinstance(idx, tuple):
+            idx, sub_idx = idx
+            if sub_idx == 0:
+                return self.get_image(idx)
+            elif sub_idx == 1:
+                return self.get_label(idx)
+
+        return self.get_image(idx), self.get_label(idx)
+
+    def get_image(self, idx):
+        if isinstance(idx, torch.Tensor):
+            idx = idx.item()
+
+        img_path = os.path.join(self.img_dir, self.img_labels.Image_name[idx] + ".png")
+        image = read_image(img_path)
+        if image.shape[0] == 4:
+            image = image[:3, :, :]
+
+        if self.transform:
+            image = self.transform(image)
+        return image
+
+    def get_label(self, idx):
+        if isinstance(idx, torch.Tensor):
+            idx = idx.item()
+
+        label = self.img_labels.Brain_plane[idx]
+
+        if self.target_transform:
+            label = self.target_transform(label)
+        return label
+
+
+class FetalPlanesSamplesDataset(FetalPlanesDataset):
+    google_file_id = "1Toy4M7BzGppjlQRURXdSVxgQI_jl3zA7"
+
+    def __init__(
+        self,
+        data_dir: str,
+        train: bool | None = None,
+        transform: Callable | None = None,
+        target_transform: Callable | None = None,
+    ):
+        from src.data.utils.google import download
+
+        data_name = "FETAL_PLANES_SAMPLES"
+        download(data_dir, data_name, FetalBrainPlanesSamplesDataset.google_file_id)
+        super().__init__(
+            data_dir=data_dir,
+            data_name=data_name,
+            train=train,
+            transform=transform,
+            target_transform=target_transform,
+        )
+
+
 class HeadSegmentationDataset(Dataset):
     labels = [
         "Not A Brain",
@@ -197,7 +287,7 @@ class FetalBrainPlanesDataset(Dataset):
     def __init__(
         self,
         data_dir: str,
-        data_name: str = "FETAL_PLANES",
+        data_name: str = "FETAL_BRAIN_PLANES",
         subset: Literal["train", "val", "test"] | None = None,
         train: bool | None = None,
         transform: Callable | None = None,
@@ -262,7 +352,7 @@ class FetalBrainPlanesDataset(Dataset):
 
 
 class FetalBrainPlanesSamplesDataset(FetalBrainPlanesDataset):
-    google_file_id = "1Toy4M7BzGppjlQRURXdSVxgQI_jl3zA7"
+    google_file_id = "123"
 
     def __init__(
         self,
@@ -274,7 +364,7 @@ class FetalBrainPlanesSamplesDataset(FetalBrainPlanesDataset):
     ):
         from src.data.utils.google import download
 
-        data_name = "FETAL_PLANES_SAMPLES"
+        data_name = "FETAL_BRAIN_PLANES_SAMPLES"
         download(data_dir, data_name, FetalBrainPlanesSamplesDataset.google_file_id)
         super().__init__(
             data_dir=data_dir,

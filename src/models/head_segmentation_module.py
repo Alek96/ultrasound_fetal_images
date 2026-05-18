@@ -125,6 +125,12 @@ class HeadSegmentationLitModule(LightningModule):
         prediction_label = (ones_percent >= 0.05).int()  # [B], 1 if >=5% ones, else 0
         return prediction_mask, prediction_label
 
+    @staticmethod
+    def calculate_hard_prediction(logits: Tensor) -> tuple[Tensor, Tensor]:
+        prediction_mask, prediction_label = HeadSegmentationLitModule.calculate_prediction(logits)
+        binary_mask = (prediction_mask > 0.5).float()  # [B, 1, H, W], values 0 or 1
+        return binary_mask, prediction_label
+
     def training_step(self, batch: tuple[Tensor, Tensor, Tensor], batch_idx: int) -> Tensor | dict:
         """Perform a single training step on a batch of data from the training set.
 
