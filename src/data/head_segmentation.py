@@ -10,7 +10,7 @@ from src.data.components.dataset import (
     HeadSegmentationDataset,
     HeadSegmentationSamplesDataset,
 )
-from src.data.components.transforms import PadToAspectRation
+from src.data.components.transforms import PadToAspectRatio
 
 
 class HeadSegmentationDataModule(LightningDataModule):
@@ -75,7 +75,7 @@ class HeadSegmentationDataModule(LightningDataModule):
                 [
                     T.Grayscale(),
                     # RandomPercentCrop(max_percent=20),
-                    PadToAspectRation(input_size),
+                    PadToAspectRatio(input_size),
                     T.Resize(input_size, interpolation=T.InterpolationMode.NEAREST),
                     # T.AutoAugment(T.AutoAugmentPolicy.IMAGENET),
                     # T.RandAugment(magnitude=11),
@@ -103,7 +103,7 @@ class HeadSegmentationDataModule(LightningDataModule):
             self.test_transforms = T.Compose(
                 [
                     T.Grayscale(),
-                    PadToAspectRation(input_size),
+                    PadToAspectRatio(input_size),
                     T.Resize(input_size, interpolation=T.InterpolationMode.NEAREST),
                     T.ToDtype(
                         dtype={

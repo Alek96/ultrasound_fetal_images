@@ -101,7 +101,7 @@ data:
   sampler_max_sizes: [[-1, -1, -1, 500]]
   train_transforms:
     - _target_: torchvision.transforms.Grayscale
-    - _target_: src.data.components.transforms.PadToAspectRation
+    - _target_: src.data.components.transforms.PadToAspectRatio
       size: ${data.input_size}
       fill: 0
     - _target_: torchvision.transforms.Resize
@@ -154,7 +154,7 @@ data:
 
   test_transforms:
     - _target_: torchvision.transforms.Grayscale
-    - _target_: src.data.components.transforms.PadToAspectRation
+    - _target_: src.data.components.transforms.PadToAspectRatio
       size: ${data.input_size}
       fill: 0
     - _target_: torchvision.transforms.Resize

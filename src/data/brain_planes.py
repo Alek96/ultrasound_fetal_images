@@ -10,8 +10,8 @@ from src.data.components.dataset import (
     FetalBrainPlanesDataset,
     FetalBrainPlanesSamplesDataset,
 )
-from src.data.components.transforms import LabelEncoder, PadToAspectRation
-from src.data.utils.utils import get_over_sampler, get_under_sampler
+from src.data.components.samplers import get_over_sampler, get_under_sampler
+from src.data.components.transforms import LabelEncoder, PadToAspectRatio
 
 
 class BrainPlanesDataModule(LightningDataModule):
@@ -78,7 +78,7 @@ class BrainPlanesDataModule(LightningDataModule):
             self.train_transforms = T.Compose(
                 [
                     T.Grayscale(),
-                    PadToAspectRation(input_size),
+                    PadToAspectRatio(input_size),
                     # RandomPercentCrop(max_percent=20),
                     T.Resize(input_size),
                     # T.AutoAugment(T.AutoAugmentPolicy.IMAGENET),
@@ -88,7 +88,7 @@ class BrainPlanesDataModule(LightningDataModule):
                     T.RandomHorizontalFlip(p=0.5),
                     # T.RandomVerticalFlip(p=0.5),
                     T.RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(1.0, 1.2)),
-                    T.ConvertImageDtype(torch.float32),
+                    T.ToDtype(dtype=torch.float32, scale=True),
                     # T.Normalize(mean=0.17, std=0.19),  # FetalBrain
                     # T.Normalize(mean=0.449, std=0.226),  # ImageNet
                 ]
@@ -100,9 +100,9 @@ class BrainPlanesDataModule(LightningDataModule):
             self.test_transforms = T.Compose(
                 [
                     T.Grayscale(),
-                    PadToAspectRation(input_size),
+                    PadToAspectRatio(input_size),
                     T.Resize(input_size),
-                    T.ConvertImageDtype(torch.float32),
+                    T.ToDtype(dtype=torch.float32, scale=True),
                     # T.Normalize(mean=0.17, std=0.19),  # FetalBrain
                     # T.Normalize(mean=0.449, std=0.226),  # ImageNet
                 ]
@@ -144,7 +144,7 @@ class BrainPlanesDataModule(LightningDataModule):
         :param stage: The stage to setup. Either `"fit"`, `"validate"`, `"test"`, or `"predict"`. Defaults to ``None``.
         """
         # load and split datasets only if not loaded already
-        if not self.data_train and not self.data_val and not self.data_test:
+        if self.data_train is None and self.data_val is None and self.data_test is None:
             self.data_train = self.dataset(
                 data_dir=self.hparams.data_dir,
                 data_name=self.hparams.data_name,
@@ -250,7 +250,3 @@ class BrainPlanesDataModule(LightningDataModule):
         :param state_dict: The datamodule state returned by `self.state_dict()`.
         """
         pass
-
-
-if __name__ == "__main__":
-    _ = BrainPlanesDataModule()
