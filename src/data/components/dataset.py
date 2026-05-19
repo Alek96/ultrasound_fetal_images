@@ -182,7 +182,6 @@ class HeadSegmentationDataset(Dataset):
 
     def load_labels(self, subset: str | None):
         labels = pd.read_csv(f"{self.dataset_dir}/data.csv", dtype={"Patient_num": str})
-        labels = labels.where(pd.notnull(labels), None)
         if subset is not None:
             labels = labels[labels["Subset"] == subset]
         labels = labels[labels["Valid"] == 1]
@@ -223,7 +222,7 @@ class HeadSegmentationDataset(Dataset):
         if isinstance(idx, torch.Tensor):
             idx = idx.item()
 
-        if self.labels.Segmentation_path[idx] is not None:
+        if not pd.isna(self.labels.Segmentation_path[idx]):
             img_path = os.path.join(self.dataset_dir, self.labels.Segmentation_path[idx])
             image = read_image(img_path)
             image = image[:1, :, :]  # single-channel for mask
@@ -566,7 +565,7 @@ class VideoQualityMemoryDataset(Dataset):
         y = quality[from_idx:to_idx]
         p = preds[from_idx:to_idx]
 
-        if self.normalize is not None:
+        if self.normalize:
             x = (x - self.std_mean[1]) / self.std_mean[0]
 
         if self.target_transform:
