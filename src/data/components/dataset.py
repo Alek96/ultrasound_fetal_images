@@ -153,7 +153,7 @@ class FetalPlanesSamplesDataset(FetalPlanesDataset):
         from src.data.utils.google import download
 
         data_name = "FETAL_PLANES_SAMPLES"
-        download(data_dir, data_name, FetalBrainPlanesSamplesDataset.google_file_id)
+        download(data_dir, data_name, FetalPlanesSamplesDataset.google_file_id)
         super().__init__(
             data_dir=data_dir,
             data_name=data_name,
@@ -352,11 +352,12 @@ class FetalBrainPlanesDataset(Dataset):
 
 
 class FetalBrainPlanesSamplesDataset(FetalBrainPlanesDataset):
-    google_file_id = "123"
+    google_file_id = "123"  # TODO: replace with the real Google Drive file ID
 
     def __init__(
         self,
         data_dir: Path | str,
+        data_name: str = "",
         subset: Literal["train", "val", "test"] | None = None,
         train: bool | None = None,
         transform: Callable | None = None,
@@ -467,7 +468,7 @@ class VideoQualitySamplesDataset(VideoQualityDataset):
     def __init__(
         self,
         data_dir: Path | str,
-        dataset_name: str = "US_VIDEOS",
+        dataset_name: str = "",
         train: bool = True,
         seq_len: int = 32,
         seq_step: int = None,

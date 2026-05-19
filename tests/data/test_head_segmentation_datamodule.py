@@ -30,6 +30,11 @@ def dm_setup(dm: HeadSegmentationDataModule) -> HeadSegmentationDataModule:
     return dm
 
 
+# ---------------------------------------------------------------------------
+# Initialisation
+# ---------------------------------------------------------------------------
+
+
 def test_init_defaults() -> None:
     dm = HeadSegmentationDataModule()
     assert dm.hparams.batch_size == 64
@@ -69,6 +74,11 @@ def test_default_transforms_are_compose_instances(dm: HeadSegmentationDataModule
     assert isinstance(dm.test_transforms, T.Compose)
 
 
+# ---------------------------------------------------------------------------
+# prepare_data / setup
+# ---------------------------------------------------------------------------
+
+
 def test_prepare_data_is_noop(dm: HeadSegmentationDataModule) -> None:
     dm.prepare_data()
     assert dm.data_train is None
@@ -94,10 +104,25 @@ def test_setup_idempotent(dm_setup: HeadSegmentationDataModule) -> None:
     assert dm_setup.data_test is test_before
 
 
+def test_sample_dir_exists_after_setup(data_path: Path, dm_setup: HeadSegmentationDataModule) -> None:
+    assert Path(data_path, "FETAL_HEAD_SEGMENTATION_SAMPLES").exists()
+
+
+# ---------------------------------------------------------------------------
+# Dataloaders
+# ---------------------------------------------------------------------------
+
+
 def test_all_dataloaders_created(dm_setup: HeadSegmentationDataModule) -> None:
     assert isinstance(dm_setup.train_dataloader(), DataLoader)
     assert isinstance(dm_setup.val_dataloader(), DataLoader)
     assert isinstance(dm_setup.test_dataloader(), DataLoader)
+
+
+def test_train_dataloader_shuffles_val_test_do_not(dm_setup: HeadSegmentationDataModule) -> None:
+    assert dm_setup.train_dataloader().sampler.__class__.__name__ == "RandomSampler"
+    assert dm_setup.val_dataloader().sampler.__class__.__name__ == "SequentialSampler"
+    assert dm_setup.test_dataloader().sampler.__class__.__name__ == "SequentialSampler"
 
 
 @pytest.mark.parametrize("batch_size", [4, 8])
@@ -125,13 +150,3 @@ def test_mask_binary(dm_setup: HeadSegmentationDataModule) -> None:
     _, mask, _ = next(iter(dm_setup.train_dataloader()))
     unique = mask.unique()
     assert all(v.item() in {0.0, 1.0} for v in unique)
-
-
-def test_train_dataloader_shuffles_val_test_do_not(dm_setup: HeadSegmentationDataModule) -> None:
-    assert dm_setup.train_dataloader().sampler.__class__.__name__ == "RandomSampler"
-    assert dm_setup.val_dataloader().sampler.__class__.__name__ == "SequentialSampler"
-    assert dm_setup.test_dataloader().sampler.__class__.__name__ == "SequentialSampler"
-
-
-def test_sample_dir_exists_after_setup(data_path: Path, dm_setup: HeadSegmentationDataModule) -> None:
-    assert Path(data_path, "FETAL_HEAD_SEGMENTATION_SAMPLES").exists()
