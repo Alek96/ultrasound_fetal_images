@@ -56,12 +56,12 @@ class BrainPlanesDataModule(LightningDataModule):
         data_name: str = "FETAL_PLANES",
         sample: bool = False,
         input_size: tuple[int, int] = (55, 80),
-        train_transforms: list = None,
-        test_transforms: list = None,
+        train_transforms: list | None = None,
+        test_transforms: list | None = None,
         batch_size: int = 64,
         num_workers: int = 0,
         pin_memory: bool = False,
-        sampler: Literal[None, "under", "over"] = None,
+        sampler: Literal["under", "over"] | None = None,
         sampler_max_sizes: Sequence[Sequence[int]] = ((-1, -1, -1, 500),),
     ):
         super().__init__()
@@ -119,7 +119,7 @@ class BrainPlanesDataModule(LightningDataModule):
     def num_classes(self) -> int:
         """Get the number of classes.
 
-        :return: The number of MNIST classes (10).
+        :return: The number of brain-plane classes.
         """
         return len(self.labels)
 
@@ -156,7 +156,7 @@ class BrainPlanesDataModule(LightningDataModule):
                 data_dir=self.hparams.data_dir,
                 data_name=self.hparams.data_name,
                 subset="val",
-                transform=self.train_transforms,
+                transform=self.test_transforms,
                 target_transform=self.target_transform,
             )
             self.data_test = self.dataset(
@@ -177,7 +177,7 @@ class BrainPlanesDataModule(LightningDataModule):
                 dataset=self.data_train,
                 batch_size=self.hparams.batch_size,
                 num_workers=self.hparams.num_workers,
-                pin_memory=False,
+                pin_memory=self.hparams.pin_memory,
                 sampler=get_under_sampler(
                     datasets=[self.data_train],
                     labels=torch.arange(self.num_classes),
