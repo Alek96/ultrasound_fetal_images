@@ -193,7 +193,3 @@ class QualityLitModule(LightningModule):
                 },
             }
         return {"optimizer": optimizer}
-
-
-if __name__ == "__main__":
-    _ = QualityLitModule(None, None, None)

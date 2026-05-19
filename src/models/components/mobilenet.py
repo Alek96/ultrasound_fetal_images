@@ -43,7 +43,3 @@ class MobileNet(nn.Module):
     def forward(self, x):
         dense_logits = self.model(x)
         return dense_logits, self.classifier(dense_logits)
-
-
-if __name__ == "__main__":
-    _ = MobileNet()

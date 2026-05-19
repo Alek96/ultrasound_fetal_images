@@ -78,7 +78,3 @@ class EfficientNet(nn.Module):
 
         dense_logits = self.model(x)
         return dense_logits, self.classifier(dense_logits)
-
-
-if __name__ == "__main__":
-    _ = EfficientNet()
