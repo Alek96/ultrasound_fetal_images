@@ -136,12 +136,16 @@ class PlotWronglyAssignedClasses(PlotExtras):
                 index = existing_index[0]
                 df.loc[index, "Count"] += 1
             else:
-                index = len(df)
-                df.loc[index] = {
-                    "Image_name": image_name,
-                    "Prediction": prediction_label,
-                    "Count": 1,
-                }
+                new_row = pd.DataFrame(
+                    [
+                        {
+                            "Image_name": image_name,
+                            "Prediction": prediction_label,
+                            "Count": 1,
+                        }
+                    ]
+                )
+                df = pd.concat([df, new_row], ignore_index=True)
 
         df = df.sort_values(["Image_name", "Prediction"])
         df.to_csv(file_path, index=False)
@@ -165,6 +169,7 @@ class PlotWronglyAssignedClasses(PlotExtras):
                 data_df.loc[index, "Subset"] = "val"
             for _ in test_df[test_df["Image_name"] == row["Image_name"]].iterrows():
                 data_df.loc[index, "Subset"] = "test"
+        data_df.to_csv(data_path, index=False)
 
     def split_dataset(self, df, seed_1, seed_2):
         train_df, test_df = self.group_split_label(
