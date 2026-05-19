@@ -174,7 +174,7 @@ class BrainPlanesLitModule(LightningModule):
             true_y = y_a
         else:
             # training with mix-up
-            # y has shape ([batch_size, 5])
+            # y has shape ([batch_size, 4])
             # torch.mean is used when criterion.reduction = "none"
             loss = torch.mean(self.criterion_fn(y_hat, y))
             true_y = torch.argmax(y, dim=1)
