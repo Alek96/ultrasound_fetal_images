@@ -162,7 +162,7 @@ def test_train_mix_up(cfg_brain_planes_train: DictConfig) -> None:
         cfg_brain_planes_train.callbacks.mix_up._target_ = "src.models.utils.callbacks.MixUpCallback"
         cfg_brain_planes_train.callbacks.mix_up.alpha = 0.4
         cfg_brain_planes_train.callbacks.mix_up.softmax_target = False
-        cfg_brain_planes_train.callbacks.mix_up.labels = 5
+        cfg_brain_planes_train.callbacks.mix_up.labels = 4
     train(cfg_brain_planes_train)
 
 
@@ -179,7 +179,7 @@ def test_train_mix_up_v2(cfg_brain_planes_train: DictConfig) -> None:
         cfg_brain_planes_train.callbacks.mix_up._target_ = "src.models.utils.callbacks.MixUpV2Callback"
         cfg_brain_planes_train.callbacks.mix_up.alpha = 0.4
         cfg_brain_planes_train.callbacks.mix_up.softmax_target = False
-        cfg_brain_planes_train.callbacks.mix_up.labels = 5
+        cfg_brain_planes_train.callbacks.mix_up.labels = 4
     train(cfg_brain_planes_train)
 
 
@@ -196,7 +196,7 @@ def test_train_vm_mix_up(cfg_brain_planes_train: DictConfig) -> None:
         cfg_brain_planes_train.callbacks.mix_up._target_ = "src.models.utils.callbacks.VHMixUpCallback"
         cfg_brain_planes_train.callbacks.mix_up.alpha = 0.4
         cfg_brain_planes_train.callbacks.mix_up.softmax_target = False
-        cfg_brain_planes_train.callbacks.mix_up.labels = 5
+        cfg_brain_planes_train.callbacks.mix_up.labels = 4
     train(cfg_brain_planes_train)
 
 
@@ -214,7 +214,7 @@ def test_train_mix_up_label_smoothing(cfg_brain_planes_train: DictConfig) -> Non
         cfg_brain_planes_train.callbacks.mix_up._target_ = "src.models.utils.callbacks.MixUpCallback"
         cfg_brain_planes_train.callbacks.mix_up.alpha = 0.4
         cfg_brain_planes_train.callbacks.mix_up.softmax_target = False
-        cfg_brain_planes_train.callbacks.mix_up.labels = 5
+        cfg_brain_planes_train.callbacks.mix_up.labels = 4
     train(cfg_brain_planes_train)
 
 
@@ -232,7 +232,7 @@ def test_train_mix_up_reduction_noon(cfg_brain_planes_train: DictConfig) -> None
         cfg_brain_planes_train.callbacks.mix_up._target_ = "src.models.utils.callbacks.MixUpCallback"
         cfg_brain_planes_train.callbacks.mix_up.alpha = 0.4
         cfg_brain_planes_train.callbacks.mix_up.softmax_target = False
-        cfg_brain_planes_train.callbacks.mix_up.labels = 5
+        cfg_brain_planes_train.callbacks.mix_up.labels = 4
     train(cfg_brain_planes_train)
 
 
@@ -251,7 +251,7 @@ def test_train_mix_up_softmax_target(cfg_brain_planes_train: DictConfig) -> None
         cfg_brain_planes_train.callbacks.mix_up._target_ = "src.models.utils.callbacks.MixUpV2Callback"
         cfg_brain_planes_train.callbacks.mix_up.alpha = 0.4
         cfg_brain_planes_train.callbacks.mix_up.softmax_target = True
-        cfg_brain_planes_train.callbacks.mix_up.labels = 5
+        cfg_brain_planes_train.callbacks.mix_up.labels = 4
     train(cfg_brain_planes_train)
 
 
@@ -271,7 +271,7 @@ def test_train_mix_up_softmax_target_label_smoothing(cfg_brain_planes_train: Dic
         cfg_brain_planes_train.callbacks.mix_up._target_ = "src.models.utils.callbacks.MixUpV2Callback"
         cfg_brain_planes_train.callbacks.mix_up.alpha = 0.4
         cfg_brain_planes_train.callbacks.mix_up.softmax_target = True
-        cfg_brain_planes_train.callbacks.mix_up.labels = 5
+        cfg_brain_planes_train.callbacks.mix_up.labels = 4
     train(cfg_brain_planes_train)
 
 

@@ -37,7 +37,7 @@ net_spec:
   output_size: ${model.num_classes}
   pretrain: true
   freez_layers: 0
-  freez_batch_norm: True
+  freeze_batch_norm: True
 
 num_classes: 4
 

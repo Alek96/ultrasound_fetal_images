@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from torchvision.models import get_model
 
-from src.models.components.module_utils import freez_model_layers
+from src.models.components.module_utils import freeze_model_layers
 
 
 class ResNet(nn.Module):
@@ -23,14 +23,18 @@ class ResNet(nn.Module):
         output_size: int = 6,
         pretrain: bool = True,
         freez_layers: int = 0,
-        freez_batch_norm: bool = True,
+        freeze_batch_norm: bool = True,
     ):
         super().__init__()
 
         assert name in self.supported_models
         self.model = get_model(name=name, weights="DEFAULT" if pretrain else None)
 
-        if freez_layers == 0:
+        # When layers are frozen the pretrained 3-channel conv is kept; the
+        # input tensor is expanded to 3 channels in forward() instead.
+        self.freez_layers = freez_layers > 0
+
+        if not self.freez_layers:
             # replace input 3 channels with 1 channel
             old_conv = self.model.conv1
             conv = nn.Conv2d(
@@ -54,12 +58,14 @@ class ResNet(nn.Module):
         )
         self.model.fc = nn.Identity()
 
-        freez_model_layers(
+        freeze_model_layers(
             model=self.model,
             layers_name=self.freez_layers_name[:freez_layers],
-            freez_batch_norm=freez_batch_norm,
+            freeze_batch_norm=freeze_batch_norm,
         )
 
     def forward(self, x):
+        if self.freez_layers:
+            x = x.expand(-1, 3, -1, -1)
         dense_logits = self.model(x)
         return dense_logits, self.classifier(dense_logits)

@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from torchvision.models import get_model
 
-from src.models.components.module_utils import freez_model_layers
+from src.models.components.module_utils import freeze_model_layers
 
 
 class EfficientNet(nn.Module):
@@ -28,7 +28,7 @@ class EfficientNet(nn.Module):
         output_size: int = 6,
         pretrain: bool = True,
         freez_layers: int = 0,
-        freez_batch_norm: bool = True,
+        freeze_batch_norm: bool = True,
         dropout: float | None = None,
     ):
         super().__init__()
@@ -66,10 +66,10 @@ class EfficientNet(nn.Module):
         )
         self.model.classifier = self.model.classifier[:-1]
 
-        freez_model_layers(
+        freeze_model_layers(
             model=self.model,
             layers_name=self.freez_layers_name[:freez_layers],
-            freez_batch_norm=freez_batch_norm,
+            freeze_batch_norm=freeze_batch_norm,
         )
 
     def forward(self, x):

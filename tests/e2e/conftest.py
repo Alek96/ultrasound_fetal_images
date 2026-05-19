@@ -35,7 +35,6 @@ def cfg_head_segmentation_train_global() -> DictConfig:
             cfg.extras.enforce_tags = False
             cfg.logger = None
             cfg.seed = None
-            cfg.test = False
 
     return cfg
 
