@@ -16,13 +16,6 @@ _B = 2
 _H, _W = 55, 80
 
 
-def _make_batch(batch_size: int = _B, h: int = _H, w: int = _W) -> tuple[Tensor, Tensor, Tensor]:
-    images = torch.rand(batch_size, 1, h, w)
-    masks = torch.randint(0, 2, (batch_size, 1, h, w)).float()
-    labels = torch.randint(0, 2, (batch_size,)).int()
-    return images, masks, labels
-
-
 @pytest.fixture()
 def lit_module() -> HeadSegmentationLitModule:
     lit_module = HeadSegmentationLitModule(
@@ -47,6 +40,33 @@ def lit_module_no_scheduler() -> HeadSegmentationLitModule:
         optimizer=functools.partial(torch.optim.Adam),  # type: ignore
         scheduler=None,
     )
+
+
+def _make_batch(batch_size: int = _B, h: int = _H, w: int = _W) -> tuple[Tensor, Tensor, Tensor]:
+    images = torch.rand(batch_size, 1, h, w)
+    masks = torch.randint(0, 2, (batch_size, 1, h, w)).float()
+    labels = torch.randint(0, 2, (batch_size,)).int()
+    return images, masks, labels
+
+
+def _set_model_bias(module: HeadSegmentationLitModule, bias: float) -> None:
+    """Force the tiny Conv2d to output a constant value regardless of input."""
+    with torch.no_grad():
+        module.model.weight.fill_(0.0)
+        module.model.bias.fill_(bias)
+
+
+def _reset_val_metrics(module: HeadSegmentationLitModule) -> None:
+    """Reset per-epoch val metrics, simulating what Lightning does at epoch end."""
+    for m in [
+        module.val_loss,
+        module.val_dice,
+        module.val_label_f1,
+        module.val_label_acc,
+        module.val_pixel_f1,
+        module.val_pixel_acc,
+    ]:
+        m.reset()
 
 
 # ---------------------------------------------------------------------------
@@ -111,7 +131,9 @@ def test_model_step_returns_six_items(lit_module: HeadSegmentationLitModule) -> 
     result = lit_module.model_step(batch)
 
     assert len(result) == 6
+
     loss, logits, prediction_mask, masks, prediction_label, labels = result
+    assert loss.shape == ()
     assert logits.shape == (_B, 1, _H, _W)
     assert prediction_mask.shape == (_B, 1, _H, _W)
     assert prediction_label.shape == (_B,)
@@ -119,11 +141,10 @@ def test_model_step_returns_six_items(lit_module: HeadSegmentationLitModule) -> 
     assert labels.shape == (_B,)
 
 
-def test_model_step_loss_is_scalar(lit_module: HeadSegmentationLitModule) -> None:
+def test_model_step_loss_is_greater_or_equal_0(lit_module: HeadSegmentationLitModule) -> None:
     batch = _make_batch()
     loss, *_ = lit_module.model_step(batch)
 
-    assert loss.shape == ()
     assert loss.item() >= 0.0
 
 
@@ -182,26 +203,6 @@ def test_configure_optimizers_without_scheduler(lit_module_no_scheduler: HeadSeg
 # ---------------------------------------------------------------------------
 # metrics
 # ---------------------------------------------------------------------------
-
-
-def _set_model_bias(module: HeadSegmentationLitModule, bias: float) -> None:
-    """Force the tiny Conv2d to output a constant value regardless of input."""
-    with torch.no_grad():
-        module.model.weight.fill_(0.0)
-        module.model.bias.fill_(bias)
-
-
-def _reset_val_metrics(module: HeadSegmentationLitModule) -> None:
-    """Reset per-epoch val metrics, simulating what Lightning does at epoch end."""
-    for m in [
-        module.val_loss,
-        module.val_dice,
-        module.val_label_f1,
-        module.val_label_acc,
-        module.val_pixel_f1,
-        module.val_pixel_acc,
-    ]:
-        m.reset()
 
 
 class TestMetrics:
@@ -264,502 +265,853 @@ class TestMetrics:
     # ------------------------------------------------------------------
 
     class TestTrainMetrics:
-        def test_loss_matches_model_step(
-            self,
-            lit_module: HeadSegmentationLitModule,
-        ) -> None:
-            """MeanMetric-backed train_loss should equal the loss returned by model_step."""
-            batch = _make_batch()
-            reference_loss, *_ = lit_module.model_step(batch)
-            lit_module.training_step(batch, 0)
 
-            assert lit_module.train_loss.compute().item() == pytest.approx(reference_loss.item(), rel=1e-4)
+        # ------------------------------------------------------------------
+        # train_loss
+        # ------------------------------------------------------------------
 
-        def test_dice_perfect_overlap(
-            self,
-            lit_module_one: HeadSegmentationLitModule,
-            batch_one: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """All-positive predictions on all-positive masks → train_dice ≈ 1.0."""
-            lit_module_one.training_step(batch_one, 0)
+        class TestTrainLoss:
+            def test_matches_model_step(
+                self,
+                lit_module: HeadSegmentationLitModule,
+            ) -> None:
+                """MeanMetric-backed train_loss should equal the loss returned by model_step."""
+                batch = _make_batch()
+                reference_loss, *_ = lit_module.model_step(batch)
+                lit_module.training_step(batch, 0)
 
-            assert lit_module_one.train_dice.compute().item() == pytest.approx(1.0, abs=1e-4)
+                assert lit_module.train_loss.compute().item() == pytest.approx(reference_loss.item(), rel=1e-4)
 
-        def test_dice_zero_when_no_overlap(
-            self,
-            lit_module_one: HeadSegmentationLitModule,
-            batch_zero: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """All-positive predictions on all-zero masks → train_dice ≈ 0.0."""
-            lit_module_one.training_step(batch_zero, 0)
+        # ------------------------------------------------------------------
+        # train_dice
+        # ------------------------------------------------------------------
 
-            assert lit_module_one.train_dice.compute().item() == pytest.approx(0.0, abs=1e-4)
+        class TestTrainDice:
+            def test_is_one_when_perfect_overlap(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_one: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions on all-positive masks → train_dice ≈ 1.0."""
+                lit_module_one.training_step(batch_one, 0)
 
-        def test_dice_measures_spatial_overlap(
-            self,
-            lit_module_one: HeadSegmentationLitModule,
-            batch_mixed: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """All-positive predictions, first mask=1 and second mask=0.
+                assert lit_module_one.train_dice.compute().item() == pytest.approx(1.0, abs=1e-4)
 
-            `dice = 2*|A∩B| / (|A|+|B|) = 2*(H*W) / (2*(H*W) + H*W) = 2/3`.
-            """
-            lit_module_one.training_step(batch_mixed, 0)
+            def test_is_zero_when_no_overlap(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_zero: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions on all-zero masks → train_dice ≈ 0.0."""
+                lit_module_one.training_step(batch_zero, 0)
 
-            expected = 2 * _H * _W / (2 * _H * _W + _H * _W)  # 2/3
-            assert lit_module_one.train_dice.compute().item() == pytest.approx(expected, abs=1e-4)
+                assert lit_module_one.train_dice.compute().item() == pytest.approx(0.0, abs=1e-4)
 
-        def test_label_accuracy_is_fraction_of_correct_predictions(
-            self,
-            lit_module_one: HeadSegmentationLitModule,
-            batch_mixed: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """Model predicts 1 for both samples; only label[0]=1 is correct → acc = 0.5."""
-            lit_module_one.training_step(batch_mixed, 0)
+            def test_measures_spatial_overlap(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_mixed: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions, first mask=1 and second mask=0.
 
-            assert lit_module_one.train_label_acc.compute().item() == pytest.approx(0.5, abs=1e-4)
+                `dice = 2*|A∩B| / (|A|+|B|) = 2*(H*W) / (2*(H*W) + H*W) = 2/3`.
+                """
+                lit_module_one.training_step(batch_mixed, 0)
 
-        def test_label_accuracy_one_when_all_true_negatives(
-            self,
-            lit_module_zero: HeadSegmentationLitModule,
-            batch_zero: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """All predictions=0 and all labels=0 → acc=1.0 (every prediction is correct)."""
-            lit_module_zero.training_step(batch_zero, 0)
+                expected = 2 * _H * _W / (2 * _H * _W + _H * _W)  # 2/3
+                assert lit_module_one.train_dice.compute().item() == pytest.approx(expected, abs=1e-4)
 
-            assert lit_module_zero.train_label_acc.compute().item() == pytest.approx(1.0, abs=1e-4)
+        # ------------------------------------------------------------------
+        # train_label_acc
+        # ------------------------------------------------------------------
 
-        def test_label_f1_weighs_precision_and_recall(
-            self,
-            lit_module_one: HeadSegmentationLitModule,
-            batch_mixed: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """Same mixed batch: TP=1 FP=1 FN=0 → F1=2/3, which differs from acc=0.5."""
-            lit_module_one.training_step(batch_mixed, 0)
+        class TestTrainLabelAcc:
+            def test_is_one_when_perfect(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_one: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions on all-positive labels → train_label_acc = 1.0."""
+                lit_module_one.training_step(batch_one, 0)
 
-            # precision = 1/(1+1) = 0.5, recall = 1/(1+0) = 1.0 → F1 = 2*(0.5*1)/(0.5+1) = 2/3
-            assert lit_module_one.train_label_f1.compute().item() == pytest.approx(2 / 3, abs=1e-4)
+                assert lit_module_one.train_label_acc.compute().item() == pytest.approx(1.0, abs=1e-4)
 
-        def test_label_f1_zero_when_only_true_negatives(
-            self,
-            lit_module_zero: HeadSegmentationLitModule,
-            batch_zero: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """All predictions=0 and all labels=0 → binary F1=0.0 (no positive-class activity).
+            def test_is_half_when_half_correct(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_mixed: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """Model predicts 1 for both samples; only label[0]=1 is correct → acc = 0.5."""
+                lit_module_one.training_step(batch_mixed, 0)
 
-            This is the clearest demonstration that accuracy and F1 are distinct: the same
-            outcome (all-TN) gives acc=1.0 but F1=0.0.
-            """
-            lit_module_zero.training_step(batch_zero, 0)
+                assert lit_module_one.train_label_acc.compute().item() == pytest.approx(0.5, abs=1e-4)
 
-            assert lit_module_zero.train_label_f1.compute().item() == pytest.approx(0.0, abs=1e-4)
+            def test_is_zero_when_all_wrong(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_zero: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """Model predicts 1 for all; all labels are 0 → train_label_acc = 0.0."""
+                lit_module_one.training_step(batch_zero, 0)
 
-        def test_pixel_accuracy_is_fraction_of_correct_pixels(
-            self,
-            lit_module_one: HeadSegmentationLitModule,
-            batch_mixed: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """All-positive predictions, half-positive mask → pixel_acc = 0.5."""
-            lit_module_one.training_step(batch_mixed, 0)
+                assert lit_module_one.train_label_acc.compute().item() == pytest.approx(0.0, abs=1e-4)
 
-            assert lit_module_one.train_pixel_acc.compute().item() == pytest.approx(0.5, abs=1e-4)
+        # ------------------------------------------------------------------
+        # train_label_f1
+        # ------------------------------------------------------------------
 
-        def test_pixel_f1_weighs_precision_and_recall(
-            self,
-            lit_module_one: HeadSegmentationLitModule,
-            batch_mixed: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """All-positive predictions, half-positive mask: pixel F1 (2/3) differs from acc (0.5)."""
-            lit_module_one.training_step(batch_mixed, 0)
+        class TestTrainLabelF1:
+            def test_is_one_when_perfect(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_one: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions on all-positive labels → train_label_f1 = 1.0."""
+                lit_module_one.training_step(batch_one, 0)
 
-            # TP=H*W, FP=H*W, FN=0 → precision=0.5, recall=1.0 → F1=2/3
-            assert lit_module_one.train_pixel_f1.compute().item() == pytest.approx(2 / 3, abs=1e-4)
+                assert lit_module_one.train_label_f1.compute().item() == pytest.approx(1.0, abs=1e-4)
 
-        def test_all_metrics_one_when_perfect_positive_prediction(
-            self,
-            lit_module_one: HeadSegmentationLitModule,
-            batch_one: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """All-positive logits with all-positive labels/masks → every accuracy and F1 == 1.0."""
-            lit_module_one.training_step(batch_one, 0)
+            def test_is_zero_when_only_true_negatives(
+                self,
+                lit_module_zero: HeadSegmentationLitModule,
+                batch_zero: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All predictions=0 and all labels=0 → binary F1=0.0 (no positive-class activity).
 
-            assert lit_module_one.train_pixel_acc.compute().item() == pytest.approx(1.0)
-            assert lit_module_one.train_label_acc.compute().item() == pytest.approx(1.0)
-            assert lit_module_one.train_pixel_f1.compute().item() == pytest.approx(1.0)
-            assert lit_module_one.train_label_f1.compute().item() == pytest.approx(1.0)
+                This is the clearest demonstration that accuracy and F1 are distinct: the same
+                outcome (all-TN) gives acc=1.0 but F1=0.0.
+                """
+                lit_module_zero.training_step(batch_zero, 0)
+
+                assert lit_module_zero.train_label_f1.compute().item() == pytest.approx(0.0, abs=1e-4)
+
+            def test_weighs_precision_and_recall(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_mixed: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """Same mixed batch: TP=1 FP=1 FN=0 → F1=2/3, which differs from acc=0.5."""
+                lit_module_one.training_step(batch_mixed, 0)
+
+                # precision = 1/(1+1) = 0.5, recall = 1/(1+0) = 1.0 → F1 = 2*(0.5*1)/(0.5+1) = 2/3
+                assert lit_module_one.train_label_f1.compute().item() == pytest.approx(2 / 3, abs=1e-4)
+
+        # ------------------------------------------------------------------
+        # train_pixel_acc
+        # ------------------------------------------------------------------
+
+        class TestTrainPixelAcc:
+            def test_is_one_when_perfect(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_one: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions on all-positive masks → train_pixel_acc = 1.0."""
+                lit_module_one.training_step(batch_one, 0)
+
+                assert lit_module_one.train_pixel_acc.compute().item() == pytest.approx(1.0, abs=1e-4)
+
+            def test_is_zero_when_all_wrong(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_zero: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions on all-zero masks → train_pixel_acc = 0.0."""
+                lit_module_one.training_step(batch_zero, 0)
+
+                assert lit_module_one.train_pixel_acc.compute().item() == pytest.approx(0.0, abs=1e-4)
+
+            def test_is_half_when_half_correct(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_mixed: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions, half-positive mask → pixel_acc = 0.5."""
+                lit_module_one.training_step(batch_mixed, 0)
+
+                assert lit_module_one.train_pixel_acc.compute().item() == pytest.approx(0.5, abs=1e-4)
+
+        # ------------------------------------------------------------------
+        # train_pixel_f1
+        # ------------------------------------------------------------------
+
+        class TestTrainPixelF1:
+            def test_is_one_when_perfect(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_one: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions on all-positive masks → train_pixel_f1 = 1.0."""
+                lit_module_one.training_step(batch_one, 0)
+
+                assert lit_module_one.train_pixel_f1.compute().item() == pytest.approx(1.0, abs=1e-4)
+
+            def test_is_zero_when_all_wrong(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_zero: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions on all-zero masks → train_pixel_f1 = 0.0."""
+                lit_module_one.training_step(batch_zero, 0)
+
+                assert lit_module_one.train_pixel_f1.compute().item() == pytest.approx(0.0, abs=1e-4)
+
+            def test_weighs_precision_and_recall(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_mixed: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions, half-positive mask: pixel F1 (2/3) differs from acc (0.5)."""
+                lit_module_one.training_step(batch_mixed, 0)
+
+                # TP=H*W, FP=H*W, FN=0 → precision=0.5, recall=1.0 → F1=2/3
+                assert lit_module_one.train_pixel_f1.compute().item() == pytest.approx(2 / 3, abs=1e-4)
 
     # ------------------------------------------------------------------
     # Validation metrics
     # ------------------------------------------------------------------
 
     class TestValMetrics:
-        def test_loss_matches_model_step(
-            self,
-            lit_module: HeadSegmentationLitModule,
-        ) -> None:
-            """MeanMetric-backed val_loss should equal the loss returned by model_step."""
-            batch = _make_batch()
-            reference_loss, *_ = lit_module.model_step(batch)
-            lit_module.validation_step(batch, 0)
 
-            assert lit_module.val_loss.compute().item() == pytest.approx(reference_loss.item(), rel=1e-4)
+        # ------------------------------------------------------------------
+        # val_loss
+        # ------------------------------------------------------------------
 
-        def test_dice_perfect_overlap(
-            self,
-            lit_module_one: HeadSegmentationLitModule,
-            batch_one: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """All-positive predictions on all-positive masks → val_dice ≈ 1.0."""
-            lit_module_one.validation_step(batch_one, 0)
+        class TestValLoss:
+            def test_matches_model_step(
+                self,
+                lit_module: HeadSegmentationLitModule,
+            ) -> None:
+                """MeanMetric-backed val_loss should equal the loss returned by model_step."""
+                batch = _make_batch()
+                reference_loss, *_ = lit_module.model_step(batch)
+                lit_module.validation_step(batch, 0)
 
-            assert lit_module_one.val_dice.compute().item() == pytest.approx(1.0, abs=1e-4)
+                assert lit_module.val_loss.compute().item() == pytest.approx(reference_loss.item(), rel=1e-4)
 
-        def test_dice_zero_when_no_overlap(
-            self,
-            lit_module_one: HeadSegmentationLitModule,
-            batch_zero: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """All-positive predictions on all-zero masks → val_dice ≈ 0.0."""
-            lit_module_one.validation_step(batch_zero, 0)
+        # ------------------------------------------------------------------
+        # val_dice / val_dice_best
+        # ------------------------------------------------------------------
 
-            assert lit_module_one.val_dice.compute().item() == pytest.approx(0.0, abs=1e-3)
+        class TestValDice:
+            def test_is_one_when_perfect_overlap(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_one: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions on all-positive masks → val_dice ≈ 1.0."""
+                lit_module_one.validation_step(batch_one, 0)
 
-        def test_label_accuracy_is_fraction_of_correct_predictions(
-            self,
-            lit_module_one: HeadSegmentationLitModule,
-            batch_mixed: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """Model predicts 1 for both samples; only label[0]=1 is correct → val_label_acc = 0.5."""
-            lit_module_one.validation_step(batch_mixed, 0)
+                assert lit_module_one.val_dice.compute().item() == pytest.approx(1.0, abs=1e-4)
 
-            assert lit_module_one.val_label_acc.compute().item() == pytest.approx(0.5, abs=1e-4)
+            def test_is_zero_when_no_overlap(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_zero: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions on all-zero masks → val_dice ≈ 0.0."""
+                lit_module_one.validation_step(batch_zero, 0)
 
-        def test_label_accuracy_one_when_all_true_negatives(
-            self,
-            lit_module_zero: HeadSegmentationLitModule,
-            batch_zero: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """All predictions=0 and all labels=0 → val_label_acc=1.0."""
-            lit_module_zero.validation_step(batch_zero, 0)
+                assert lit_module_one.val_dice.compute().item() == pytest.approx(0.0, abs=1e-3)
 
-            assert lit_module_zero.val_label_acc.compute().item() == pytest.approx(1.0, abs=1e-4)
+            def test_measures_spatial_overlap(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_mixed: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions, first mask=1 and second mask=0 → val_dice = 2/3."""
+                lit_module_one.validation_step(batch_mixed, 0)
 
-        def test_label_f1_weighs_precision_and_recall(
-            self,
-            lit_module_one: HeadSegmentationLitModule,
-            batch_mixed: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """Same mixed batch: TP=1 FP=1 FN=0 → val_label_f1=2/3, differs from acc=0.5."""
-            lit_module_one.validation_step(batch_mixed, 0)
+                expected = 2 * _H * _W / (2 * _H * _W + _H * _W)  # 2/3
+                assert lit_module_one.val_dice.compute().item() == pytest.approx(expected, abs=1e-4)
 
-            assert lit_module_one.val_label_f1.compute().item() == pytest.approx(2 / 3, abs=1e-4)
+            def test_best_increases_with_better_epoch(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_one: tuple[Tensor, Tensor, Tensor],
+                batch_zero: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """val_dice_best should increase when a better epoch follows a worse one."""
+                lit_module_one.validation_step(batch_zero, 0)
+                lit_module_one.on_validation_epoch_end()
+                best_after_epoch1 = lit_module_one.val_dice_best.compute().item()
 
-        def test_label_f1_zero_when_only_true_negatives(
-            self,
-            lit_module_zero: HeadSegmentationLitModule,
-            batch_zero: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """All predictions=0 and all labels=0 → binary val_label_f1=0.0."""
-            lit_module_zero.validation_step(batch_zero, 0)
+                _reset_val_metrics(lit_module_one)
 
-            assert lit_module_zero.val_label_f1.compute().item() == pytest.approx(0.0, abs=1e-4)
+                lit_module_one.validation_step(batch_one, 0)
+                lit_module_one.on_validation_epoch_end()
 
-        def test_pixel_accuracy_is_fraction_of_correct_pixels(
-            self,
-            lit_module_one: HeadSegmentationLitModule,
-            batch_mixed: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """All-positive predictions, half-positive mask → val_pixel_acc = 0.5."""
-            lit_module_one.validation_step(batch_mixed, 0)
+                assert lit_module_one.val_dice_best.compute().item() > best_after_epoch1
 
-            assert lit_module_one.val_pixel_acc.compute().item() == pytest.approx(0.5, abs=1e-4)
+            def test_best_does_not_decrease(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_one: tuple[Tensor, Tensor, Tensor],
+                batch_zero: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """val_dice_best should not decrease when a worse epoch follows a better one."""
+                lit_module_one.validation_step(batch_one, 0)
+                lit_module_one.on_validation_epoch_end()
+                best_after_epoch1 = lit_module_one.val_dice_best.compute().item()
 
-        def test_pixel_f1_weighs_precision_and_recall(
-            self,
-            lit_module_one: HeadSegmentationLitModule,
-            batch_mixed: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """All-positive predictions, half-positive mask: val_pixel_f1 (2/3) differs from acc (0.5)."""
-            lit_module_one.validation_step(batch_mixed, 0)
+                _reset_val_metrics(lit_module_one)
 
-            assert lit_module_one.val_pixel_f1.compute().item() == pytest.approx(2 / 3, abs=1e-4)
+                lit_module_one.validation_step(batch_zero, 0)
+                lit_module_one.on_validation_epoch_end()
 
-        def test_best_dice_increases_with_better_epoch(
-            self,
-            lit_module_one: HeadSegmentationLitModule,
-            batch_one: tuple[Tensor, Tensor, Tensor],
-            batch_zero: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """val_dice_best should increase when a better epoch follows a worse one."""
-            # Epoch 1: predict all-positive on all-zero masks → dice ≈ 0
-            lit_module_one.validation_step(batch_zero, 0)
-            lit_module_one.on_validation_epoch_end()
-            best_after_epoch1 = lit_module_one.val_dice_best.compute().item()
+                assert lit_module_one.val_dice_best.compute().item() == pytest.approx(best_after_epoch1)
 
-            _reset_val_metrics(lit_module_one)
+        # ------------------------------------------------------------------
+        # val_label_acc / val_label_acc_best
+        # ------------------------------------------------------------------
 
-            # Epoch 2: predict all-positive on all-one masks → dice ≈ 1
-            lit_module_one.validation_step(batch_one, 0)
-            lit_module_one.on_validation_epoch_end()
+        class TestValLabelAcc:
+            def test_is_one_when_perfect(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_one: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions on all-positive labels → val_label_acc = 1.0."""
+                lit_module_one.validation_step(batch_one, 0)
 
-            assert lit_module_one.val_dice_best.compute().item() > best_after_epoch1
+                assert lit_module_one.val_label_acc.compute().item() == pytest.approx(1.0, abs=1e-4)
 
-        def test_best_dice_does_not_decrease(
-            self,
-            lit_module_one: HeadSegmentationLitModule,
-            batch_one: tuple[Tensor, Tensor, Tensor],
-            batch_zero: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """val_dice_best should not decrease when a worse epoch follows a better one."""
-            # Epoch 1: predict all-positive on all-one masks → dice ≈ 1
-            lit_module_one.validation_step(batch_one, 0)
-            lit_module_one.on_validation_epoch_end()
-            best_after_epoch1 = lit_module_one.val_dice_best.compute().item()
+            def test_is_zero_when_all_wrong(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_zero: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """Model predicts 1 for all; all labels are 0 → val_label_acc = 0.0."""
+                lit_module_one.validation_step(batch_zero, 0)
 
-            _reset_val_metrics(lit_module_one)
+                assert lit_module_one.val_label_acc.compute().item() == pytest.approx(0.0, abs=1e-4)
 
-            # Epoch 2: predict all-positive on all-zero masks → dice ≈ 0
-            lit_module_one.validation_step(batch_zero, 0)
-            lit_module_one.on_validation_epoch_end()
+            def test_is_half_when_half_correct(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_mixed: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """Model predicts 1 for both samples; only label[0]=1 is correct → val_label_acc = 0.5."""
+                lit_module_one.validation_step(batch_mixed, 0)
 
-            assert lit_module_one.val_dice_best.compute().item() == pytest.approx(best_after_epoch1)
+                assert lit_module_one.val_label_acc.compute().item() == pytest.approx(0.5, abs=1e-4)
 
-        def test_best_label_f1_tracks_maximum(
-            self,
-            lit_module_one: HeadSegmentationLitModule,
-            batch_one: tuple[Tensor, Tensor, Tensor],
-            batch_zero: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """val_label_f1_best retains the epoch-high F1 and does not decrease."""
-            # Epoch 1: perfect F1 = 1.0
-            lit_module_one.validation_step(batch_one, 0)
-            lit_module_one.on_validation_epoch_end()
-            best_after_epoch1 = lit_module_one.val_label_f1_best.compute().item()
+            def test_best_increases_with_better_epoch(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_one: tuple[Tensor, Tensor, Tensor],
+                batch_zero: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """val_label_acc_best should increase when a better epoch follows a worse one."""
+                lit_module_one.validation_step(batch_zero, 0)
+                lit_module_one.on_validation_epoch_end()
+                best_after_epoch1 = lit_module_one.val_label_acc_best.compute().item()
 
-            _reset_val_metrics(lit_module_one)
+                _reset_val_metrics(lit_module_one)
 
-            # Epoch 2: all FP → F1 = 0.0
-            lit_module_one.validation_step(batch_zero, 0)
-            lit_module_one.on_validation_epoch_end()
+                lit_module_one.validation_step(batch_one, 0)
+                lit_module_one.on_validation_epoch_end()
 
-            assert lit_module_one.val_label_f1_best.compute().item() == pytest.approx(best_after_epoch1)
+                assert lit_module_one.val_label_acc_best.compute().item() > best_after_epoch1
 
-        def test_best_label_acc_tracks_maximum(
-            self,
-            lit_module_one: HeadSegmentationLitModule,
-            batch_one: tuple[Tensor, Tensor, Tensor],
-            batch_zero: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """val_label_acc_best retains the epoch-high accuracy and does not decrease."""
-            # Epoch 1: acc = 1.0
-            lit_module_one.validation_step(batch_one, 0)
-            lit_module_one.on_validation_epoch_end()
-            best_after_epoch1 = lit_module_one.val_label_acc_best.compute().item()
+            def test_best_tracks_maximum(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_one: tuple[Tensor, Tensor, Tensor],
+                batch_zero: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """val_label_acc_best retains the epoch-high accuracy and does not decrease."""
+                lit_module_one.validation_step(batch_one, 0)
+                lit_module_one.on_validation_epoch_end()
+                best_after_epoch1 = lit_module_one.val_label_acc_best.compute().item()
 
-            _reset_val_metrics(lit_module_one)
+                _reset_val_metrics(lit_module_one)
 
-            # Epoch 2: acc = 0.0 (all wrong)
-            lit_module_one.validation_step(batch_zero, 0)
-            lit_module_one.on_validation_epoch_end()
+                lit_module_one.validation_step(batch_zero, 0)
+                lit_module_one.on_validation_epoch_end()
 
-            assert lit_module_one.val_label_acc_best.compute().item() == pytest.approx(best_after_epoch1)
+                assert lit_module_one.val_label_acc_best.compute().item() == pytest.approx(best_after_epoch1)
 
-        def test_best_pixel_f1_tracks_maximum(
-            self,
-            lit_module_one: HeadSegmentationLitModule,
-            batch_one: tuple[Tensor, Tensor, Tensor],
-            batch_zero: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """val_pixel_f1_best retains the epoch-high pixel F1 and does not decrease."""
-            lit_module_one.validation_step(batch_one, 0)
-            lit_module_one.on_validation_epoch_end()
-            best_after_epoch1 = lit_module_one.val_pixel_f1_best.compute().item()
+        # ------------------------------------------------------------------
+        # val_label_f1 / val_label_f1_best
+        # ------------------------------------------------------------------
 
-            _reset_val_metrics(lit_module_one)
+        class TestValLabelF1:
+            def test_is_one_when_perfect(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_one: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions on all-positive labels → val_label_f1 = 1.0."""
+                lit_module_one.validation_step(batch_one, 0)
 
-            lit_module_one.validation_step(batch_zero, 0)
-            lit_module_one.on_validation_epoch_end()
+                assert lit_module_one.val_label_f1.compute().item() == pytest.approx(1.0, abs=1e-4)
 
-            assert lit_module_one.val_pixel_f1_best.compute().item() == pytest.approx(best_after_epoch1)
+            def test_is_zero_when_only_true_negatives(
+                self,
+                lit_module_zero: HeadSegmentationLitModule,
+                batch_zero: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All predictions=0 and all labels=0 → binary val_label_f1=0.0."""
+                lit_module_zero.validation_step(batch_zero, 0)
 
-        def test_best_pixel_acc_tracks_maximum(
-            self,
-            lit_module_one: HeadSegmentationLitModule,
-            batch_one: tuple[Tensor, Tensor, Tensor],
-            batch_zero: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """val_pixel_acc_best retains the epoch-high pixel accuracy and does not decrease."""
-            lit_module_one.validation_step(batch_one, 0)
-            lit_module_one.on_validation_epoch_end()
-            best_after_epoch1 = lit_module_one.val_pixel_acc_best.compute().item()
+                assert lit_module_zero.val_label_f1.compute().item() == pytest.approx(0.0, abs=1e-4)
 
-            _reset_val_metrics(lit_module_one)
+            def test_weighs_precision_and_recall(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_mixed: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """Same mixed batch: TP=1 FP=1 FN=0 → val_label_f1=2/3, differs from acc=0.5."""
+                lit_module_one.validation_step(batch_mixed, 0)
 
-            lit_module_one.validation_step(batch_zero, 0)
-            lit_module_one.on_validation_epoch_end()
+                assert lit_module_one.val_label_f1.compute().item() == pytest.approx(2 / 3, abs=1e-4)
 
-            assert lit_module_one.val_pixel_acc_best.compute().item() == pytest.approx(best_after_epoch1)
+            def test_best_increases_with_better_epoch(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_one: tuple[Tensor, Tensor, Tensor],
+                batch_zero: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """val_label_f1_best should increase when a better epoch follows a worse one."""
+                lit_module_one.validation_step(batch_zero, 0)
+                lit_module_one.on_validation_epoch_end()
+                best_after_epoch1 = lit_module_one.val_label_f1_best.compute().item()
+
+                _reset_val_metrics(lit_module_one)
+
+                lit_module_one.validation_step(batch_one, 0)
+                lit_module_one.on_validation_epoch_end()
+
+                assert lit_module_one.val_label_f1_best.compute().item() > best_after_epoch1
+
+            def test_best_tracks_maximum(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_one: tuple[Tensor, Tensor, Tensor],
+                batch_zero: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """val_label_f1_best retains the epoch-high F1 and does not decrease."""
+                lit_module_one.validation_step(batch_one, 0)
+                lit_module_one.on_validation_epoch_end()
+                best_after_epoch1 = lit_module_one.val_label_f1_best.compute().item()
+
+                _reset_val_metrics(lit_module_one)
+
+                lit_module_one.validation_step(batch_zero, 0)
+                lit_module_one.on_validation_epoch_end()
+
+                assert lit_module_one.val_label_f1_best.compute().item() == pytest.approx(best_after_epoch1)
+
+        # ------------------------------------------------------------------
+        # val_pixel_acc / val_pixel_acc_best
+        # ------------------------------------------------------------------
+
+        class TestValPixelAcc:
+            def test_is_one_when_perfect(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_one: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions on all-positive masks → val_pixel_acc = 1.0."""
+                lit_module_one.validation_step(batch_one, 0)
+
+                assert lit_module_one.val_pixel_acc.compute().item() == pytest.approx(1.0, abs=1e-4)
+
+            def test_is_zero_when_all_wrong(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_zero: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions on all-zero masks → val_pixel_acc = 0.0."""
+                lit_module_one.validation_step(batch_zero, 0)
+
+                assert lit_module_one.val_pixel_acc.compute().item() == pytest.approx(0.0, abs=1e-4)
+
+            def test_is_half_when_half_correct(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_mixed: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions, half-positive mask → val_pixel_acc = 0.5."""
+                lit_module_one.validation_step(batch_mixed, 0)
+
+                assert lit_module_one.val_pixel_acc.compute().item() == pytest.approx(0.5, abs=1e-4)
+
+            def test_best_increases_with_better_epoch(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_one: tuple[Tensor, Tensor, Tensor],
+                batch_zero: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """val_pixel_acc_best should increase when a better epoch follows a worse one."""
+                lit_module_one.validation_step(batch_zero, 0)
+                lit_module_one.on_validation_epoch_end()
+                best_after_epoch1 = lit_module_one.val_pixel_acc_best.compute().item()
+
+                _reset_val_metrics(lit_module_one)
+
+                lit_module_one.validation_step(batch_one, 0)
+                lit_module_one.on_validation_epoch_end()
+
+                assert lit_module_one.val_pixel_acc_best.compute().item() > best_after_epoch1
+
+            def test_best_tracks_maximum(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_one: tuple[Tensor, Tensor, Tensor],
+                batch_zero: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """val_pixel_acc_best retains the epoch-high pixel accuracy and does not decrease."""
+                lit_module_one.validation_step(batch_one, 0)
+                lit_module_one.on_validation_epoch_end()
+                best_after_epoch1 = lit_module_one.val_pixel_acc_best.compute().item()
+
+                _reset_val_metrics(lit_module_one)
+
+                lit_module_one.validation_step(batch_zero, 0)
+                lit_module_one.on_validation_epoch_end()
+
+                assert lit_module_one.val_pixel_acc_best.compute().item() == pytest.approx(best_after_epoch1)
+
+        # ------------------------------------------------------------------
+        # val_pixel_f1 / val_pixel_f1_best
+        # ------------------------------------------------------------------
+
+        class TestValPixelF1:
+            def test_is_one_when_perfect(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_one: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions on all-positive masks → val_pixel_f1 = 1.0."""
+                lit_module_one.validation_step(batch_one, 0)
+
+                assert lit_module_one.val_pixel_f1.compute().item() == pytest.approx(1.0, abs=1e-4)
+
+            def test_is_zero_when_all_wrong(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_zero: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions on all-zero masks → val_pixel_f1 = 0.0."""
+                lit_module_one.validation_step(batch_zero, 0)
+
+                assert lit_module_one.val_pixel_f1.compute().item() == pytest.approx(0.0, abs=1e-4)
+
+            def test_weighs_precision_and_recall(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_mixed: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions, half-positive mask: val_pixel_f1 (2/3) differs from acc (0.5)."""
+                lit_module_one.validation_step(batch_mixed, 0)
+
+                assert lit_module_one.val_pixel_f1.compute().item() == pytest.approx(2 / 3, abs=1e-4)
+
+            def test_best_increases_with_better_epoch(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_one: tuple[Tensor, Tensor, Tensor],
+                batch_zero: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """val_pixel_f1_best should increase when a better epoch follows a worse one."""
+                lit_module_one.validation_step(batch_zero, 0)
+                lit_module_one.on_validation_epoch_end()
+                best_after_epoch1 = lit_module_one.val_pixel_f1_best.compute().item()
+
+                _reset_val_metrics(lit_module_one)
+
+                lit_module_one.validation_step(batch_one, 0)
+                lit_module_one.on_validation_epoch_end()
+
+                assert lit_module_one.val_pixel_f1_best.compute().item() > best_after_epoch1
+
+            def test_best_tracks_maximum(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_one: tuple[Tensor, Tensor, Tensor],
+                batch_zero: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """val_pixel_f1_best retains the epoch-high pixel F1 and does not decrease."""
+                lit_module_one.validation_step(batch_one, 0)
+                lit_module_one.on_validation_epoch_end()
+                best_after_epoch1 = lit_module_one.val_pixel_f1_best.compute().item()
+
+                _reset_val_metrics(lit_module_one)
+
+                lit_module_one.validation_step(batch_zero, 0)
+                lit_module_one.on_validation_epoch_end()
+
+                assert lit_module_one.val_pixel_f1_best.compute().item() == pytest.approx(best_after_epoch1)
 
     # ------------------------------------------------------------------
     # Test metrics
     # ------------------------------------------------------------------
 
     class TestTestMetrics:
-        def test_loss_matches_model_step(
-            self,
-            lit_module: HeadSegmentationLitModule,
-        ) -> None:
-            """MeanMetric-backed test_loss should equal the loss returned by model_step."""
-            batch = _make_batch()
-            reference_loss, *_ = lit_module.model_step(batch)
-            lit_module.test_step(batch, 0)
 
-            assert lit_module.test_loss.compute().item() == pytest.approx(reference_loss.item(), rel=1e-4)
+        # ------------------------------------------------------------------
+        # test_loss
+        # ------------------------------------------------------------------
 
-        def test_dice_perfect_overlap(
-            self,
-            lit_module_one: HeadSegmentationLitModule,
-            batch_one: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """All-positive predictions on all-positive masks → test_dice ≈ 1.0."""
-            lit_module_one.test_step(batch_one, 0)
+        class TestTestLoss:
+            def test_matches_model_step(
+                self,
+                lit_module: HeadSegmentationLitModule,
+            ) -> None:
+                """MeanMetric-backed test_loss should equal the loss returned by model_step."""
+                batch = _make_batch()
+                reference_loss, *_ = lit_module.model_step(batch)
+                lit_module.test_step(batch, 0)
 
-            assert lit_module_one.test_dice.compute().item() == pytest.approx(1.0, abs=1e-4)
+                assert lit_module.test_loss.compute().item() == pytest.approx(reference_loss.item(), rel=1e-4)
 
-        def test_dice_zero_when_no_overlap(
-            self,
-            lit_module_one: HeadSegmentationLitModule,
-            batch_zero: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """All-positive predictions on all-zero masks → test_dice ≈ 0.0."""
-            lit_module_one.test_step(batch_zero, 0)
+        # ------------------------------------------------------------------
+        # test_dice
+        # ------------------------------------------------------------------
 
-            assert lit_module_one.test_dice.compute().item() == pytest.approx(0.0, abs=1e-3)
+        class TestTestDice:
+            def test_is_one_when_perfect_overlap(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_one: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions on all-positive masks → test_dice ≈ 1.0."""
+                lit_module_one.test_step(batch_one, 0)
 
-        def test_label_accuracy_is_fraction_of_correct_predictions(
-            self,
-            lit_module_one: HeadSegmentationLitModule,
-            batch_mixed: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """Model predicts 1 for both samples; only label[0]=1 is correct → test_label_acc = 0.5."""
-            lit_module_one.test_step(batch_mixed, 0)
+                assert lit_module_one.test_dice.compute().item() == pytest.approx(1.0, abs=1e-4)
 
-            assert lit_module_one.test_label_acc.compute().item() == pytest.approx(0.5, abs=1e-4)
+            def test_is_zero_when_no_overlap(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_zero: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions on all-zero masks → test_dice ≈ 0.0."""
+                lit_module_one.test_step(batch_zero, 0)
 
-        def test_label_accuracy_one_when_all_true_negatives(
-            self,
-            lit_module_zero: HeadSegmentationLitModule,
-            batch_zero: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """All predictions=0 and all labels=0 → test_label_acc=1.0 (rewards correct TN)."""
-            lit_module_zero.test_step(batch_zero, 0)
+                assert lit_module_one.test_dice.compute().item() == pytest.approx(0.0, abs=1e-3)
 
-            assert lit_module_zero.test_label_acc.compute().item() == pytest.approx(1.0, abs=1e-4)
+            def test_measures_spatial_overlap(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_mixed: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions, first mask=1 and second mask=0 → test_dice = 2/3."""
+                lit_module_one.test_step(batch_mixed, 0)
 
-        def test_label_f1_weighs_precision_and_recall(
-            self,
-            lit_module_one: HeadSegmentationLitModule,
-            batch_mixed: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """Same mixed batch: TP=1 FP=1 FN=0 → test_label_f1=2/3, differs from acc=0.5."""
-            lit_module_one.test_step(batch_mixed, 0)
+                expected = 2 * _H * _W / (2 * _H * _W + _H * _W)  # 2/3
+                assert lit_module_one.test_dice.compute().item() == pytest.approx(expected, abs=1e-4)
 
-            assert lit_module_one.test_label_f1.compute().item() == pytest.approx(2 / 3, abs=1e-4)
+        # ------------------------------------------------------------------
+        # test_label_acc
+        # ------------------------------------------------------------------
 
-        def test_label_f1_zero_when_only_true_negatives(
-            self,
-            lit_module_zero: HeadSegmentationLitModule,
-            batch_zero: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """All predictions=0 and all labels=0 → binary test_label_f1=0.0 (no positive activity).
+        class TestTestLabelAcc:
+            def test_is_one_when_perfect(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_one: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions on all-positive labels → test_label_acc = 1.0."""
+                lit_module_one.test_step(batch_one, 0)
 
-            Paired with test_label_accuracy_one_when_all_true_negatives this confirms that
-            accuracy and F1 diverge on all-negative outcomes.
-            """
-            lit_module_zero.test_step(batch_zero, 0)
+                assert lit_module_one.test_label_acc.compute().item() == pytest.approx(1.0, abs=1e-4)
 
-            assert lit_module_zero.test_label_f1.compute().item() == pytest.approx(0.0, abs=1e-4)
+            def test_is_zero_when_all_wrong(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_zero: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """Model predicts 1 for all; all labels are 0 → test_label_acc = 0.0."""
+                lit_module_one.test_step(batch_zero, 0)
 
-        def test_pixel_accuracy_is_fraction_of_correct_pixels(
-            self,
-            lit_module_one: HeadSegmentationLitModule,
-            batch_mixed: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """All-positive predictions, half-positive mask → test_pixel_acc = 0.5."""
-            lit_module_one.test_step(batch_mixed, 0)
+                assert lit_module_one.test_label_acc.compute().item() == pytest.approx(0.0, abs=1e-4)
 
-            assert lit_module_one.test_pixel_acc.compute().item() == pytest.approx(0.5, abs=1e-4)
+            def test_is_half_when_half_correct(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_mixed: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """Model predicts 1 for both samples; only label[0]=1 is correct → test_label_acc = 0.5."""
+                lit_module_one.test_step(batch_mixed, 0)
 
-        def test_pixel_f1_weighs_precision_and_recall(
-            self,
-            lit_module_one: HeadSegmentationLitModule,
-            batch_mixed: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """All-positive predictions, half-positive mask: test_pixel_f1 (2/3) differs from acc (0.5)."""
-            lit_module_one.test_step(batch_mixed, 0)
+                assert lit_module_one.test_label_acc.compute().item() == pytest.approx(0.5, abs=1e-4)
 
-            # TP=H*W, FP=H*W, FN=0 → precision=0.5, recall=1.0 → F1=2/3
-            assert lit_module_one.test_pixel_f1.compute().item() == pytest.approx(2 / 3, abs=1e-4)
+        # ------------------------------------------------------------------
+        # test_label_f1
+        # ------------------------------------------------------------------
 
-        def test_confusion_matrix_all_true_positive(
-            self,
-            lit_module_one: HeadSegmentationLitModule,
-            batch_one: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """All-positive predictions on all-positive labels → only TP cell populated."""
-            lit_module_one.on_test_start()
-            lit_module_one.test_step(batch_one, 0)
+        class TestTestLabelF1:
+            def test_is_one_when_perfect(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_one: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions on all-positive labels → test_label_f1 = 1.0."""
+                lit_module_one.test_step(batch_one, 0)
 
-            cm = lit_module_one.test_label_cm.compute()  # layout: [[TN, FP], [FN, TP]]
-            assert cm[0, 0].item() == 0  # TN
-            assert cm[0, 1].item() == 0  # FP
-            assert cm[1, 0].item() == 0  # FN
-            assert cm[1, 1].item() == _B  # TP
+                assert lit_module_one.test_label_f1.compute().item() == pytest.approx(1.0, abs=1e-4)
 
-        def test_confusion_matrix_all_true_negative(
-            self,
-            lit_module_zero: HeadSegmentationLitModule,
-            batch_zero: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """All-negative predictions on all-negative labels → only TN cell populated."""
-            lit_module_zero.on_test_start()
-            lit_module_zero.test_step(batch_zero, 0)
+            def test_is_zero_when_only_true_negatives(
+                self,
+                lit_module_zero: HeadSegmentationLitModule,
+                batch_zero: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All predictions=0 and all labels=0 → binary test_label_f1=0.0.
 
-            cm = lit_module_zero.test_label_cm.compute()  # layout: [[TN, FP], [FN, TP]]
-            assert cm[0, 0].item() == _B  # TN
-            assert cm[0, 1].item() == 0  # FP
-            assert cm[1, 0].item() == 0  # FN
-            assert cm[1, 1].item() == 0  # TP
+                Paired with test_is_one_when_all_true_negatives this confirms that
+                accuracy and F1 diverge on all-negative outcomes.
+                """
+                lit_module_zero.test_step(batch_zero, 0)
 
-        def test_confusion_matrix_all_false_positive(
-            self,
-            lit_module_one: HeadSegmentationLitModule,
-            batch_zero: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """All-positive predictions on all-negative labels → only FP cell populated."""
-            lit_module_one.on_test_start()
-            lit_module_one.test_step(batch_zero, 0)
+                assert lit_module_zero.test_label_f1.compute().item() == pytest.approx(0.0, abs=1e-4)
 
-            cm = lit_module_one.test_label_cm.compute()  # layout: [[TN, FP], [FN, TP]]
-            assert cm[0, 0].item() == 0  # TN
-            assert cm[0, 1].item() == _B  # FP
-            assert cm[1, 0].item() == 0  # FN
-            assert cm[1, 1].item() == 0  # TP
+            def test_weighs_precision_and_recall(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_mixed: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """Same mixed batch: TP=1 FP=1 FN=0 → test_label_f1=2/3, differs from acc=0.5."""
+                lit_module_one.test_step(batch_mixed, 0)
 
-        def test_confusion_matrix_all_false_negative(
-            self,
-            lit_module_zero: HeadSegmentationLitModule,
-            batch_one: tuple[Tensor, Tensor, Tensor],
-        ) -> None:
-            """All-negative predictions on all-positive labels → only FN cell populated."""
-            lit_module_zero.on_test_start()
-            lit_module_zero.test_step(batch_one, 0)
+                assert lit_module_one.test_label_f1.compute().item() == pytest.approx(2 / 3, abs=1e-4)
 
-            cm = lit_module_zero.test_label_cm.compute()  # layout: [[TN, FP], [FN, TP]]
-            assert cm[0, 0].item() == 0  # TN
-            assert cm[0, 1].item() == 0  # FP
-            assert cm[1, 0].item() == _B  # FN
-            assert cm[1, 1].item() == 0  # TP
+        # ------------------------------------------------------------------
+        # test_pixel_acc
+        # ------------------------------------------------------------------
+
+        class TestTestPixelAcc:
+            def test_is_one_when_perfect(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_one: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions on all-positive masks → test_pixel_acc = 1.0."""
+                lit_module_one.test_step(batch_one, 0)
+
+                assert lit_module_one.test_pixel_acc.compute().item() == pytest.approx(1.0, abs=1e-4)
+
+            def test_is_zero_when_all_wrong(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_zero: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions on all-zero masks → test_pixel_acc = 0.0."""
+                lit_module_one.test_step(batch_zero, 0)
+
+                assert lit_module_one.test_pixel_acc.compute().item() == pytest.approx(0.0, abs=1e-4)
+
+            def test_is_half_when_half_correct(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_mixed: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions, half-positive mask → test_pixel_acc = 0.5."""
+                lit_module_one.test_step(batch_mixed, 0)
+
+                assert lit_module_one.test_pixel_acc.compute().item() == pytest.approx(0.5, abs=1e-4)
+
+        # ------------------------------------------------------------------
+        # test_pixel_f1
+        # ------------------------------------------------------------------
+
+        class TestTestPixelF1:
+            def test_is_one_when_perfect(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_one: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions on all-positive masks → test_pixel_f1 = 1.0."""
+                lit_module_one.test_step(batch_one, 0)
+
+                assert lit_module_one.test_pixel_f1.compute().item() == pytest.approx(1.0, abs=1e-4)
+
+            def test_is_zero_when_all_wrong(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_zero: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions on all-zero masks → test_pixel_f1 = 0.0."""
+                lit_module_one.test_step(batch_zero, 0)
+
+                assert lit_module_one.test_pixel_f1.compute().item() == pytest.approx(0.0, abs=1e-4)
+
+            def test_weighs_precision_and_recall(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_mixed: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions, half-positive mask: test_pixel_f1 (2/3) differs from acc (0.5)."""
+                lit_module_one.test_step(batch_mixed, 0)
+
+                # TP=H*W, FP=H*W, FN=0 → precision=0.5, recall=1.0 → F1=2/3
+                assert lit_module_one.test_pixel_f1.compute().item() == pytest.approx(2 / 3, abs=1e-4)
+
+        # ------------------------------------------------------------------
+        # test_label_cm
+        # ------------------------------------------------------------------
+
+        class TestTestLabelCm:
+            def test_all_true_positive(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_one: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions on all-positive labels → only TP cell populated."""
+                lit_module_one.on_test_start()
+                lit_module_one.test_step(batch_one, 0)
+
+                cm = lit_module_one.test_label_cm.compute()  # layout: [[TN, FP], [FN, TP]]
+                assert cm[0, 0].item() == 0  # TN
+                assert cm[0, 1].item() == 0  # FP
+                assert cm[1, 0].item() == 0  # FN
+                assert cm[1, 1].item() == _B  # TP
+
+            def test_all_true_negative(
+                self,
+                lit_module_zero: HeadSegmentationLitModule,
+                batch_zero: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-negative predictions on all-negative labels → only TN cell populated."""
+                lit_module_zero.on_test_start()
+                lit_module_zero.test_step(batch_zero, 0)
+
+                cm = lit_module_zero.test_label_cm.compute()  # layout: [[TN, FP], [FN, TP]]
+                assert cm[0, 0].item() == _B  # TN
+                assert cm[0, 1].item() == 0  # FP
+                assert cm[1, 0].item() == 0  # FN
+                assert cm[1, 1].item() == 0  # TP
+
+            def test_all_false_positive(
+                self,
+                lit_module_one: HeadSegmentationLitModule,
+                batch_zero: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-positive predictions on all-negative labels → only FP cell populated."""
+                lit_module_one.on_test_start()
+                lit_module_one.test_step(batch_zero, 0)
+
+                cm = lit_module_one.test_label_cm.compute()  # layout: [[TN, FP], [FN, TP]]
+                assert cm[0, 0].item() == 0  # TN
+                assert cm[0, 1].item() == _B  # FP
+                assert cm[1, 0].item() == 0  # FN
+                assert cm[1, 1].item() == 0  # TP
+
+            def test_all_false_negative(
+                self,
+                lit_module_zero: HeadSegmentationLitModule,
+                batch_one: tuple[Tensor, Tensor, Tensor],
+            ) -> None:
+                """All-negative predictions on all-positive labels → only FN cell populated."""
+                lit_module_zero.on_test_start()
+                lit_module_zero.test_step(batch_one, 0)
+
+                cm = lit_module_zero.test_label_cm.compute()  # layout: [[TN, FP], [FN, TP]]
+                assert cm[0, 0].item() == 0  # TN
+                assert cm[0, 1].item() == 0  # FP
+                assert cm[1, 0].item() == _B  # FN
+                assert cm[1, 1].item() == 0  # TP
 
 
 # ---------------------------------------------------------------------------

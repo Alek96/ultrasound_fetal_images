@@ -111,6 +111,7 @@ def test_train_resume(tmp_path: Path, cfg_brain_planes_train: DictConfig) -> Non
 
 
 @pytest.mark.slow
+@pytest.mark.xfail(reason="Known issue - https://github.com/Lightning-AI/pytorch-lightning/issues/21401", strict=True)
 def test_train_find_lr(cfg_brain_planes_train: DictConfig) -> None:
     """Run for 1 train, val and test step.
 
@@ -290,7 +291,6 @@ def test_train_class_image_sampler(cfg_brain_planes_train: DictConfig) -> None:
             "Trans-thalamic",
             "Trans-cerebellum",
             "Trans-ventricular",
-            "Other",
             "Not A Brain",
         ]
     train(cfg_brain_planes_train)
