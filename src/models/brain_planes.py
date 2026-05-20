@@ -14,7 +14,6 @@ from torchmetrics import (
     MeanMetric,
     Metric,
 )
-from torchmetrics.classification import MulticlassConfusionMatrix
 
 from src.data.components.dataset import FetalBrainPlanesDataset
 from src.data.components.transforms import Affine, HorizontalFlip, VerticalFlip
@@ -64,7 +63,7 @@ class BrainPlanesLitModule(LightningModule):
         criterion: torch.nn.Module,
         lr: float,
         optimizer: torch.optim.Optimizer,
-        scheduler: torch.optim.lr_scheduler.LRScheduler,
+        scheduler: torch.optim.lr_scheduler.LRScheduler | None,
     ):
         super().__init__()
 
@@ -128,7 +127,7 @@ class BrainPlanesLitModule(LightningModule):
             )
         ]
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
         return self.net(x)
 
     def forward_tta(self, x: Tensor, transforms: None | list[Callable] = None) -> tuple[Tensor, Tensor]:
@@ -227,7 +226,7 @@ class BrainPlanesLitModule(LightningModule):
         pass
 
     def on_validation_start(self) -> None:
-        """Lightning hook that is called when a validation epoch ends."""
+        """Lightning hook that is called when a validation epoch starts."""
         self.val_base_acc_cm.reset()
         self.val_tta_acc_cm.reset()
 
