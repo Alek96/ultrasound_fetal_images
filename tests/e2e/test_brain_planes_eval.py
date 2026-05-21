@@ -35,5 +35,10 @@ def test_train_eval(tmp_path: Path, cfg_brain_planes_train: DictConfig, cfg_brai
     HydraConfig().set_config(cfg_brain_planes_eval)
     test_metric_dict, _ = evaluate(cfg_brain_planes_eval)
 
+    for key in ("test/loss", "test/base/acc", "test/base/f1", "test/tta/acc", "test/tta/f1"):
+        assert key in test_metric_dict, f"Expected metric key '{key}' missing from eval results"
+
     assert test_metric_dict["test/loss"] >= 0.0
+    assert 0.0 <= test_metric_dict["test/base/acc"] <= 1.0
+    assert 0.0 <= test_metric_dict["test/tta/acc"] <= 1.0
     assert abs(train_metric_dict["test/loss"] - test_metric_dict["test/loss"]) < 0.001

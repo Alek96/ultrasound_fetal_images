@@ -67,6 +67,13 @@ class BrainPlanesLitModule(LightningModule):
     ):
         super().__init__()
 
+        if softmax_target and criterion.keywords["reduction"] != "none":
+            raise ValueError(
+                "softmax_target=True requires criterion.reduction='none' for correct "
+                "per-sample loss weighting; got reduction="
+                f"'{self.criterion_fn.reduction}'."
+            )
+
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
@@ -132,6 +139,7 @@ class BrainPlanesLitModule(LightningModule):
 
     def forward_tta(self, x: Tensor, transforms: None | list[Callable] = None) -> tuple[Tensor, Tensor]:
         transforms = transforms or self.tta_transforms
+        assert transforms, "transforms list must not be empty"
 
         y_hats = []
         logits_0 = None
@@ -157,14 +165,15 @@ class BrainPlanesLitModule(LightningModule):
 
     def criterion(self, y_hat, y) -> tuple[Tensor, Tensor]:
         if len(y.shape) == 1:
-            # training without mix-up or testing
-            # y has shape ([batch_size])
-            # torch.mean is used when criterion.reduction = "none"
+            # No mix-up (training/val/test without mix-up).
+            # y has shape (batch_size,) — integer class indices.
+            # torch.mean handles both reduction="none" (reduces (B,) → scalar)
+            # and reduction="mean" (already a scalar, mean is a no-op).
             return torch.mean(self.criterion_fn(y_hat, y)), y
 
         if self.hparams.softmax_target:
-            # training with mix-up and criterion.reduction = "none"
-            # y has shape ([batch_size, 4])
+            # Mix-up with softmax_target=True; requires criterion.reduction="none".
+            # y has shape (batch_size, 4): [y_a, y_b, lam_a, lam_b].
             y_a = y[:, 0].long()
             y_b = y[:, 1].long()
             lam_a = y[:, 2]
@@ -172,9 +181,10 @@ class BrainPlanesLitModule(LightningModule):
             loss = torch.mean(lam_a * self.criterion_fn(y_hat, y_a) + lam_b * self.criterion_fn(y_hat, y_b))
             true_y = y_a
         else:
-            # training with mix-up
-            # y has shape ([batch_size, 4])
-            # torch.mean is used when criterion.reduction = "none"
+            # Mix-up with softmax_target=False.
+            # y has shape (batch_size, num_classes) — blended one-hot labels.
+            # torch.mean handles both reduction="none" (reduces (B,) → scalar)
+            # and reduction="mean" (already a scalar, mean is a no-op).
             loss = torch.mean(self.criterion_fn(y_hat, y))
             true_y = torch.argmax(y, dim=1)
 
@@ -324,6 +334,16 @@ class BrainPlanesLitModule(LightningModule):
 
     @staticmethod
     def confusion_matrix_acc(confusion_matrix, class_idx):
+        """Return the macro-average recall for the given class indices.
+
+        Expects a row-normalised confusion matrix (normalize="true"), where
+        ``confusion_matrix[i][i]`` equals the recall (TP / (TP + FN)) for
+        class ``i``.  The result is the unweighted mean of those recall values.
+
+        :param confusion_matrix: Row-normalised confusion matrix tensor.
+        :param class_idx: Sequence of class indices to include.
+        :return: Mean recall across the specified classes.
+        """
         true = torch.sum(torch.cat([confusion_matrix[i][i].view(1) for i in class_idx]))
         return true / len(class_idx)
 

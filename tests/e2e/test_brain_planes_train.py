@@ -119,46 +119,47 @@ def test_train_find_lr(cfg_brain_planes_train: DictConfig) -> None:
     """
     HydraConfig().set_config(cfg_brain_planes_train)
     with open_dict(cfg_brain_planes_train):
-        # cfg_brain_planes_train.trainer.fast_dev_run = True
         cfg_brain_planes_train.find_lr = True
     train(cfg_brain_planes_train)
 
 
 @pytest.mark.slow
 def test_train_label_smoothing(cfg_brain_planes_train: DictConfig) -> None:
-    """Run for 1 train, val and test step.
+    """Run for 1 train, val and test step with label smoothing enabled.
 
     :param cfg_brain_planes_train: A DictConfig containing a valid training configuration.
     """
     HydraConfig().set_config(cfg_brain_planes_train)
     with open_dict(cfg_brain_planes_train):
-        # cfg_brain_planes_train.trainer.fast_dev_run = True
         cfg_brain_planes_train.model.criterion.label_smoothing = 0.02
     train(cfg_brain_planes_train)
 
 
 @pytest.mark.slow
-def test_train_reduction_noon(cfg_brain_planes_train: DictConfig) -> None:
-    """Run for 1 train, val and test step.
+def test_train_reduction_none(cfg_brain_planes_train: DictConfig) -> None:
+    """Run for 1 train, val and test step with criterion.reduction='none'.
 
     :param cfg_brain_planes_train: A DictConfig containing a valid training configuration.
     """
     HydraConfig().set_config(cfg_brain_planes_train)
     with open_dict(cfg_brain_planes_train):
-        # cfg_brain_planes_train.trainer.fast_dev_run = True
         cfg_brain_planes_train.model.criterion.reduction = "none"
     train(cfg_brain_planes_train)
 
 
+# ---------------------------------------------------------------------------
+# MixUpCallback (single shared λ per batch)
+# ---------------------------------------------------------------------------
+
+
 @pytest.mark.slow
 def test_train_mix_up(cfg_brain_planes_train: DictConfig) -> None:
-    """Run for 1 train, val and test step.
+    """MixUpCallback with softmax_target=False and default criterion reduction.
 
     :param cfg_brain_planes_train: A DictConfig containing a valid training configuration.
     """
     HydraConfig().set_config(cfg_brain_planes_train)
     with open_dict(cfg_brain_planes_train):
-        # cfg_brain_planes_train.trainer.fast_dev_run = True
         cfg_brain_planes_train.callbacks.mix_up = {}
         cfg_brain_planes_train.callbacks.mix_up._target_ = "src.models.utils.callbacks.MixUpCallback"
         cfg_brain_planes_train.callbacks.mix_up.alpha = 0.4
@@ -168,66 +169,13 @@ def test_train_mix_up(cfg_brain_planes_train: DictConfig) -> None:
 
 
 @pytest.mark.slow
-def test_train_mix_up_v2(cfg_brain_planes_train: DictConfig) -> None:
-    """Run for 1 train, val and test step.
+def test_train_mix_up_reduction_none(cfg_brain_planes_train: DictConfig) -> None:
+    """MixUpCallback with softmax_target=False and criterion.reduction='none'.
 
     :param cfg_brain_planes_train: A DictConfig containing a valid training configuration.
     """
     HydraConfig().set_config(cfg_brain_planes_train)
     with open_dict(cfg_brain_planes_train):
-        # cfg_brain_planes_train.trainer.fast_dev_run = True
-        cfg_brain_planes_train.callbacks.mix_up = {}
-        cfg_brain_planes_train.callbacks.mix_up._target_ = "src.models.utils.callbacks.MixUpV2Callback"
-        cfg_brain_planes_train.callbacks.mix_up.alpha = 0.4
-        cfg_brain_planes_train.callbacks.mix_up.softmax_target = False
-        cfg_brain_planes_train.callbacks.mix_up.labels = 4
-    train(cfg_brain_planes_train)
-
-
-@pytest.mark.slow
-def test_train_vm_mix_up(cfg_brain_planes_train: DictConfig) -> None:
-    """Run for 1 train, val and test step.
-
-    :param cfg_brain_planes_train: A DictConfig containing a valid training configuration.
-    """
-    HydraConfig().set_config(cfg_brain_planes_train)
-    with open_dict(cfg_brain_planes_train):
-        # cfg_brain_planes_train.trainer.fast_dev_run = True
-        cfg_brain_planes_train.callbacks.mix_up = {}
-        cfg_brain_planes_train.callbacks.mix_up._target_ = "src.models.utils.callbacks.VHMixUpCallback"
-        cfg_brain_planes_train.callbacks.mix_up.alpha = 0.4
-        cfg_brain_planes_train.callbacks.mix_up.softmax_target = False
-        cfg_brain_planes_train.callbacks.mix_up.labels = 4
-    train(cfg_brain_planes_train)
-
-
-@pytest.mark.slow
-def test_train_mix_up_label_smoothing(cfg_brain_planes_train: DictConfig) -> None:
-    """Run for 1 train, val and test step.
-
-    :param cfg_brain_planes_train: A DictConfig containing a valid training configuration.
-    """
-    HydraConfig().set_config(cfg_brain_planes_train)
-    with open_dict(cfg_brain_planes_train):
-        # cfg_brain_planes_train.trainer.fast_dev_run = True
-        cfg_brain_planes_train.model.criterion.label_smoothing = 0.02
-        cfg_brain_planes_train.callbacks.mix_up = {}
-        cfg_brain_planes_train.callbacks.mix_up._target_ = "src.models.utils.callbacks.MixUpCallback"
-        cfg_brain_planes_train.callbacks.mix_up.alpha = 0.4
-        cfg_brain_planes_train.callbacks.mix_up.softmax_target = False
-        cfg_brain_planes_train.callbacks.mix_up.labels = 4
-    train(cfg_brain_planes_train)
-
-
-@pytest.mark.slow
-def test_train_mix_up_reduction_noon(cfg_brain_planes_train: DictConfig) -> None:
-    """Run for 1 train, val and test step.
-
-    :param cfg_brain_planes_train: A DictConfig containing a valid training configuration.
-    """
-    HydraConfig().set_config(cfg_brain_planes_train)
-    with open_dict(cfg_brain_planes_train):
-        # cfg_brain_planes_train.trainer.fast_dev_run = True
         cfg_brain_planes_train.model.criterion.reduction = "none"
         cfg_brain_planes_train.callbacks.mix_up = {}
         cfg_brain_planes_train.callbacks.mix_up._target_ = "src.models.utils.callbacks.MixUpCallback"
@@ -239,13 +187,85 @@ def test_train_mix_up_reduction_noon(cfg_brain_planes_train: DictConfig) -> None
 
 @pytest.mark.slow
 def test_train_mix_up_softmax_target(cfg_brain_planes_train: DictConfig) -> None:
-    """Run for 1 train, val and test step.
+    """MixUpCallback with softmax_target=True and criterion.reduction='none'.
 
     :param cfg_brain_planes_train: A DictConfig containing a valid training configuration.
     """
     HydraConfig().set_config(cfg_brain_planes_train)
     with open_dict(cfg_brain_planes_train):
-        # cfg_brain_planes_train.trainer.fast_dev_run = True
+        cfg_brain_planes_train.model.criterion.reduction = "none"
+        cfg_brain_planes_train.model.softmax_target = True
+        cfg_brain_planes_train.callbacks.mix_up = {}
+        cfg_brain_planes_train.callbacks.mix_up._target_ = "src.models.utils.callbacks.MixUpCallback"
+        cfg_brain_planes_train.callbacks.mix_up.alpha = 0.4
+        cfg_brain_planes_train.callbacks.mix_up.softmax_target = True
+        cfg_brain_planes_train.callbacks.mix_up.labels = 4
+    train(cfg_brain_planes_train)
+
+
+@pytest.mark.slow
+def test_train_mix_up_label_smoothing(cfg_brain_planes_train: DictConfig) -> None:
+    """MixUpCallback with softmax_target=False and label smoothing.
+
+    :param cfg_brain_planes_train: A DictConfig containing a valid training configuration.
+    """
+    HydraConfig().set_config(cfg_brain_planes_train)
+    with open_dict(cfg_brain_planes_train):
+        cfg_brain_planes_train.model.criterion.label_smoothing = 0.02
+        cfg_brain_planes_train.callbacks.mix_up = {}
+        cfg_brain_planes_train.callbacks.mix_up._target_ = "src.models.utils.callbacks.MixUpCallback"
+        cfg_brain_planes_train.callbacks.mix_up.alpha = 0.4
+        cfg_brain_planes_train.callbacks.mix_up.softmax_target = False
+        cfg_brain_planes_train.callbacks.mix_up.labels = 4
+    train(cfg_brain_planes_train)
+
+
+# ---------------------------------------------------------------------------
+# MixUpV2Callback (per-sample λ)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.slow
+def test_train_mix_up_v2(cfg_brain_planes_train: DictConfig) -> None:
+    """MixUpV2Callback with softmax_target=False and default criterion reduction.
+
+    :param cfg_brain_planes_train: A DictConfig containing a valid training configuration.
+    """
+    HydraConfig().set_config(cfg_brain_planes_train)
+    with open_dict(cfg_brain_planes_train):
+        cfg_brain_planes_train.callbacks.mix_up = {}
+        cfg_brain_planes_train.callbacks.mix_up._target_ = "src.models.utils.callbacks.MixUpV2Callback"
+        cfg_brain_planes_train.callbacks.mix_up.alpha = 0.4
+        cfg_brain_planes_train.callbacks.mix_up.softmax_target = False
+        cfg_brain_planes_train.callbacks.mix_up.labels = 4
+    train(cfg_brain_planes_train)
+
+
+@pytest.mark.slow
+def test_train_mix_up_v2_reduction_none(cfg_brain_planes_train: DictConfig) -> None:
+    """MixUpV2Callback with softmax_target=False and criterion.reduction='none'.
+
+    :param cfg_brain_planes_train: A DictConfig containing a valid training configuration.
+    """
+    HydraConfig().set_config(cfg_brain_planes_train)
+    with open_dict(cfg_brain_planes_train):
+        cfg_brain_planes_train.model.criterion.reduction = "none"
+        cfg_brain_planes_train.callbacks.mix_up = {}
+        cfg_brain_planes_train.callbacks.mix_up._target_ = "src.models.utils.callbacks.MixUpV2Callback"
+        cfg_brain_planes_train.callbacks.mix_up.alpha = 0.4
+        cfg_brain_planes_train.callbacks.mix_up.softmax_target = False
+        cfg_brain_planes_train.callbacks.mix_up.labels = 4
+    train(cfg_brain_planes_train)
+
+
+@pytest.mark.slow
+def test_train_mix_up_v2_softmax_target(cfg_brain_planes_train: DictConfig) -> None:
+    """MixUpV2Callback with softmax_target=True and criterion.reduction='none'.
+
+    :param cfg_brain_planes_train: A DictConfig containing a valid training configuration.
+    """
+    HydraConfig().set_config(cfg_brain_planes_train)
+    with open_dict(cfg_brain_planes_train):
         cfg_brain_planes_train.model.criterion.reduction = "none"
         cfg_brain_planes_train.model.softmax_target = True
         cfg_brain_planes_train.callbacks.mix_up = {}
@@ -257,14 +277,13 @@ def test_train_mix_up_softmax_target(cfg_brain_planes_train: DictConfig) -> None
 
 
 @pytest.mark.slow
-def test_train_mix_up_softmax_target_label_smoothing(cfg_brain_planes_train: DictConfig) -> None:
-    """Run for 1 train, val and test step.
+def test_train_mix_up_v2_softmax_target_label_smoothing(cfg_brain_planes_train: DictConfig) -> None:
+    """MixUpV2Callback with softmax_target=True, criterion.reduction='none', and label smoothing.
 
     :param cfg_brain_planes_train: A DictConfig containing a valid training configuration.
     """
     HydraConfig().set_config(cfg_brain_planes_train)
     with open_dict(cfg_brain_planes_train):
-        # cfg_brain_planes_train.trainer.fast_dev_run = True
         cfg_brain_planes_train.model.criterion.label_smoothing = 0.02
         cfg_brain_planes_train.model.criterion.reduction = "none"
         cfg_brain_planes_train.model.softmax_target = True
@@ -276,15 +295,75 @@ def test_train_mix_up_softmax_target_label_smoothing(cfg_brain_planes_train: Dic
     train(cfg_brain_planes_train)
 
 
+# ---------------------------------------------------------------------------
+# VHMixUpCallback (vertical/horizontal split mix-up)
+# ---------------------------------------------------------------------------
+
+
 @pytest.mark.slow
-def test_train_class_image_sampler(cfg_brain_planes_train: DictConfig) -> None:
-    """Run for 1 train, val and test step.
+def test_train_vh_mix_up(cfg_brain_planes_train: DictConfig) -> None:
+    """VHMixUpCallback with softmax_target=False and default criterion reduction.
 
     :param cfg_brain_planes_train: A DictConfig containing a valid training configuration.
     """
     HydraConfig().set_config(cfg_brain_planes_train)
     with open_dict(cfg_brain_planes_train):
-        # cfg_brain_planes_train.trainer.fast_dev_run = True
+        cfg_brain_planes_train.callbacks.mix_up = {}
+        cfg_brain_planes_train.callbacks.mix_up._target_ = "src.models.utils.callbacks.VHMixUpCallback"
+        cfg_brain_planes_train.callbacks.mix_up.alpha = 0.4
+        cfg_brain_planes_train.callbacks.mix_up.softmax_target = False
+        cfg_brain_planes_train.callbacks.mix_up.labels = 4
+    train(cfg_brain_planes_train)
+
+
+@pytest.mark.slow
+def test_train_vh_mix_up_reduction_none(cfg_brain_planes_train: DictConfig) -> None:
+    """VHMixUpCallback with softmax_target=False and criterion.reduction='none'.
+
+    :param cfg_brain_planes_train: A DictConfig containing a valid training configuration.
+    """
+    HydraConfig().set_config(cfg_brain_planes_train)
+    with open_dict(cfg_brain_planes_train):
+        cfg_brain_planes_train.model.criterion.reduction = "none"
+        cfg_brain_planes_train.callbacks.mix_up = {}
+        cfg_brain_planes_train.callbacks.mix_up._target_ = "src.models.utils.callbacks.VHMixUpCallback"
+        cfg_brain_planes_train.callbacks.mix_up.alpha = 0.4
+        cfg_brain_planes_train.callbacks.mix_up.softmax_target = False
+        cfg_brain_planes_train.callbacks.mix_up.labels = 4
+    train(cfg_brain_planes_train)
+
+
+@pytest.mark.slow
+def test_train_vh_mix_up_softmax_target(cfg_brain_planes_train: DictConfig) -> None:
+    """VHMixUpCallback with softmax_target=True and criterion.reduction='none'.
+
+    :param cfg_brain_planes_train: A DictConfig containing a valid training configuration.
+    """
+    HydraConfig().set_config(cfg_brain_planes_train)
+    with open_dict(cfg_brain_planes_train):
+        cfg_brain_planes_train.model.criterion.reduction = "none"
+        cfg_brain_planes_train.model.softmax_target = True
+        cfg_brain_planes_train.callbacks.mix_up = {}
+        cfg_brain_planes_train.callbacks.mix_up._target_ = "src.models.utils.callbacks.VHMixUpCallback"
+        cfg_brain_planes_train.callbacks.mix_up.alpha = 0.4
+        cfg_brain_planes_train.callbacks.mix_up.softmax_target = True
+        cfg_brain_planes_train.callbacks.mix_up.labels = 4
+    train(cfg_brain_planes_train)
+
+
+# ---------------------------------------------------------------------------
+# ClassImageSampler
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.slow
+def test_train_class_image_sampler(cfg_brain_planes_train: DictConfig) -> None:
+    """Run for 1 train, val and test step with ClassImageSampler callback.
+
+    :param cfg_brain_planes_train: A DictConfig containing a valid training configuration.
+    """
+    HydraConfig().set_config(cfg_brain_planes_train)
+    with open_dict(cfg_brain_planes_train):
         cfg_brain_planes_train.callbacks.class_image_sampler = {}
         cfg_brain_planes_train.callbacks.class_image_sampler._target_ = "src.models.utils.callbacks.ClassImageSampler"
         cfg_brain_planes_train.callbacks.class_image_sampler.class_names = [
