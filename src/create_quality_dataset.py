@@ -238,7 +238,7 @@ def create_quality_dataset(cfg: DictConfig):
 
     checkpoint_file = sorted((root / cfg.model_path / "checkpoints").glob("epoch_*.ckpt"))[-1]
     log.info(f"Load model from <{checkpoint_file}>")
-    model = BrainPlanesLitModule.load_from_checkpoint(checkpoint_file)
+    model = BrainPlanesLitModule.load_from_checkpoint(checkpoint_file, weights_only=False)
     # disable randomness, dropout, etc...
     model.eval()
     device = cfg.device if (cfg.device != "auto") else ("cuda" if torch.cuda.is_available() else "cpu")

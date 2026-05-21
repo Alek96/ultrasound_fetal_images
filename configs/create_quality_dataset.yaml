@@ -11,7 +11,7 @@ defaults:
 task_name: "create_quality_dataset"
 
 model_path: "logs/train/runs/2023-06-26_12-06-59"
-device: "auto" # cpu, cuda, auto
+device: "cpu" # cpu, cuda, auto
 video_dir: "US_VIDEOS"
 dataset_dir: "US_VIDEOS"
 

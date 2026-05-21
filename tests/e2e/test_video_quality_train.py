@@ -79,6 +79,7 @@ def test_train_resume(tmp_path: Path, cfg_video_quality_train: DictConfig) -> No
 
 
 @pytest.mark.slow
+@pytest.mark.xfail(reason="Known issue - https://github.com/Lightning-AI/pytorch-lightning/issues/21401", strict=True)
 def test_train_find_lr(cfg_video_quality_train: DictConfig) -> None:
     """Run for 1 train, val and test step.
 
