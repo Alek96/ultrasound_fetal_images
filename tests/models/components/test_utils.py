@@ -3,13 +3,13 @@
 import pytest
 import torch
 
-from models.components.helpers import assert_output_shapes
 from src.models.components.densenet import DenseNet
 from src.models.components.efficientnet import EfficientNet
 from src.models.components.mobilenet import MobileNet
 from src.models.components.resnet import ResNet
 from src.models.components.resnext import ResNeXt
 from src.models.components.utils import get_model
+from tests.models.components.helpers import assert_output_shapes
 
 BATCH = 2
 OUTPUT_SIZE = 4
