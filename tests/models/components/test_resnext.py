@@ -3,8 +3,8 @@
 import pytest
 import torch
 
-from models.components.helpers import assert_output_shapes
 from src.models.components.resnext import ResNeXt
+from tests.models.components.helpers import assert_output_shapes
 
 BATCH = 2
 OUTPUT_SIZE = 4

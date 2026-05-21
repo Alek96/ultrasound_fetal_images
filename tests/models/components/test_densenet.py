@@ -6,8 +6,8 @@ All backbone models are instantiated with pretrain=False so no network access
 import pytest
 import torch
 
-from models.components.helpers import assert_output_shapes
 from src.models.components.densenet import DenseNet
+from tests.models.components.helpers import assert_output_shapes
 
 # ---------------------------------------------------------------------------
 # Helpers

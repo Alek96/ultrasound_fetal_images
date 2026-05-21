@@ -351,7 +351,7 @@ class FetalBrainPlanesDataset(Dataset):
 
 
 class FetalBrainPlanesSamplesDataset(FetalBrainPlanesDataset):
-    google_file_id = "123"  # TODO: replace with the real Google Drive file ID
+    google_file_id = "1yRdtekulXO8V3QWGoIL5KnmyKqCGK9Dr"
 
     def __init__(
         self,
