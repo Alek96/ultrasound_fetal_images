@@ -8,67 +8,129 @@
 
 </div>
 
-Training and evaluation code for a small **ecosystem** of models on fetal ultrasound: head segmentation, standard-plane classification, and a temporal **quality** model over video. Configurations are composed with **Hydra**; training loops use **PyTorch Lightning**. The repo is also used for **exploration** (for example under `notebooks/`).
+Training and evaluation code for fetal ultrasound ML: **head segmentation** (U-Net mask + frame label), **standard-plane classification** (backbone dense features and logits), and a temporal **quality** model over video (GRU on precomputed dense vectors). Configurations are composed with **Hydra**; training loops use **PyTorch Lightning**. The repo is also used for **exploration** under `notebooks/`.
 
 A **planned** (not yet implemented as one script) product flow is: given a fetal ultrasound **video**, run the models end-to-end and export the best still frames for the three main neurosonography planes: **Trans-ventricular**, **Trans-thalamic**, and **Trans-cerebellum**.
 
 ______________________________________________________________________
 
+## Key features
+
+- **Hydra configs** per task under `configs/`, with optional experiment overrides in `configs/experiment/`
+- **PyTorch Lightning** training and evaluation via shared [`src/train.py`](src/train.py) and [`src/eval.py`](src/eval.py)
+- **Head segmentation**: model for fetal head mask segmentation ([`HeadSegmentationLitModule`](src/models/head_segmentation_module.py))
+- **Brain planes**: model for brain planes classification ([`BrainPlanesLitModule`](src/models/brain_planes.py))
+- **Quality dataset**: quality frame dataset ([`src/create_quality_dataset.py`](src/create_quality_dataset.py))
+- **Video quality**: model for quality assessment ([`QualityLitModule`](src/models/quality_module.py))
+- **Notebooks** for exploration and analysis; `make notebook` / `make lab`
+
+______________________________________________________________________
+
+## Prerequisites
+
+- **OS:** Linux x86_64 (Conda environment is locked in [`conda-linux-64.lock`](conda-linux-64.lock) only; see [`environment.yml`](environment.yml))
+- **Conda** (Miniconda or Anaconda)
+- **Poetry 2.2.x** (installed with Conda)
+- **Python 3.12** (installed with Conda)
+- **CUDA** (optional, for `trainer=gpu`)
+
+______________________________________________________________________
+
+## Environment setup
+
+From the **repository root**:
+
+1. **Create the Conda environment and install Python dependencies:**
+
+   ```bash
+   make install
+   ```
+
+   **Manual equivalent** (without `make`):
+
+   ```bash
+   conda create --name ultrasound_fetal_images_env --file conda-linux-64.lock
+   conda activate ultrasound_fetal_images_env
+   poetry install
+   ```
+
+2. **Activate the environment** (required for training, tests, and notebooks):
+
+   ```bash
+   conda activate ultrasound_fetal_images_env
+   ```
+
+[`poetry.toml`](poetry.toml) sets `virtualenvs.create = false`, so Poetry installs into the active Conda env rather than creating a separate virtualenv.
+
+To regenerate Conda locks, update packages, and refresh pre-commit hooks, run `make update` (with the env already active).
+
+______________________________________________________________________
+
 ## Stack and layout
 
-| Layer         | Role                                                                                                                |
-| ------------- | ------------------------------------------------------------------------------------------------------------------- |
-| **Conda**     | `environment.yml` is locked to `conda-linux-64.lock`; creates `ultrasound_fetal_images_env` with Python and Poetry. |
-| **Poetry**    | `pyproject.toml` / `poetry.lock` install PyTorch, Lightning, Hydra, and the rest of the Python dependencies.        |
-| **Hydra**     | Top-level YAML under `configs/` composes data, model, trainer, callbacks, and optional experiments.                 |
-| **Lightning** | `src/train.py` instantiates the datamodule and `LightningModule` from `cfg` and runs fit/test.                      |
-
-Run all CLI entrypoints from the **repository root** so `rootutils` sets `PROJECT_ROOT` (used by `configs/paths/default.yaml` for `data/` and `logs/`).
+| Layer         | Role                                                                               | Files and locations                       |
+| ------------- | ---------------------------------------------------------------------------------- | ----------------------------------------- |
+| **Conda**     | Creates `ultrasound_fetal_images_env` with Python and Poetry.                      | `environment.yml` / `conda-linux-64.lock` |
+| **Poetry**    | Install PyTorch, Lightning, Hydra, and the rest of the Python dependencies.        | `pyproject.toml` / `poetry.lock`          |
+| **Hydra**     | Top-level YAML composes data, model, trainer, callbacks, and optional experiments. | `configs/`                                |
+| **Lightning** | Training and testing of PyTorch modules.                                           | `src/train.py` and `src/eval.py`          |
 
 Important paths:
 
-| Path       | Purpose                                                                            |
-| ---------- | ---------------------------------------------------------------------------------- |
-| `configs/` | Hydra defaults and experiments per task                                            |
-| `src/`     | Training scripts, models, and data modules                                         |
-| `data/`    | Datasets (see table below); not necessarily in version control                     |
-| `logs/`    | Typical location for training runs and checkpoints (Hydra output dirs vary by run) |
+| Path       | Purpose                                      |
+| ---------- | -------------------------------------------- |
+| `configs/` | Hydra defaults and experiments per task      |
+| `src/`     | Training scripts, models, and data modules   |
+| `data/`    | Datasets; not necessarily in version control |
+| `logs/`    | Location for training runs and checkpoints   |
+| `tests/`   | Unit, datamodule, and e2e tests              |
 
 ______________________________________________________________________
 
 ## How the models connect (training)
 
-Each stage can depend on artifacts or assumptions from the previous one. The diagram matches what this repository implements today.
+Each stage depends on datasets prepared in earlier steps (notebooks or scripts). The diagram shows source data, offline preparation, and model training.
 
 ```mermaid
-flowchart LR
-  subgraph dataA [Datasets]
-    HS[FETAL_HEAD_SEGMENTATION]
+flowchart TB
+  subgraph sources [Source datasets]
     FP[FETAL_PLANES]
-    VID[US_VIDEOS]
+    HS[FETAL_HEAD_SEGMENTATION]
+    BP[FETAL_BRAIN_PLANES]
+    RAW[US_VIDEOS raw videos]
   end
-  subgraph models [Models]
+  subgraph prep [Offline preparation]
+    NB20["notebooks/2.0: build FETAL_HEAD_SEGMENTATION"]
+    NB30["notebooks/3.0: build FETAL_BRAIN_PLANES"]
+    CQD["create_quality_dataset.py"]
+  end
+  subgraph models [Trained models]
     M1[HeadSegmentationLitModule]
     M2[BrainPlanesLitModule]
-    M3[QualityLitModule_GRU]
+    M3[QualityLitModule GRU]
   end
+  FP --> NB20
+  NB20 --> HS
+  FP --> NB30
+  HS --> NB30
+  NB30 --> BP
   HS --> M1
-  M1 -. "intended: crop or ROI for plane data" .-> FP
-  FP --> M2
-  M2 -->|"create_quality_dataset: dense 1280-d plus derived quality"| DS[US_VIDEOS quality tensors]
-  VID --> DS
-  DS --> M3
+  BP --> M2
+  RAW --> CQD
+  M2 --> CQD
+  CQD --> VQ[VIDEO_QUALITY tensors]
+  VQ --> M3
 ```
 
-1. **Head segmentation** is trained on **`FETAL_HEAD_SEGMENTATION`** (`HeadSegmentationDataset` in `src/data/components/dataset.py`). The model is a U-Net (`HeadSegmentationLitModule`, `configs/model/head_segmentation.yaml`): it predicts a **brain mask** and a **binary frame label** (whether the frame is treated as “head” vs not), derived from the predicted mask versus ground truth in the CSV.
+1. **`FETAL_PLANES`** — canonical still-image plane dataset (labels, splits). Used upstream; not the final folder for brain-planes training.
 
-2. In the intended workflow, the **best** head-segmentation checkpoint is used **outside** this repo’s single train script to **crop or normalize** inputs so that plane classification sees head-centric frames. The **plane classifier** is trained on **`FETAL_PLANES`** (`FetalBrainPlanesDataset`, `configs/data/brain_planes.yaml`).
+2. **`FETAL_HEAD_SEGMENTATION`** — unified head-segmentation dataset built in **`notebooks/2.0-fetal-head-segmentation-data-preparation.ipynb`**, combining several mask sources and **including images and metadata from `FETAL_PLANES`**. Trains **`HeadSegmentationLitModule`** (U-Net mask + binary frame label; `HeadSegmentationDataset`, `configs/model/head_segmentation.yaml`).
 
-3. The **brain planes** model (`BrainPlanesLitModule`) uses a backbone that returns **`(dense_features, logits)`**: a fixed-size embedding (1280 dimensions for the default MobileNetV3-small head in `src/models/components/mobilenet.py`) and class logits.
+3. **`FETAL_BRAIN_PLANES`** — built in **`notebooks/3.0-fetal-brain-planes-data-preparation.ipynb`**: starts from cleaned **`FETAL_PLANES`** metadata, copies images, and writes head-aligned **`_crop.png`** frames using masks from **`FETAL_HEAD_SEGMENTATION`**. Trains **`BrainPlanesLitModule`** on cropped head ROIs (`FetalBrainPlanesDataset`; use `experiment=brain_planes` or `data.data_name=FETAL_BRAIN_PLANES`). The backbone returns **`(dense_features, logits)`**; embedding width depends on the checkpoint backbone.
 
-4. **`src/create_quality_dataset.py`** (config: `configs/create_quality_dataset.yaml`) loads a **brain-planes** checkpoint, decodes videos under **`US_VIDEOS`**, and writes per-frame tensors (dense vectors, derived **quality** scalars, and argmax predictions) under `data/US_VIDEOS/...`. That material is what **`VideoQualityDataModule`** / `VideoQualityMemoryDataset` consume.
+4. **`VIDEO_QUALITY` (processed)** — **`src/create_quality_dataset.py`** loads a **brain-planes checkpoint**, decodes each frame of raw videos in **`US_VIDEOS`**, and writes per-frame tensors under `data/<dataset_dir>/data/{train,test}/<video>/` (dense features, derived quality, plane preds). On disk, `<dataset_dir>` defaults to **`US_VIDEOS`** in `configs/create_quality_dataset.yaml`; experiment configs may use names like **`US_VIDEOS_tran_0500`**.
 
-5. **Video quality** training (`QualityLitModule` in `src/models/quality_module.py`) stacks **GRUs** with `input_size=1280` on sequences of those saved dense vectors, with regression targets from the quality signal produced in `create_quality_dataset` (smoothed probabilities and a heuristic over the first three plane-related channels).
+5. **Quality GRU** — **`QualityLitModule`** trains on sequences from that processed folder via **`VideoQualityDataModule`**. Set `data.dataset_name` to the same `<dataset_dir>` used in step 4. Dense width must match the brain-planes checkpoint backbone. Regression targets come from the quality signal in `create_quality_dataset` (smoothed probabilities and a heuristic over the first three plane-related channels).
 
 **Class labels (authoritative for the default config):** `FetalBrainPlanesDataset.labels` lists three standard planes plus `"Not A Brain"`. The default `configs/model/brain_planes.yaml` sets `num_classes: 4`. The **product goal** of picking the best frame per **Trans-ventricular**, **Trans-thalamic**, and **Trans-cerebellum** is aligned with the first three indices; non-plane frames are filtered using classifier outputs and (once wired in inference) quality scores.
 
@@ -76,69 +138,66 @@ ______________________________________________________________________
 
 ## Planned end-to-end inference (single video → three best images)
 
-There is **no** unified CLI yet that takes one user video and writes three images. The target pipeline is:
+There is **no** unified CLI that takes one input video and writes three export images. The **target** runtime pipeline reuses the three trained checkpoints in the same order as training, but on a live timeline instead of pre-built datasets:
 
 ```mermaid
 flowchart TB
-  V[Input video]
-  S1[Head seg per frame]
-  S2[Split crop rotate head ROI]
-  S3[Classifier dense plus logits]
-  S4[GRU quality reset per segment]
-  S5[Pick top frames per plane]
+  V[Input ultrasound video]
+  subgraph stage1 [1 Head segmentation checkpoint]
+    S1[Per-frame mask and head label]
+  end
+  subgraph stage2 [2 Head ROI standardization]
+    S2[Split timeline into head segments]
+    S2b[Rotate and crop per mask]
+  end
+  subgraph stage3 [3 Brain planes checkpoint]
+    S3[Dense features and plane logits per crop]
+  end
+  subgraph stage4 [4 Quality GRU checkpoint]
+    S4[Quality score per frame sequence]
+    S4r[Reset GRU state at segment boundaries]
+  end
+  subgraph stage5 [5 Frame selection]
+    S5[Best frame per plane export]
+  end
   V --> S1
   S1 --> S2
-  S2 --> S3
+  S2 --> S2b
+  S2b --> S3
   S3 --> S4
-  S4 --> S5
+  S4 --> S4r
+  S4r --> S5
 ```
 
-Intended steps:
-
-1. **Head segmentation**, frame by frame: binary “belongs to head” signal and **segmentation map** (ROI).
-2. **Segment the timeline** into subsequences that contain the head; **rotate and crop** so the head fills the frame (standardized input to the plane model).
-3. **Plane classifier**: for each processed frame, use **backbone dense features** and **logits** (same split as in training).
-4. **Quality RNN**: run the trained GRU stack on sequences of **1280-dimensional** dense inputs; **reset hidden state** between temporal cuts (between head-only segments).
-5. **Selection**: combine per-frame **plane predictions** with **RNN quality** to choose the single best (or top-k) frame for each of the three main planes for export.
-
-Steps 1 and 3–4 map directly to existing modules; step 2, explicit **state resets** on cuts, and the final export script are the main **glue** to implement.
+| Step | What happens                                                                                                                                                                                                                                                             |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1    | **`HeadSegmentationLitModule`** on every frame: segmentation mask + binary head label                                                                                                                                                                                    |
+| 2    | Split the video into **head-only segments** (contiguous frames with head detected). Within each segment, **rotate to principal axis and crop** to a head-filled ROI                                                                                                      |
+| 3    | **`BrainPlanesLitModule`** on each cropped frame: **`(dense_features, logits)`** (optionally with TTA). Plane argmax over **Trans-ventricular**, **Trans-thalamic**, **Trans-cerebellum**, **Not A Brain**.                                                              |
+| 4    | **`QualityLitModule`** GRU on the sequence of dense vectors **within each head segment**. **Reset hidden state** when a new segment starts (between temporal cuts). Per-frame quality from the trained regressor (training used targets derived in `calculate_quality`). |
+| 5    | For each of the three main planes, pick the frame with best combined **plane confidence** and **GRU quality** (e.g. top-1 per plane). Write three still images.                                                                                                          |
 
 ______________________________________________________________________
 
 ## Tasks, configs, and data
 
-| Task                  | Hydra entry script                      | Top-level config                       | Datamodule (default)                               | Default data folder under `data/`          |
-| --------------------- | --------------------------------------- | -------------------------------------- | -------------------------------------------------- | ------------------------------------------ |
-| Head segmentation     | `python src/head_segmentation_train.py` | `configs/head_segmentation_train.yaml` | `HeadSegmentationDataModule`                       | `FETAL_HEAD_SEGMENTATION`                  |
-| Brain / fetal planes  | `python src/brain_planes_train.py`      | `configs/brain_planes_train.yaml`      | `BrainPlanesDataModule`                            | `FETAL_PLANES` (`data_name`)               |
-| Video quality (GRU)   | `python src/video_quality_train.py`     | `configs/video_quality_train.yaml`     | `VideoQualityDataModule`                           | `US_VIDEOS`                                |
-| Quality dataset build | `python src/create_quality_dataset.py`  | `configs/create_quality_dataset.yaml`  | (scripted; uses `BrainPlanesLitModule` checkpoint) | reads/writes `US_VIDEOS` layout per script |
+| Task                  | Hydra entry script                      | Top-level config                       | Lightning modules                                  | Lightning Datamodules        | Data under `data/`        |
+| --------------------- | --------------------------------------- | -------------------------------------- | -------------------------------------------------- | ---------------------------- | ------------------------- |
+| Head segmentation     | `python src/head_segmentation_train.py` | `configs/head_segmentation_train.yaml` | `HeadSegmentationLitModule`                        | `HeadSegmentationDataModule` | `FETAL_HEAD_SEGMENTATION` |
+| Brain planes          | `python src/brain_planes_train.py`      | `configs/brain_planes_train.yaml`      | `BrainPlanesLitModule`                             | `BrainPlanesDataModule`      | `FETAL_BRAIN_PLANES`      |
+| Quality dataset build | `python src/create_quality_dataset.py`  | `configs/create_quality_dataset.yaml`  | (scripted; uses `BrainPlanesLitModule` checkpoint) | —                            | `US_VIDEOS`               |
+| Video quality (GRU)   | `python src/video_quality_train.py`     | `configs/video_quality_train.yaml`     | `QualityLitModule`                                 | `VideoQualityDataModule`     | `VIDEO_QUALITY`           |
 
 Evaluation (test set + checkpoint):
 
 - `python src/head_segmentation_eval.py` with `configs/head_segmentation_eval.yaml`
 - `python src/brain_planes_eval.py` with `configs/brain_planes_eval.yaml`
 
-There is a `configs/video_quality_eval.yaml` but **no** matching `src/video_quality_eval.py` in this tree; use training config overrides or add a small eval wrapper if you need parity.
-
-______________________________________________________________________
-
-## Environment and installation
-
-```bash
-make install
-conda activate ultrasound_fetal_images_env
-```
-
-Updating locks and dependencies is described in [AGENTS.md](AGENTS.md) (`make update`).
-
 ______________________________________________________________________
 
 ## Training and Hydra overrides
 
-Use the **task entrypoints** below so the correct `defaults` list (data + model + callbacks) is loaded. Do **not** rely on `python src/train.py` alone: it is the shared implementation module, not a single composed Hydra app. **`make train` is not recommended** until it is wired to a real Hydra config (see [AGENTS.md](AGENTS.md)).
-
-Examples:
+With the Conda environment active, run from the repository root:
 
 ```bash
 # Head segmentation (CPU or GPU)
@@ -163,24 +222,37 @@ python src/create_quality_dataset.py model_path=/path/to/brain_planes/run_or_ckp
 
 Tunable fields (video roots, augmentation grid, window sizes, etc.) live in `configs/create_quality_dataset.yaml`.
 
+### Quick start (sample data)
+
+One-epoch smoke runs with small public subsets (downloaded via `gdown` when `+data.sample=true`):
+
+```bash
+conda activate ultrasound_fetal_images_env
+
+python src/head_segmentation_train.py trainer.max_epochs=1 +data.sample=true
+python src/brain_planes_train.py trainer.max_epochs=1 +data.sample=true
+python src/video_quality_train.py trainer.max_epochs=1 +data.sample=true
+```
+
 ______________________________________________________________________
 
 ## Tests and formatting
 
+With the Conda environment active:
+
 ```bash
-make test        # pytest, excluding slow tests
-make test-full   # full pytest
+make test        # pytest -k "not slow"
+make test-full   # full pytest suite
 make format      # pre-commit on all files
 ```
 
 ______________________________________________________________________
 
-## Repository map (selected)
+## Notebooks
 
-| Area           | Contents                                                                                    |
-| -------------- | ------------------------------------------------------------------------------------------- |
-| `src/train.py` | Shared `train()` / `retry_train()` for Lightning fit and test                               |
-| `src/eval.py`  | Shared evaluation helper for eval entrypoints                                               |
-| `src/models/`  | `head_segmentation_module`, `brain_planes`, `quality_module`, backbones under `components/` |
-| `src/data/`    | Lightning datamodules and `components/dataset.py`                                           |
-| `configs/`     | Per-task YAML, `configs/experiment/` for pinned hyperparameter sets                         |
+With the Conda environment active:
+
+```bash
+make notebook   # Jupyter Notebook in ./notebooks
+make lab        # JupyterLab in ./notebooks
+```
