@@ -145,7 +145,7 @@ def main(cfg: DictConfig):
 
     log.info(f"Load model from <{model_path}>")
     checkpoint_file = sorted(model_path.glob("checkpoints/epoch_*.ckpt"))[-1]
-    model = BrainPlanesLitModule.load_from_checkpoint(checkpoint_file)
+    model = BrainPlanesLitModule.load_from_checkpoint(checkpoint_file, weights_only=False)
     # disable randomness, dropout, etc...
     model.eval()
     model.to(device)

@@ -503,7 +503,7 @@ class TestFindAngle:
             """A diagonal band of pixels should yield an angle close to ±45°."""
             mask = create_ellipse_tensor(50, 60, 30, 25, 8, 10)
             angle = find_angle(mask)
-            assert abs(angle.item()) in {0, 180}, f"expected 0 or 180, got {angle.item()}"
+            assert abs(angle.item()) == 90, f"expected ±90, got {angle.item()}"
 
 
 # ---------------------------------------------------------------------------

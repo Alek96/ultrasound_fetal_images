@@ -79,7 +79,7 @@ def train(cfg: DictConfig) -> tuple[dict[str, Any], dict[str, Any]]:
 
     if cfg.get("model_path"):
         log.info(f"Load checkpoint {cfg.get('model_path')}")
-        model = model.load_from_checkpoint(cfg.get("model_path"))
+        model = model.load_from_checkpoint(cfg.get("model_path"), weights_only=False)
 
     log.info("Instantiating loggers...")
     logger: list[Logger] = utils.instantiate_loggers(cfg.get("logger"))
