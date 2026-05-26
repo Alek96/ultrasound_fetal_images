@@ -42,7 +42,7 @@ pytest = "^9.0.3"          # tests
 pytest-cov = "^7.1.0"
 sh = { version = "^2.2.2", markers = "sys_platform == 'linux' or sys_platform == 'darwin'" }
 gdown = "^6.0.0"
-fastapi = "^0.136.1"
+fastapi = "^0.136.3"
 ipympl = "^0.10.0"
 
 [tool.pytest.ini_options]
