@@ -18,7 +18,7 @@ ______________________________________________________________________
 
 - **Hydra configs** per task under `configs/`, with optional experiment overrides in `configs/experiment/`
 - **PyTorch Lightning** training and evaluation via shared [`src/train.py`](src/train.py) and [`src/eval.py`](src/eval.py)
-- **Head segmentation**: model for fetal head mask segmentation ([`HeadSegmentationLitModule`](src/models/head_segmentation_module.py))
+- **Head segmentation**: model for fetal head mask segmentation ([`HeadSegmentationLitModule`](src/models/head_segmentation_module.py); see [docs/head_segmentation.md](docs/head_segmentation.md) for design choices)
 - **Brain planes**: model for brain planes classification ([`BrainPlanesLitModule`](src/models/brain_planes.py))
 - **Quality dataset**: quality frame dataset ([`src/create_quality_dataset.py`](src/create_quality_dataset.py))
 - **Video quality**: model for quality assessment ([`QualityLitModule`](src/models/quality_module.py))
