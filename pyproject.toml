@@ -40,7 +40,7 @@ pre-commit = "^4.6.0"      # hooks for applying linters on commit
 rich = "^15.0.0"           # beautiful text formatting in terminal
 pytest = "^9.0.3"          # tests
 pytest-cov = "^7.1.0"
-sh = { version = "^2.2.3", markers = "sys_platform == 'linux' or sys_platform == 'darwin'" }
+sh = { version = "^2.2.6", markers = "sys_platform == 'linux' or sys_platform == 'darwin'" }
 gdown = "^6.1.0"
 fastapi = "^0.136.3"
 ipympl = "^0.10.0"
