@@ -30,7 +30,7 @@ albumentations = "^2.0.8"
 opencv-python-headless = "^4.13.0.92"
 # --------- loggers --------- #
 # tensorboard = "^2.12.0"
-wandb = "^0.27.1"
+wandb = "^0.27.2"
 # neptune-client
 # mlflow
 # comet-ml
