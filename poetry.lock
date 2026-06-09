@@ -5640,15 +5640,15 @@ type = ["importlib_metadata (>=7.0.2) ; python_version < \"3.10\"", "jaraco.deve
 
 [[package]]
 name = "sh"
-version = "2.2.6"
+version = "2.3.0"
 description = "Python subprocess replacement"
 optional = false
 python-versions = "<4.0,>=3.8.1"
 groups = ["main"]
 markers = "sys_platform == \"linux\" or sys_platform == \"darwin\""
 files = [
-    {file = "sh-2.2.6-py3-none-any.whl", hash = "sha256:c52c32b58009472251c2384c364b7388fc369f082fb61b045b76aed2e2942b2d"},
-    {file = "sh-2.2.6.tar.gz", hash = "sha256:0cb3fac1a202a213b843d0fb9fa713da2444d4fc2e75d4ae83cd96e2a2095465"},
+    {file = "sh-2.3.0-py3-none-any.whl", hash = "sha256:9b9c51f988fa91ba09e2a78edc48810d0b5a34c8cf383408e4e8c4352169f26e"},
+    {file = "sh-2.3.0.tar.gz", hash = "sha256:402af9087bf8a5557562913ca83d715bfa0646cb93865c5d60c5578b07b17871"},
 ]
 
 [[package]]
@@ -6748,4 +6748,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "3.12.*"
-content-hash = "4902942340733594fe9bac0b1f464a618fd38d1ba7a635713926ec693fcf2f8b"
+content-hash = "4e48cdc4863ad29c573bed1f8ff9277705d6bedfeb679d76acaa6e7180fb913e"
