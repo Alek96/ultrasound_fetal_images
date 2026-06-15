@@ -38,7 +38,7 @@ wandb = "^0.27.2"
 rootutils = "^1.0.7"       # standardizing the project root setup
 pre-commit = "^4.6.0"      # hooks for applying linters on commit
 rich = "^15.0.0"           # beautiful text formatting in terminal
-pytest = "^9.0.3"          # tests
+pytest = "^9.1.0"          # tests
 pytest-cov = "^7.1.0"
 sh = { version = "^2.3.0", markers = "sys_platform == 'linux' or sys_platform == 'darwin'" }
 gdown = "^6.1.0"
