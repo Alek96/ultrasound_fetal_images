@@ -64,4 +64,4 @@ find_lr: false
 
 retry: false
 
-clean-up: false
+cleanup_mode: none

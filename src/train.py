@@ -46,10 +46,10 @@ def retry_train(cfg: DictConfig) -> tuple[dict[str, Any], dict[str, Any]]:
             return train(cfg)
         except IndexError:
             print("IndexError: index is out of bounds")
-            clear_log_directory(cfg)
+            cleanup_log_directory(cfg)
         except KeyError:
             print("KeyError: index is out of bounds")
-            clear_log_directory(cfg)
+            cleanup_log_directory(cfg)
 
 
 @utils.task_wrapper
@@ -156,16 +156,34 @@ def train(cfg: DictConfig) -> tuple[dict[str, Any], dict[str, Any]]:
     return metric_dict, object_dict
 
 
-def clear_log_directory(cfg: DictConfig):
-    log.info("clear log directory")
+def cleanup_log_directory(cfg: DictConfig):
+    mode = cfg.get("cleanup_mode")
     log_path = cfg.paths.output_dir
-    for path in os.listdir(log_path):
-        if path not in [".hydra", "tags.log", "config_tree.log"]:
-            path = os.path.join(log_path, path)
-            if os.path.isdir(path):
-                shutil.rmtree(path)
+
+    if mode == "none":
+        return
+
+    if not os.path.exists(log_path):
+        return
+
+    if mode == "all":
+        log.info("delete log directory")
+        shutil.rmtree(log_path)
+        return
+
+    if mode == "model_weights":
+        log.info("clear log directory")
+        for path in os.listdir(log_path):
+            if path in [".hydra", "tags.log", "config_tree.log"]:
+                continue
+            full_path = os.path.join(log_path, path)
+            if os.path.isdir(full_path):
+                shutil.rmtree(full_path)
             else:
-                os.remove(path)
+                os.remove(full_path)
+        return
+
+    raise ValueError(f"Unknown cleanup_mode: {mode!r}")
 
 
 def main(cfg: DictConfig) -> float | None:
@@ -183,8 +201,7 @@ def main(cfg: DictConfig) -> float | None:
     else:
         metric_dict, _ = train(cfg)
 
-    if cfg.get("clean-up"):
-        clear_log_directory(cfg)
+    cleanup_log_directory(cfg)
 
     # safely retrieve metric value for hydra-based hyperparameter optimization
     metric_value = utils.get_metric_value(metric_dict=metric_dict, metric_name=cfg.get("optimized_metric"))
