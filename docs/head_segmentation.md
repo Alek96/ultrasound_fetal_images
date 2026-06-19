@@ -266,3 +266,4 @@ ______________________________________________________________________
 - test-00 - base experiment used as reference
 - test-01 - change the monitoring metric to val/dice
 - test-02 - Enable ImageNet normalisation
+- test-03 - Optimiser: AdamW

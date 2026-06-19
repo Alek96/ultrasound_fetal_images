@@ -41,8 +41,9 @@ model:
   criterion:
     smooth: 1e-6
   optimizer:
+    _target_: torch.optim.AdamW
     weight_decay: 1e-5
-    amsgrad: True
+    amsgrad: false
 
 data:
   input_size: [192, 256]
@@ -57,7 +58,7 @@ logger:
     group: "head_segmentation"
 extras:
   after_test_plots:
-    enabled: true
+    enabled: false
     data_dir: ${paths.data_dir}
     input_size: ${data.input_size}
     transforms: ${data.test_transforms}
