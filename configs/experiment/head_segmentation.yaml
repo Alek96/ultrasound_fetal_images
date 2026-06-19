@@ -26,13 +26,12 @@ trainer:
 
 callbacks:
   model_checkpoint:
-    monitor: "val/pixel/f1"
+    monitor: "val/dice"
     mode: "max"
   early_stopping:
-    monitor: "val/pixel/f1"
+    monitor: "val/dice"
     mode: "max"
-    #patience: 15
-    patience: ${trainer.max_epochs}
+    patience: 15
 
 model:
   model:
@@ -53,7 +52,7 @@ data:
 
 logger:
   wandb:
-    project: "head_segmentation"
+    project: "head_segmentation_v2"
     tags: ${tags}
     group: "head_segmentation"
 extras:

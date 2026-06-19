@@ -260,3 +260,8 @@ ______________________________________________________________________
 13. **Training: enable mixed precision** — faster iteration cycles to test more configurations.
 14. **Deep Supervision** — auxiliary decoder losses for better convergence and implicit regularisation.
 15. **Input resolution: 224 × 320** — more spatial detail for marginal accuracy gain.
+
+## Experiments
+
+- test-00 - base experiment used as reference
+- test-01 - change the monitoring metric to val/dice
