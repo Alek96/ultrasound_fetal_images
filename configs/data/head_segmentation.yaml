@@ -76,11 +76,11 @@ train_transforms:
     scale: True
 
   #- _target_: torchvision.transforms.v2.Normalize  # FetalBrain
-  #  mean: 0.17
-  #  std: 0.19
-  #- _target_: torchvision.transforms.v2.Normalize  # ImageNet
-  #  mean: 0.449
-  #  std: 0.226
+  #  mean: [0.17]
+  #  std: [0.19]
+  - _target_: torchvision.transforms.v2.Normalize # ImageNet
+    mean: [0.449]
+    std: [0.226]
 
 test_transforms:
   - _target_: torchvision.transforms.v2.Grayscale
@@ -129,11 +129,11 @@ test_transforms:
     scale: True
 
   #- _target_: torchvision.transforms.v2.Normalize  # FetalBrain
-  #  mean: 0.17
-  #  std: 0.19
-  #- _target_: torchvision.transforms.v2.Normalize  # ImageNet
-  #  mean: 0.449
-  #  std: 0.226
+  #  mean: [0.17]
+  #  std: [0.19]
+  - _target_: torchvision.transforms.v2.Normalize # ImageNet
+    mean: [0.449]
+    std: [0.226]
 
 batch_size: 64
 num_workers: 8

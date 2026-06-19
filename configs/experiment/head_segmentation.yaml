@@ -31,7 +31,7 @@ callbacks:
   early_stopping:
     monitor: "val/dice"
     mode: "max"
-    patience: 15
+    patience: 12
 
 model:
   model:
