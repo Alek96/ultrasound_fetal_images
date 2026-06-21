@@ -144,15 +144,17 @@ def show_numpy_images(images: list[tuple[np.ndarray, str]]) -> plt.Figure:
     return fig
 
 
-def _add_half(center: float, radius: float) -> float:
+def _add_half(center: float | int | torch.Tensor, radius: float | int | torch.Tensor) -> float | int:
     """Add 0.5 to radius when center and radius share the same integer-ness.
 
     Pixel-coordinate convention helper: if both coordinates land on integer grid
     points, or both land on half-pixel offsets, nudge the radius by 0.5 so that
     the ellipse boundary aligns correctly with the underlying pixel grid.
     """
-    center = torch.tensor(center)
-    radius = torch.tensor(radius)
+    if not isinstance(center, torch.Tensor):
+        center = torch.tensor(center)
+    if not isinstance(radius, torch.Tensor):
+        radius = torch.tensor(radius)
     if torch.isclose(center, torch.round(center)):
         if torch.isclose(radius, torch.round(radius)):
             radius = radius + 0.5
@@ -166,10 +168,10 @@ def _add_half(center: float, radius: float) -> float:
 def create_ellipse_tensor(
     height: int,
     width: int,
-    center_x: int,
-    center_y: int,
-    radius_x: int,
-    radius_y: int,
+    center_x: float | int,
+    center_y: float | int,
+    radius_x: float | int,
+    radius_y: float | int,
     theta_rad: float | int = 0,
     add_half: bool = False,
 ) -> torch.Tensor:
