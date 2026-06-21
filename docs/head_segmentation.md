@@ -246,18 +246,20 @@ ______________________________________________________________________
 
 01. **Loss: Dice + Focal** — replace BCE with Focal for hard-example mining at boundaries.
 02. **Encoder freezing** — freeze encoder for 3–5 epochs, then unfreeze. Stabilises early training with pretrained weights.
-03. **Scheduler: OneCycleLR** — faster convergence, potentially better final accuracy in fewer epochs.08. **Loss: add Boundary Loss term** — distance-based loss to directly optimise boundary accuracy for HC measurement.
-04. **Augmentation: ElasticTransform + Speckle Noise** — domain-specific augmentations for ultrasound.
-05. **Post-processing: connected component filtering + threshold tuning** — free inference-time gains with no retraining.
-06. **Encoder: EfficientNet-V2-S** — stronger features at moderate cost increase.
-07. **Architecture: U-Net++ or Attention U-Net** — denser skip connections or attention gating for finer boundaries.
-08. **Training: enable mixed precision** — faster iteration cycles to test more configurations.
-09. **Deep Supervision** — auxiliary decoder losses for better convergence and implicit regularisation.
-10. **Input resolution: 224 × 320** — more spatial detail for marginal accuracy gain.
+03. **Scheduler: OneCycleLR** — faster convergence, potentially better final accuracy in fewer epochs.
+04. **Loss: add Boundary Loss term** — distance-based loss to directly optimise boundary accuracy for HC measurement.
+05. **Augmentation: ElasticTransform + Speckle Noise** — domain-specific augmentations for ultrasound.
+06. **Post-processing: connected component filtering + threshold tuning** — free inference-time gains with no retraining.
+07. **Encoder: EfficientNet-V2-S** — stronger features at moderate cost increase.
+08. **Architecture: U-Net++ or Attention U-Net** — denser skip connections or attention gating for finer boundaries.
+09. **Training: enable mixed precision** — faster iteration cycles to test more configurations.
+10. **Deep Supervision** — auxiliary decoder losses for better convergence and implicit regularization.
+11. **Input resolution: 224 × 320** — more spatial detail for marginal accuracy gain.
 
 ## Experiments
 
-- test-00 - base experiment used as reference
+- test-00 - base experiment used as reference.
 - test-01 - change the monitoring metric to val/dice — inconclusive: `val/dice` and `val/pixel/f1` gave similar results; kept `val/pixel/f1`.
-- test-02 - Enable ImageNet normalisation — slightly better avg Dice; adopted.
+- test-02 - Enable ImageNet normalization — slightly better avg Dice; adopted.
 - test-03 - Optimiser: AdamW — plain Adam trained better for MobileNetV4; kept Adam, revisit for bigger models.
+- test-04 - Test ImageNet normalization with val/pixel/f1.
