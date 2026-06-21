@@ -1,0 +1,15 @@
+# @package _global_
+
+defaults:
+  - head_segmentation.yaml
+
+tags: ["test-08", "arch_sweep"]
+
+model:
+  model:
+    _target_: segmentation_models_pytorch.DeepLabV3Plus
+    encoder_name: tu-mobilenetv4_conv_small
+
+logger:
+  wandb:
+    group: "deeplabv3plus"

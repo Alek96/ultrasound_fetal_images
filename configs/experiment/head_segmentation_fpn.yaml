@@ -1,0 +1,15 @@
+# @package _global_
+
+defaults:
+  - head_segmentation.yaml
+
+tags: ["test-07", "arch_sweep"]
+
+model:
+  model:
+    _target_: segmentation_models_pytorch.FPN
+    encoder_name: tu-mobilenetv4_conv_small
+
+logger:
+  wandb:
+    group: "fpn"

@@ -1,0 +1,15 @@
+# @package _global_
+
+defaults:
+  - head_segmentation.yaml
+
+tags: ["test-11", "backbone_sweep"]
+
+model:
+  model:
+    _target_: segmentation_models_pytorch.Unet
+    encoder_name: tu-convnext_tiny
+
+logger:
+  wandb:
+    group: "convnext_tiny"

@@ -31,14 +31,14 @@ ______________________________________________________________________
 
 ### 1.1 Segmentation Model
 
-| Technique                         | Status | Description                                                                                                                                                     | Result                                                                               |
-| --------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| U-Net                             | ✅     | Encoder–decoder with skip connections. Proven baseline for medical image segmentation — skip connections preserve spatial detail lost during downsampling.      | Selected via segmentation_models_pytorch library. Strong Dice scores out of the box. |
-| U-Net++                           | 📋     | Nested dense skip connections between encoder and decoder. Can improve fine-grained boundary recovery by reusing intermediate features at multiple resolutions. | —                                                                                    |
-| DeepLabV3+                        | 📋     | Atrous spatial pyramid pooling (ASPP) captures multi-scale context without losing resolution. Good when the object of interest appears at varying scales.       | —                                                                                    |
-| Attention U-Net                   | 📋     | Adds attention gates to standard U-Net skip connections. Suppresses irrelevant encoder features, focusing the decoder on the target region.                     | —                                                                                    |
-| FPN (Feature Pyramid Network)     | 📋     | Lightweight top-down decoder that merges multi-scale features. Faster inference than U-Net; worth testing for speed vs. accuracy trade-off.                     | —                                                                                    |
-| MAnet (Multi-scale Attention Net) | 📋     | Attention-guided multi-scale decoder from SMP. Designed specifically for medical image segmentation tasks.                                                      | —                                                                                    |
+| Technique                         | Status | Description                                                                                                                                                     | Result                                                                                |
+| --------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| U-Net                             | ✅     | Encoder–decoder with skip connections. Proven baseline for medical image segmentation — skip connections preserve spatial detail lost during downsampling.      | Selected via segmentation_models_pytorch library. Strong Dice scores out of the box.  |
+| U-Net++                           | 📋     | Nested dense skip connections between encoder and decoder. Can improve fine-grained boundary recovery by reusing intermediate features at multiple resolutions. | Queued as `head_segmentation_unetpp`.                                                 |
+| DeepLabV3+                        | 📋     | Atrous spatial pyramid pooling (ASPP) captures multi-scale context without losing resolution. Good when the object of interest appears at varying scales.       | Queued as `head_segmentation_deeplabv3plus`.                                          |
+| Attention U-Net                   | 📋     | Adds attention gates to standard U-Net skip connections. Suppresses irrelevant encoder features, focusing the decoder on the target region.                     | Queued as `head_segmentation_attention_unet` (Unet + `decoder_attention_type: scse`). |
+| FPN (Feature Pyramid Network)     | 📋     | Lightweight top-down decoder that merges multi-scale features. Faster inference than U-Net; worth testing for speed vs. accuracy trade-off.                     | Queued as `head_segmentation_fpn`.                                                    |
+| MAnet (Multi-scale Attention Net) | 📋     | Attention-guided multi-scale decoder from SMP. Designed specifically for medical image segmentation tasks.                                                      | Queued as `head_segmentation_manet`.                                                  |
 
 ### 1.2 Encoder (Backbone)
 
@@ -46,8 +46,9 @@ ______________________________________________________________________
 | ---------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | MobileNetV2            | 🧪     | Lightweight inverted-residual CNN. Low computational cost, ImageNet-pretrained. Good for fast iteration.                           | Default backbone (`mobilenet_v2`). Replaced by MobileNetV4 for better accuracy. |
 | MobileNetV4-Conv-Small | ✅     | Next-gen mobile backbone with improved inverted residuals and Universal Inverted Bottleneck. Better accuracy/speed Pareto than V2. | `tu-mobilenetv4_conv_small`, ImageNet weights. Current best encoder.            |
-| EfficientNet-V2-S      | 📋     | Compound-scaled CNN with fused MBConv blocks. Faster training and better accuracy than EfficientNet-V1 at similar FLOPS.           | —                                                                               |
-| ConvNeXt-Tiny          | 📋     | Modernised pure-ConvNet design competitive with vision transformers. Heavier than MobileNets but extracts stronger features.       | —                                                                               |
+| EfficientNet-V2-S      | 📋     | Compound-scaled CNN with fused MBConv blocks. Faster training and better accuracy than EfficientNet-V1 at similar FLOPS.           | Queued as `head_segmentation_efficientnetv2s` (`tu-tf_efficientnetv2_s`).       |
+| ConvNeXt-Tiny          | 📋     | Modernised pure-ConvNet design competitive with vision transformers. Heavier than MobileNets but extracts stronger features.       | Queued as `head_segmentation_convnext_tiny` (`tu-convnext_tiny`).               |
+| ConvNeXt-V2-Tiny       | 📋     | ConvNeXt-V2 adds Global Response Normalisation and FCMAE pre-training. Improves over V1 on dense prediction at the same size.      | Queued as `head_segmentation_convnextv2_tiny` (`tu-convnextv2_tiny`).           |
 
 ### 1.3 Encoder Pre-training
 
@@ -263,3 +264,11 @@ ______________________________________________________________________
 - test-02 - Enable ImageNet normalization — slightly better avg Dice; adopted.
 - test-03 - Optimiser: AdamW — plain Adam trained better for MobileNetV4; kept Adam, revisit for bigger models.
 - test-04 - Test ImageNet normalization with val/pixel/f1.
+- test-05 - Architecture: U-Net++ (`head_segmentation_unetpp`, encoder fixed `tu-mobilenetv4_conv_small`) — queued.
+- test-06 - Architecture: MAnet (`head_segmentation_manet`, encoder fixed `tu-mobilenetv4_conv_small`) — queued.
+- test-07 - Architecture: FPN (`head_segmentation_fpn`, encoder fixed `tu-mobilenetv4_conv_small`) — queued.
+- test-08 - Architecture: DeepLabV3+ (`head_segmentation_deeplabv3plus`, encoder fixed `tu-mobilenetv4_conv_small`) — queued.
+- test-09 - Architecture: Attention U-Net (`head_segmentation_attention_unet`, Unet + `decoder_attention_type: scse`) — queued.
+- test-10 - Backbone: EfficientNet-V2-S (`head_segmentation_efficientnetv2s`, Unet + `tu-tf_efficientnetv2_s`) — queued.
+- test-11 - Backbone: ConvNeXt-Tiny (`head_segmentation_convnext_tiny`, Unet + `tu-convnext_tiny`) — queued.
+- test-12 - Backbone: ConvNeXt-V2-Tiny (`head_segmentation_convnextv2_tiny`, Unet + `tu-convnextv2_tiny`) — queued.

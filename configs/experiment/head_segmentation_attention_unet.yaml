@@ -1,0 +1,16 @@
+# @package _global_
+
+defaults:
+  - head_segmentation.yaml
+
+tags: ["test-09", "arch_sweep"]
+
+model:
+  model:
+    _target_: segmentation_models_pytorch.Unet
+    encoder_name: tu-mobilenetv4_conv_small
+    decoder_attention_type: scse
+
+logger:
+  wandb:
+    group: "attention_unet"
