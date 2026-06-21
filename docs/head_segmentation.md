@@ -73,12 +73,11 @@ ______________________________________________________________________
 
 ## 3. Optimiser
 
-| Technique       | Status | Description                                                                                                                                                         | Result                                                    |
-| --------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| Adam (baseline) | 🧪     | Standard adaptive moment estimation. Easy to use with minimal tuning.                                                                                               | Default config: lr=1e-3, weight_decay=0.0, amsgrad=False. |
-| Adam (tuned)    | ✅     | Same algorithm with weight decay and amsgrad enabled. Amsgrad fixes a convergence issue in vanilla Adam by keeping the max of past squared gradients.               | lr=1e-3, weight_decay=1e-5, amsgrad=True.                 |
-| AdamW           | 📋     | Decoupled weight decay — applies decay directly to weights rather than through gradient. Theoretically more correct L2 regularisation than Adam's coupled approach. | —                                                         |
-| RAdam           | 📋     | Rectified Adam with built-in adaptive warm-up. Removes the need for manual LR warm-up scheduling during early training steps.                                       | —                                                         |
+| Technique | Status | Description                                                                                                                                                         | Result                                                                   |
+| --------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Adam      | ✅     | Standard adaptive moment estimation. Amsgrad fixes a convergence issue in vanilla Adam by keeping the max of past squared gradients.                                | lr=1e-3, weight_decay=1e-5, amsgrad=True.                                |
+| AdamW     | 🧪     | Decoupled weight decay — applies decay directly to weights rather than through gradient. Theoretically more correct L2 regularisation than Adam's coupled approach. | Adam trained better for MobileNetV4. Revisit on larger backbones/models. |
+| RAdam     | 📋     | Rectified Adam with built-in adaptive warm-up. Removes the need for manual LR warm-up scheduling during early training steps.                                       | —                                                                        |
 
 ______________________________________________________________________
 
@@ -120,11 +119,11 @@ ______________________________________________________________________
 
 ### 5.4 Normalisation
 
-| Technique                              | Status | Description                                                                                                                                                                                   | Result                            |
-| -------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
-| Scale to [0, 1]                        | ✅     | Divide pixel values by 255. Simple, no dataset statistics needed, works with any input.                                                                                                       | `ToDtype(scale=True)` to float32. |
-| ImageNet stats (mean=0.449, std=0.226) | 📋     | Z-normalisation with ImageNet statistics. Aligns input distribution to what the pretrained encoder's batch-norm running stats expect. High priority given the encoder is ImageNet-pretrained. | —                                 |
-| FetalBrain stats (mean=0.17, std=0.19) | 📋     | Z-normalisation with dataset-specific statistics. Could help convergence by centering the data distribution closer to zero. Test after ImageNet stats if encoder is trained from scratch.     | —                                 |
+| Technique                              | Status | Description                                                                                                                                                                                   | Result                                             |
+| -------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Scale to [0, 1]                        | 🧪     | Divide pixel values by 255. Simple, no dataset statistics needed, works with any input.                                                                                                       | `ToDtype(scale=True)` to float32.                  |
+| ImageNet stats (mean=0.449, std=0.226) | ✅     | Z-normalisation with ImageNet statistics. Aligns input distribution to what the pretrained encoder's batch-norm running stats expect. High priority given the encoder is ImageNet-pretrained. | Slightly higher avg Dice than [0,1] scaling alone. |
+| FetalBrain stats (mean=0.17, std=0.19) | 📋     | Z-normalisation with dataset-specific statistics. Could help convergence by centering the data distribution closer to zero. Test after ImageNet stats if encoder is trained from scratch.     | —                                                  |
 
 ______________________________________________________________________
 
@@ -210,14 +209,14 @@ ______________________________________________________________________
 
 ### 8.3 Model Selection
 
-| Technique                         | Status | Description                                                                                                                                                                                                              | Result                                          |
-| --------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------- |
-| Checkpoint on best val/pixel/f1   | ✅     | Saves model weights whenever validation pixel F1 reaches a new maximum. Ensures the deployed model is the best-performing one seen during training.                                                                      | monitor=val/pixel/f1, mode=max, save_last=True. |
-| Checkpoint on best val/dice       | 📋     | Use Dice as the checkpoint criterion instead of F1. Worth comparing to see if the two metrics diverge in practice.                                                                                                       | —                                               |
-| Ensemble (top-k checkpoints)      | 📋     | Average predictions from the k best checkpoints. Free accuracy gain at inference time with no additional training.                                                                                                       | —                                               |
-| SWA (Stochastic Weight Averaging) | 📋     | Averages model weights over the last portion of training. Finds wider optima that generalise better, at no extra inference cost.                                                                                         | —                                               |
-| Deep Supervision                  | 📋     | Adds auxiliary segmentation losses from intermediate decoder layers. Improves gradient flow to early layers, accelerates convergence, and acts as implicit regularisation. Proven in U-Net 3+ and similar architectures. | —                                               |
-| K-Fold Cross-Validation           | 📋     | Train on k different train/val splits to obtain robust performance estimates and reduce variance from a single split. More reliable for medical datasets with limited samples.                                           | —                                               |
+| Technique                         | Status | Description                                                                                                                                                                                                              | Result                                                                 |
+| --------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| Checkpoint on best val/pixel/f1   | ✅     | Saves model weights whenever validation pixel F1 reaches a new maximum. Ensures the deployed model is the best-performing one seen during training.                                                                      | monitor=val/pixel/f1, mode=max, save_last=True.                        |
+| Checkpoint on best val/dice       | 🧪     | Use Dice as the checkpoint criterion instead of F1. Worth comparing to see if the two metrics diverge in practice.                                                                                                       | Comparable to `val/pixel/f1`, no clear winner. Keeping `val/pixel/f1`. |
+| Ensemble (top-k checkpoints)      | 📋     | Average predictions from the k best checkpoints. Free accuracy gain at inference time with no additional training.                                                                                                       | —                                                                      |
+| SWA (Stochastic Weight Averaging) | 📋     | Averages model weights over the last portion of training. Finds wider optima that generalise better, at no extra inference cost.                                                                                         | —                                                                      |
+| Deep Supervision                  | 📋     | Adds auxiliary segmentation losses from intermediate decoder layers. Improves gradient flow to early layers, accelerates convergence, and acts as implicit regularisation. Proven in U-Net 3+ and similar architectures. | —                                                                      |
+| K-Fold Cross-Validation           | 📋     | Train on k different train/val splits to obtain robust performance estimates and reduce variance from a single split. More reliable for medical datasets with limited samples.                                           | —                                                                      |
 
 ______________________________________________________________________
 
@@ -245,25 +244,20 @@ ______________________________________________________________________
 
 ## Recommended Next Experiments (priority order)
 
-01. **Fix metric alignment** — change all monitors (scheduler, checkpoint, early stopping) to `val/dice`, mode=max. Removes the current disconnect between what triggers LR reduction and what selects the best model.
-02. **Enable early stopping** — patience=12, monitor=val/dice. Prevents wasting compute and overfitting in late epochs.
-03. **Enable ImageNet normalisation** — uncomment `Normalize(mean=0.449, std=0.226)`. Aligns input distribution to what the pretrained encoder expects.
-04. **Loss: Dice + Focal** — replace BCE with Focal for hard-example mining at boundaries.
-05. **Encoder freezing** — freeze encoder for 3–5 epochs, then unfreeze. Stabilises early training with pretrained weights.
-06. **Optimiser: AdamW** — decoupled weight decay is theoretically more correct; drop-in replacement.
-07. **Scheduler: OneCycleLR** — faster convergence, potentially better final accuracy in fewer epochs.
-08. **Loss: add Boundary Loss term** — distance-based loss to directly optimise boundary accuracy for HC measurement.
-09. **Augmentation: ElasticTransform + Speckle Noise** — domain-specific augmentations for ultrasound.
-10. **Post-processing: connected component filtering + threshold tuning** — free inference-time gains with no retraining.
-11. **Encoder: EfficientNet-V2-S** — stronger features at moderate cost increase.
-12. **Architecture: U-Net++ or Attention U-Net** — denser skip connections or attention gating for finer boundaries.
-13. **Training: enable mixed precision** — faster iteration cycles to test more configurations.
-14. **Deep Supervision** — auxiliary decoder losses for better convergence and implicit regularisation.
-15. **Input resolution: 224 × 320** — more spatial detail for marginal accuracy gain.
+01. **Loss: Dice + Focal** — replace BCE with Focal for hard-example mining at boundaries.
+02. **Encoder freezing** — freeze encoder for 3–5 epochs, then unfreeze. Stabilises early training with pretrained weights.
+03. **Scheduler: OneCycleLR** — faster convergence, potentially better final accuracy in fewer epochs.08. **Loss: add Boundary Loss term** — distance-based loss to directly optimise boundary accuracy for HC measurement.
+04. **Augmentation: ElasticTransform + Speckle Noise** — domain-specific augmentations for ultrasound.
+05. **Post-processing: connected component filtering + threshold tuning** — free inference-time gains with no retraining.
+06. **Encoder: EfficientNet-V2-S** — stronger features at moderate cost increase.
+07. **Architecture: U-Net++ or Attention U-Net** — denser skip connections or attention gating for finer boundaries.
+08. **Training: enable mixed precision** — faster iteration cycles to test more configurations.
+09. **Deep Supervision** — auxiliary decoder losses for better convergence and implicit regularisation.
+10. **Input resolution: 224 × 320** — more spatial detail for marginal accuracy gain.
 
 ## Experiments
 
 - test-00 - base experiment used as reference
-- test-01 - change the monitoring metric to val/dice
-- test-02 - Enable ImageNet normalisation
-- test-03 - Optimiser: AdamW
+- test-01 - change the monitoring metric to val/dice — inconclusive: `val/dice` and `val/pixel/f1` gave similar results; kept `val/pixel/f1`.
+- test-02 - Enable ImageNet normalisation — slightly better avg Dice; adopted.
+- test-03 - Optimiser: AdamW — plain Adam trained better for MobileNetV4; kept Adam, revisit for bigger models.
