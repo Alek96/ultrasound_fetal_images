@@ -26,10 +26,10 @@ trainer:
 
 callbacks:
   model_checkpoint:
-    monitor: "val/pixel/f1"
+    monitor: "val/dice"
     mode: "max"
   early_stopping:
-    monitor: "val/pixel/f1"
+    monitor: "val/dice"
     mode: "max"
     patience: 12
 
