@@ -87,6 +87,10 @@ def train(cfg: DictConfig) -> tuple[dict[str, Any], dict[str, Any]]:
     log.info("Instantiating callbacks...")
     callbacks: list[Callback] = utils.instantiate_callbacks(cfg.get("callbacks"), logger)
 
+    if cfg.get("float32_matmul_precision"):
+        log.info(f"Set float32_matmul_precision {cfg.get('float32_matmul_precision')}")
+        torch.set_float32_matmul_precision(cfg.get("float32_matmul_precision"))
+
     if cfg.get("find_lr"):
         log.info("Run learning Rate Finder")
         trainer: Trainer = Trainer(

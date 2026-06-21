@@ -16,6 +16,7 @@ defaults:
 
 find_lr: False
 seed: "rand"
+float32_matmul_precision: "high"
 cleanup_mode: all
 
 trainer:
