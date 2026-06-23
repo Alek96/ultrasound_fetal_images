@@ -264,11 +264,18 @@ ______________________________________________________________________
 - test-02 - Enable ImageNet normalization — slightly better avg Dice; adopted.
 - test-03 - Optimiser: AdamW — plain Adam trained better for MobileNetV4; kept Adam, revisit for bigger models.
 - test-04 - Test ImageNet normalization with val/pixel/f1.
-- test-05 - Architecture: U-Net++ (`head_segmentation_unetpp`, encoder fixed `tu-mobilenetv4_conv_small`) — queued.
-- test-06 - Architecture: MAnet (`head_segmentation_manet`, encoder fixed `tu-mobilenetv4_conv_small`) — queued.
-- test-07 - Architecture: FPN (`head_segmentation_fpn`, encoder fixed `tu-mobilenetv4_conv_small`) — queued.
-- test-08 - Architecture: DeepLabV3+ (`head_segmentation_deeplabv3plus`, encoder fixed `tu-mobilenetv4_conv_small`) — queued.
-- test-09 - Architecture: Attention U-Net (`head_segmentation_attention_unet`, Unet + `decoder_attention_type: scse`) — queued.
-- test-10 - Backbone: EfficientNet-V2-S (`head_segmentation_efficientnetv2s`, Unet + `tu-tf_efficientnetv2_s`) — queued.
-- test-11 - Backbone: ConvNeXt-Tiny (`head_segmentation_convnext_tiny`, Unet + `tu-convnext_tiny`) — queued.
-- test-12 - Backbone: ConvNeXt-V2-Tiny (`head_segmentation_convnextv2_tiny`, Unet + `tu-convnextv2_tiny`) — queued.
+- test-05 - Architecture: U-Net++ (`head_segmentation_unetpp`, encoder fixed `tu-mobilenetv4_conv_small`).
+- test-06 - Architecture: MAnet (`head_segmentation_manet`, encoder fixed `tu-mobilenetv4_conv_small`).
+- test-07 - Architecture: FPN (`head_segmentation_fpn`, encoder fixed `tu-mobilenetv4_conv_small`).
+- test-08 - Architecture: DeepLabV3+ (`head_segmentation_deeplabv3plus`, encoder fixed `tu-mobilenetv4_conv_small`).
+- test-09 - Architecture: Attention U-Net (`head_segmentation_attention_unet`, Unet + `decoder_attention_type: scse`).
+- test-10 - Backbone: EfficientNet-V2-S (`head_segmentation_efficientnetv2s`, Unet + `tu-tf_efficientnetv2_s`).
+- test-11 - Backbone: ConvNeXt-Tiny (`head_segmentation_convnext_tiny`, Unet + `tu-convnext_tiny`).
+- test-12 - Backbone: ConvNeXt-V2-Tiny (`head_segmentation_convnextv2_tiny`, Unet + `tu-convnextv2_tiny`).
+- .
+- test-13 - Architecture: MAnet (`head_segmentation_manet`, encoder fixed `tu-mobilenetv4_conv_small`).
+- test-14 - Architecture: FPN (`head_segmentation_fpn`, encoder fixed `tu-mobilenetv4_conv_small`).
+- test-15 - Architecture: DeepLabV3+ (`head_segmentation_deeplabv3plus`, encoder fixed `tu-mobilenetv4_conv_small`).
+- test-16 - Architecture: Attention U-Net (`head_segmentation_attention_unet`, Unet + `decoder_attention_type: scse`).
+- .
+- test-17 - do not use suspected images

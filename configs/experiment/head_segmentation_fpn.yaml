@@ -3,12 +3,12 @@
 defaults:
   - head_segmentation.yaml
 
-tags: ["test-07", "arch_sweep"]
+tags: ["test-17"]
 
 model:
   model:
     _target_: segmentation_models_pytorch.FPN
-    encoder_name: tu-mobilenetv4_conv_small
+    encoder_name: tu-tf_efficientnetv2_s
 
 logger:
   wandb:

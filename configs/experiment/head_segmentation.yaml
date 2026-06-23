@@ -17,7 +17,7 @@ defaults:
 find_lr: False
 seed: "rand"
 float32_matmul_precision: "high"
-cleanup_mode: all
+cleanup_mode: "none"
 
 trainer:
   min_epochs: 0
@@ -58,7 +58,7 @@ logger:
     group: "head_segmentation"
 extras:
   after_test_plots:
-    enabled: false
+    enabled: true
     data_dir: ${paths.data_dir}
     input_size: ${data.input_size}
     transforms: ${data.test_transforms}

@@ -3,12 +3,12 @@
 defaults:
   - head_segmentation.yaml
 
-tags: ["test-09", "arch_sweep"]
+tags: ["test-17"]
 
 model:
   model:
     _target_: segmentation_models_pytorch.Unet
-    encoder_name: tu-mobilenetv4_conv_small
+    encoder_name: tu-tf_efficientnetv2_s
     decoder_attention_type: scse
 
 logger:
