@@ -279,3 +279,4 @@ ______________________________________________________________________
 - test-16 - Architecture: Attention U-Net (`head_segmentation_attention_unet`, Unet + `decoder_attention_type: scse`).
 - .
 - test-17 - do not use suspected images
+- test-18 - reassign Axial, Brain, Other images to head

@@ -3,8 +3,6 @@
 defaults:
   - head_segmentation.yaml
 
-tags: ["test-17"]
-
 model:
   model:
     _target_: segmentation_models_pytorch.DeepLabV3Plus
