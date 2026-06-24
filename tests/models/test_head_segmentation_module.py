@@ -89,22 +89,51 @@ class TestCalculatePrediction:
         assert (prediction_label == 1).all()
         assert prediction_mask.min().item() > 0.9
 
-    def test_below_threshold(self) -> None:
-        """4 of 100 pixels positive (4%) is below the 5% threshold → label 0."""
-        logits = torch.full((1, 1, 10, 10), -10.0)
-        logits[0, 0, :4, 0] = 10.0
+    def test_below_pixel_threshold(self) -> None:
+        """99 of 10000 pixels positive (1%) is below the 5% threshold → label 0."""
+        logits = torch.full((1, 1, 100, 100), -10.0)
+        logits[0, 0, :99, 0] = 10.0
+        print((logits / 10).sum())
 
         _, prediction_label = HeadSegmentationLitModule.calculate_prediction(logits)
 
         assert prediction_label.item() == 0
 
-    def test_at_threshold(self) -> None:
-        """5 of 100 pixels positive (5%) is exactly at the threshold → label 1."""
-        logits = torch.full((1, 1, 10, 10), -10.0)
-        logits[0, 0, :5, 0] = 10.0
+    def test_at_pixel_threshold(self) -> None:
+        """100 of 10000 pixels positive (5%) is exactly at the threshold → label 1."""
+        logits = torch.full((1, 1, 100, 100), -10.0)
+        logits[0, 0, :100, 0] = 10.0
 
         _, prediction_label = HeadSegmentationLitModule.calculate_prediction(logits)
 
+        assert prediction_label.item() == 1
+
+    def test_below_confidence_threshold(self) -> None:
+        """100 pixels are positive (clears 1% area gate), but their mean confidence
+
+        is ~0.73 (below 75% threshold) → label 0.
+        """
+        # A logit of 1.0 gives a sigmoid value of ~0.73
+        logits = torch.full((1, 1, 100, 100), -10.0)
+        logits[0, 0, :100, 0] = 1.0
+
+        _, prediction_label = HeadSegmentationLitModule.calculate_prediction(logits)
+
+        # 1 (percentage) * 0 (confidence) = 0
+        assert prediction_label.item() == 0
+
+    def test_at_confidence_threshold(self) -> None:
+        """100 pixels are positive (clears 1% area gate), and their mean confidence
+
+        is ~0.75 (exactly at/above threshold) → label 1.
+        """
+        # A logit of 1.10 match a sigmoid value of ~0.75
+        logits = torch.full((1, 1, 100, 100), -10.0)
+        logits[0, 0, :100, 0] = 1.10
+
+        _, prediction_label = HeadSegmentationLitModule.calculate_prediction(logits)
+
+        # 1 (percentage) * 1 (confidence) = 1
         assert prediction_label.item() == 1
 
     def test_output_shapes(self) -> None:

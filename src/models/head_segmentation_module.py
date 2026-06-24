@@ -117,12 +117,19 @@ class HeadSegmentationLitModule(LightningModule):
     @staticmethod
     def calculate_prediction(logits: Tensor) -> tuple[Tensor, Tensor]:
         prediction_mask = torch.sigmoid(logits)  # [B, 1, H, W], values 0-1
+
         binary_mask = (prediction_mask > 0.5).int()  # [B, 1, H, W], values 0 or 1
         binary_mask = binary_mask.squeeze(1)  # [B, H, W]
         total_pixels = binary_mask.shape[-2] * binary_mask.shape[-1]  # H * W
         ones_counts = binary_mask.sum(dim=(1, 2))  # [B]
         ones_percent = ones_counts.float() / total_pixels  # [B]
-        prediction_label = (ones_percent >= 0.05).int()  # [B], 1 if >=5% ones, else 0
+        percentage_prediction = (ones_percent >= 0.01).int()  # [B], 1 if >=1% ones, else 0
+
+        confidence_sum = (binary_mask * prediction_mask).sum(dim=(1, 2, 3))  # [B]
+        confidence_mean = confidence_sum / (ones_counts + 1e-6)  # [B], mean confidence of predicted area
+        confidence_prediction_label = (confidence_mean >= 0.75).int()  # [B], 1 if >=75%, else 0
+
+        prediction_label = percentage_prediction * confidence_prediction_label  # [B]
         return prediction_mask, prediction_label
 
     @staticmethod

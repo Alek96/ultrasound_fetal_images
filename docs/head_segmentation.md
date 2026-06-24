@@ -281,3 +281,5 @@ ______________________________________________________________________
 - test-17 - do not use suspected images. best score test/dice 0.97801, test/label/acc 0.99931
 - test-18 - reassign Axial, Brain, Other images to head. best score test/dice 0.9762, test/label/acc 0.99757
 - test-19 - reassign Axial, Brain, Other images to head 2. best score test/dice 0.9762, test/label/acc 0.99757
+- predict label based on pixel percentage and mean confidence
+- test-20 - do not use suspected images. best score test/dice 0.97773, test/label/acc 0.99934
