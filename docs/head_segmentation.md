@@ -278,5 +278,6 @@ ______________________________________________________________________
 - test-15 - Architecture: DeepLabV3+ (`head_segmentation_deeplabv3plus`, encoder fixed `tu-mobilenetv4_conv_small`).
 - test-16 - Architecture: Attention U-Net (`head_segmentation_attention_unet`, Unet + `decoder_attention_type: scse`).
 - .
-- test-17 - do not use suspected images
-- test-18 - reassign Axial, Brain, Other images to head
+- test-17 - do not use suspected images. best score test/dice 0.97801, test/label/acc 0.99931
+- test-18 - reassign Axial, Brain, Other images to head. best score test/dice 0.9762, test/label/acc 0.99757
+- test-19 - reassign Axial, Brain, Other images to head 2. best score test/dice 0.9762, test/label/acc 0.99757
