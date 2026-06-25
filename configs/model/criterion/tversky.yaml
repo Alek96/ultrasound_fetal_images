@@ -1,0 +1,8 @@
+# @package model.criterion
+# Asymmetric Tversky favouring precision (alpha > beta penalises false positives).
+
+_target_: src.models.components.loss.BinaryTverskyLoss
+_partial_: true
+alpha: 0.7
+beta: 0.3
+smooth: 1e-6

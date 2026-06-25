@@ -1,0 +1,9 @@
+# @package _global_
+
+defaults:
+  - head_segmentation.yaml
+  - override /model/criterion@model.criterion: focal_tversky
+
+logger:
+  wandb:
+    group: "focal_tversky"

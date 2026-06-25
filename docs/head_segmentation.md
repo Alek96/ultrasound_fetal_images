@@ -283,3 +283,8 @@ ______________________________________________________________________
 - test-19 - reassign Axial, Brain, Other images to head 2. best score test/dice 0.9762, test/label/acc 0.99757
 - predict label based on pixel percentage and mean confidence
 - test-20 - do not use suspected images. best score test/dice 0.97773, test/label/acc 0.99934
+  - attention - 4 3 4 1 = 12 - X
+  - fpn - 1 2 3 3 = 9 - ?
+  - manet - 2 1 2 2 = 7 - ?
+  - deep - 3 4 1 4 = 12 - X
+- test-21 - logs sweep

@@ -9,6 +9,7 @@ task_name: "debug"
 # disable callbacks and loggers during debugging
 callbacks: null
 logger: null
+cleanup_mode: "all"
 
 extras:
   ignore_warnings: False

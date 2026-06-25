@@ -1,0 +1,10 @@
+# @package model.criterion
+# Focal Tversky: asymmetric Tversky (alpha > beta favours precision) with focal
+# modulation via the exponent gamma. gamma == 1 disables modulation; the paper
+# (Abraham & Khan, 2019) recommends gamma = 4/3.
+_target_: src.models.components.loss.BinaryFocalTverskyLoss
+_partial_: true
+alpha: 0.7
+beta: 0.3
+gamma: 1.3333333333333333
+smooth: 1e-6

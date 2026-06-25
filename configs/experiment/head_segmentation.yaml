@@ -17,7 +17,7 @@ defaults:
 find_lr: False
 seed: "rand"
 float32_matmul_precision: "high"
-cleanup_mode: "none" # none, model_weights, all
+cleanup_mode: "all" # none, model_weights, all
 
 trainer:
   min_epochs: 0
@@ -39,8 +39,6 @@ model:
     _target_: segmentation_models_pytorch.Unet
     encoder_name: tu-mobilenetv4_conv_small
   lr: 1e-03
-  criterion:
-    smooth: 1e-6
   optimizer:
     weight_decay: 1e-5
     amsgrad: True
@@ -58,7 +56,7 @@ logger:
     group: "head_segmentation"
 extras:
   after_test_plots:
-    enabled: true
+    enabled: false
     data_dir: ${paths.data_dir}
     input_size: ${data.input_size}
     transforms: ${data.test_transforms}

@@ -1,10 +1,18 @@
-from functools import partial
 from typing import Any
 
 import torch
 from lightning import LightningModule
 from torch import Tensor
-from torchmetrics import Accuracy, ConfusionMatrix, F1Score, MaxMetric, MeanMetric
+from torchmetrics import (
+    Accuracy,
+    ConfusionMatrix,
+    F1Score,
+    JaccardIndex,
+    MaxMetric,
+    MeanMetric,
+    Precision,
+    Recall,
+)
 
 from src.data.components.dataset import HeadSegmentationDataset
 from src.models.components.loss import BinaryDiceScore
@@ -70,6 +78,9 @@ class HeadSegmentationLitModule(LightningModule):
         self.train_label_acc = Accuracy(task="binary")
         self.train_pixel_f1 = F1Score(task="binary")
         self.train_pixel_acc = Accuracy(task="binary")
+        self.train_pixel_iou = JaccardIndex(task="binary")
+        self.train_pixel_precision = Precision(task="binary")
+        self.train_pixel_recall = Recall(task="binary")
 
         self.val_loss = MeanMetric()
         self.val_dice = MeanMetric()
@@ -82,6 +93,12 @@ class HeadSegmentationLitModule(LightningModule):
         self.val_pixel_f1_best = MaxMetric()
         self.val_pixel_acc = Accuracy(task="binary")
         self.val_pixel_acc_best = MaxMetric()
+        self.val_pixel_iou = JaccardIndex(task="binary")
+        self.val_pixel_iou_best = MaxMetric()
+        self.val_pixel_precision = Precision(task="binary")
+        self.val_pixel_precision_best = MaxMetric()
+        self.val_pixel_recall = Recall(task="binary")
+        self.val_pixel_recall_best = MaxMetric()
 
         self.test_loss = MeanMetric()
         self.test_dice = MeanMetric()
@@ -90,6 +107,9 @@ class HeadSegmentationLitModule(LightningModule):
         self.test_label_cm = ConfusionMatrix(task="binary", normalize="none")
         self.test_pixel_f1 = F1Score(task="binary")
         self.test_pixel_acc = Accuracy(task="binary")
+        self.test_pixel_iou = JaccardIndex(task="binary")
+        self.test_pixel_precision = Precision(task="binary")
+        self.test_pixel_recall = Recall(task="binary")
 
     def on_train_start(self) -> None:
         """Lightning hook that is called when training begins."""
@@ -100,6 +120,9 @@ class HeadSegmentationLitModule(LightningModule):
         self.val_label_acc_best.reset()
         self.val_pixel_f1_best.reset()
         self.val_pixel_acc_best.reset()
+        self.val_pixel_iou_best.reset()
+        self.val_pixel_precision_best.reset()
+        self.val_pixel_recall_best.reset()
 
     def forward(self, x: Tensor) -> Tensor:
         return self.model(x)
@@ -155,12 +178,18 @@ class HeadSegmentationLitModule(LightningModule):
         self.train_label_acc(prediction_label, labels)
         self.train_pixel_f1(prediction_mask, masks)
         self.train_pixel_acc(prediction_mask, masks)
+        self.train_pixel_iou(prediction_mask, masks)
+        self.train_pixel_precision(prediction_mask, masks)
+        self.train_pixel_recall(prediction_mask, masks)
         self.log("train/loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("train/dice", self.train_dice, on_step=False, on_epoch=True, prog_bar=True)
         self.log("train/label/f1", self.train_label_f1, on_step=False, on_epoch=True, prog_bar=True)
         self.log("train/label/acc", self.train_label_acc, on_step=False, on_epoch=True, prog_bar=True)
         self.log("train/pixel/f1", self.train_pixel_f1, on_step=False, on_epoch=True, prog_bar=True)
         self.log("train/pixel/acc", self.train_pixel_acc, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("train/pixel/iou", self.train_pixel_iou, on_step=False, on_epoch=True, prog_bar=False)
+        self.log("train/pixel/precision", self.train_pixel_precision, on_step=False, on_epoch=True, prog_bar=False)
+        self.log("train/pixel/recall", self.train_pixel_recall, on_step=False, on_epoch=True, prog_bar=False)
 
         # remember to always return loss from `training_step()` or backpropagation will fail!
         return loss
@@ -191,12 +220,18 @@ class HeadSegmentationLitModule(LightningModule):
         self.val_label_acc(prediction_label, labels)
         self.val_pixel_f1(prediction_mask, masks)
         self.val_pixel_acc(prediction_mask, masks)
+        self.val_pixel_iou(prediction_mask, masks)
+        self.val_pixel_precision(prediction_mask, masks)
+        self.val_pixel_recall(prediction_mask, masks)
         self.log("val/loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("val/dice", self.val_dice, on_step=False, on_epoch=True, prog_bar=True)
         self.log("val/label/f1", self.val_label_f1, on_step=False, on_epoch=True, prog_bar=True)
         self.log("val/label/acc", self.val_label_acc, on_step=False, on_epoch=True, prog_bar=True)
         self.log("val/pixel/f1", self.val_pixel_f1, on_step=False, on_epoch=True, prog_bar=True)
         self.log("val/pixel/acc", self.val_pixel_acc, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("val/pixel/iou", self.val_pixel_iou, on_step=False, on_epoch=True, prog_bar=False)
+        self.log("val/pixel/precision", self.val_pixel_precision, on_step=False, on_epoch=True, prog_bar=False)
+        self.log("val/pixel/recall", self.val_pixel_recall, on_step=False, on_epoch=True, prog_bar=False)
 
         return loss
 
@@ -207,6 +242,9 @@ class HeadSegmentationLitModule(LightningModule):
         self.val_label_acc_best(self.val_label_acc.compute())
         self.val_pixel_f1_best(self.val_pixel_f1.compute())
         self.val_pixel_acc_best(self.val_pixel_acc.compute())
+        self.val_pixel_iou_best(self.val_pixel_iou.compute())
+        self.val_pixel_precision_best(self.val_pixel_precision.compute())
+        self.val_pixel_recall_best(self.val_pixel_recall.compute())
 
         # log a value through `.compute()` method, instead of as a metric object
         # otherwise metric would be reset by lightning after each epoch
@@ -215,6 +253,9 @@ class HeadSegmentationLitModule(LightningModule):
         self.log("val/label/acc_best", self.val_label_acc_best.compute(), sync_dist=True, prog_bar=True)
         self.log("val/pixel/f1_best", self.val_pixel_f1_best.compute(), sync_dist=True, prog_bar=True)
         self.log("val/pixel/acc_best", self.val_pixel_acc_best.compute(), sync_dist=True, prog_bar=True)
+        self.log("val/pixel/iou_best", self.val_pixel_iou_best.compute(), sync_dist=True, prog_bar=False)
+        self.log("val/pixel/precision_best", self.val_pixel_precision_best.compute(), sync_dist=True, prog_bar=False)
+        self.log("val/pixel/recall_best", self.val_pixel_recall_best.compute(), sync_dist=True, prog_bar=False)
 
     def on_test_start(self) -> None:
         """Lightning hook that is called when testing begins."""
@@ -238,12 +279,18 @@ class HeadSegmentationLitModule(LightningModule):
         self.test_label_cm.update(prediction_label, labels)
         self.test_pixel_f1(prediction_mask, masks)
         self.test_pixel_acc(prediction_mask, masks)
+        self.test_pixel_iou(prediction_mask, masks)
+        self.test_pixel_precision(prediction_mask, masks)
+        self.test_pixel_recall(prediction_mask, masks)
         self.log("test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("test/dice", self.test_dice, on_step=False, on_epoch=True, prog_bar=True)
         self.log("test/label/f1", self.test_label_f1, on_step=False, on_epoch=True, prog_bar=True)
         self.log("test/label/acc", self.test_label_acc, on_step=False, on_epoch=True, prog_bar=True)
         self.log("test/pixel/f1", self.test_pixel_f1, on_step=False, on_epoch=True, prog_bar=True)
         self.log("test/pixel/acc", self.test_pixel_acc, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("test/pixel/iou", self.test_pixel_iou, on_step=False, on_epoch=True, prog_bar=False)
+        self.log("test/pixel/precision", self.test_pixel_precision, on_step=False, on_epoch=True, prog_bar=False)
+        self.log("test/pixel/recall", self.test_pixel_recall, on_step=False, on_epoch=True, prog_bar=False)
 
         return loss
 

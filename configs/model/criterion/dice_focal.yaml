@@ -1,0 +1,6 @@
+# @package model.criterion
+_target_: src.models.components.loss.BinaryDiceFocalLoss
+_partial_: true
+smooth: 1e-6
+alpha: 0.25
+gamma: 2.0
