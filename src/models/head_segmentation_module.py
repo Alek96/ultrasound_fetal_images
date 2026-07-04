@@ -150,9 +150,9 @@ class HeadSegmentationLitModule(LightningModule):
 
         confidence_sum = (binary_mask * prediction_mask).sum(dim=(1, 2, 3))  # [B]
         confidence_mean = confidence_sum / (ones_counts + 1e-6)  # [B], mean confidence of predicted area
-        confidence_prediction_label = (confidence_mean >= 0.75).int()  # [B], 1 if >=75%, else 0
+        confidence_prediction = (confidence_mean >= 0.75).int()  # [B], 1 if >=75%, else 0
 
-        prediction_label = percentage_prediction * confidence_prediction_label  # [B]
+        prediction_label = percentage_prediction * confidence_prediction  # [B]
         return prediction_mask, prediction_label
 
     @staticmethod

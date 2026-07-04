@@ -192,33 +192,32 @@ ______________________________________________________________________
 
 ### 8.1 Regularisation
 
-| Technique                             | Status | Description                                                                                                                                                                                 | Result                                                  |
-| ------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| Weight decay                          | ✅     | L2 penalty on model weights. Prevents weights from growing too large, reducing overfitting. Applied through the Adam optimiser.                                                             | 1e-5 via Adam.                                          |
-| Early stopping                        | 📋     | Stops training when validation metric stops improving.                                                                                                                                      | patience=12, monitor=val/pixel/f1 / val/dice, mode=max. |
-| Label Smoothing (for BCE)             | 📋     | Softens hard 0/1 mask targets to e.g. 0.05/0.95. Prevents over-confident predictions and can improve generalisation.                                                                        | —                                                       |
-| Encoder Freezing / Gradual Unfreezing | 📋     | Freeze pretrained encoder for initial epochs (3–5), train only decoder. Then unfreeze and fine-tune end-to-end at lower LR. Prevents catastrophic forgetting and stabilizes early training. | —                                                       |
+| Technique                             | Status | Description                                                                                                                                                                                 | Result                                   |
+| ------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| Weight decay                          | ✅     | L2 penalty on model weights. Prevents weights from growing too large, reducing overfitting. Applied through the Adam optimiser.                                                             | 1e-5 via Adam.                           |
+| Early stopping                        | ✅     | Stops training when validation metric stops improving.                                                                                                                                      | patience=12, monitor=val/dice, mode=max. |
+| Label Smoothing (for BCE)             | 📋     | Softens hard 0/1 mask targets to e.g. 0.05/0.95. Prevents over-confident predictions and can improve generalisation.                                                                        | —                                        |
+| Encoder Freezing / Gradual Unfreezing | 📋     | Freeze pretrained encoder for initial epochs (3–5), train only decoder. Then unfreeze and fine-tune end-to-end at lower LR. Prevents catastrophic forgetting and stabilizes early training. | —                                        |
 
 ### 8.2 Training Duration & Batch
 
-| Technique                        | Status | Description                                                                                                                           | Result                              |
-| -------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
-| 50 epochs                        | ✅     | Number of full passes through the training set. Chosen as a balance between convergence and training time.                            | max_epochs=50, min_epochs=0.        |
-| Batch size 64                    | ✅     | Number of samples per gradient update. Fits comfortably in GPU memory at 192×256 resolution.                                          | batch_size=64.                      |
-| Gradient accumulation (2 steps)  | 🧪     | Simulates a larger effective batch size (128) by accumulating gradients over 2 steps before updating. No extra memory needed.         | Commented out in experiment config. |
-| Mixed precision (16-mixed)       | 🧪     | Uses float16 for forward/backward and float32 for weight updates. Roughly halves memory usage and speeds up training.                 | Commented out in experiment config. |
-| 100+ epochs with cosine schedule | 📋     | Longer training combined with a smooth cosine LR decay. May squeeze out extra performance if the model hasn't converged at 50 epochs. | —                                   |
+| Technique                        | Status | Description                                                                                                                           | Result                                        |
+| -------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| 50 epochs                        | ✅     | Number of full passes through the training set. Chosen as a balance between convergence and training time.                            | max_epochs=50, min_epochs=0.                  |
+| Batch size 64                    | ✅     | Number of samples per gradient update. Fits comfortably in GPU memory at 192×256 resolution.                                          | batch_size=64.                                |
+| Mixed precision (16-mixed)       | 🧪     | Uses float16 for forward/backward and float32 for weight updates. Roughly halves memory usage and speeds up training.                 | Tested, but no performance gain was observed. |
+| 100+ epochs with cosine schedule | 📋     | Longer training combined with a smooth cosine LR decay. May squeeze out extra performance if the model hasn't converged at 50 epochs. | —                                             |
 
 ### 8.3 Model Selection
 
-| Technique                         | Status | Description                                                                                                                                                                                                              | Result                                                                 |
-| --------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
-| Checkpoint on best val/pixel/f1   | ✅     | Saves model weights whenever validation pixel F1 reaches a new maximum. Ensures the deployed model is the best-performing one seen during training.                                                                      | monitor=val/pixel/f1, mode=max, save_last=True.                        |
-| Checkpoint on best val/dice       | 🧪     | Use Dice as the checkpoint criterion instead of F1. Worth comparing to see if the two metrics diverge in practice.                                                                                                       | Comparable to `val/pixel/f1`, no clear winner. Keeping `val/pixel/f1`. |
-| Ensemble (top-k checkpoints)      | 📋     | Average predictions from the k best checkpoints. Free accuracy gain at inference time with no additional training.                                                                                                       | —                                                                      |
-| SWA (Stochastic Weight Averaging) | 📋     | Averages model weights over the last portion of training. Finds wider optima that generalise better, at no extra inference cost.                                                                                         | —                                                                      |
-| Deep Supervision                  | 📋     | Adds auxiliary segmentation losses from intermediate decoder layers. Improves gradient flow to early layers, accelerates convergence, and acts as implicit regularisation. Proven in U-Net 3+ and similar architectures. | —                                                                      |
-| K-Fold Cross-Validation           | 📋     | Train on k different train/val splits to obtain robust performance estimates and reduce variance from a single split. More reliable for medical datasets with limited samples.                                           | —                                                                      |
+| Technique                         | Status | Description                                                                                                                                                                                                              | Result                                                             |
+| --------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| Checkpoint on best val/pixel/f1   | 🧪     | Saves model weights whenever validation pixel F1 reaches a new maximum. Ensures the deployed model is the best-performing one seen during training.                                                                      | monitor=val/pixel/f1, mode=max, save_last=True.                    |
+| Checkpoint on best val/dice       | ✅     | Use Dice as the checkpoint criterion instead of F1. Worth comparing to see if the two metrics diverge in practice.                                                                                                       | Comparable to `val/pixel/f1`, no clear winner. Keeping `val/dice`. |
+| Ensemble (top-k checkpoints)      | 📋     | Average predictions from the k best checkpoints. Free accuracy gain at inference time with no additional training.                                                                                                       | —                                                                  |
+| SWA (Stochastic Weight Averaging) | 📋     | Averages model weights over the last portion of training. Finds wider optima that generalise better, at no extra inference cost.                                                                                         | —                                                                  |
+| Deep Supervision                  | 📋     | Adds auxiliary segmentation losses from intermediate decoder layers. Improves gradient flow to early layers, accelerates convergence, and acts as implicit regularisation. Proven in U-Net 3+ and similar architectures. | —                                                                  |
+| K-Fold Cross-Validation           | 📋     | Train on k different train/val splits to obtain robust performance estimates and reduce variance from a single split. More reliable for medical datasets with limited samples.                                           | —                                                                  |
 
 ______________________________________________________________________
 
@@ -235,24 +234,22 @@ ______________________________________________________________________
 
 ## 10. Derived Classification Threshold
 
-| Technique                        | Status | Description                                                                                                                                                                                     | Result                                             |
-| -------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| Fixed % pixel threshold          | ✅     | Classify as "Brain" if ≥ x % of mask pixels are positive. Simple, deterministic rule that converts segmentation output to a binary label.                                                       | threshold=0.05, applied after binarisation at 0.5. |
-| Learned threshold (ROC-optimal)  | 📋     | Find the optimal pixel-percentage cutoff by maximising F1 or Youden's J on the validation set. Could improve label accuracy with minimal effort.                                                | —                                                  |
-| Auxiliary classification head    | 📋     | Add a small MLP classification branch to the encoder bottleneck, trained jointly with the segmentation decoder. The model learns classification directly rather than deriving it from the mask. | —                                                  |
-| Global Average Pooling → sigmoid | 📋     | Pool encoder features globally and pass through a linear+sigmoid layer. Decouples classification from mask quality — useful if mask-derived labels are noisy.                                   | —                                                  |
+| Technique                              | Status | Description                                                                                                                                                                                                             | Result                                                                                                                                              |
+| -------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pixel threshold + mean confidence gate | ✅     | Classify as "Brain" only if the predicted positive area is large enough and the mean confidence over that predicted area is also high enough. This keeps tiny or low-confidence masks from triggering a positive label. | Positive only if predicted area is >= 1% of pixels and mean confidence over the predicted area is >= 0.75; mask binarisation threshold remains 0.5. |
+| Auxiliary classification head          | 📋     | Add a small MLP classification branch to the encoder bottleneck, trained jointly with the segmentation decoder. The model learns classification directly rather than deriving it from the mask.                         | —                                                                                                                                                   |
+| Global Average Pooling → sigmoid       | 📋     | Pool encoder features globally and pass through a linear+sigmoid layer. Decouples classification from mask quality — useful if mask-derived labels are noisy.                                                           | —                                                                                                                                                   |
 
 ______________________________________________________________________
 
 ## Recommended Next Experiments (priority order)
 
-1.**Encoder freezing** — freeze encoder for 3–5 epochs, then unfreeze. Stabilises early training with pretrained weights.
+1. **Encoder freezing** — freeze encoder for 3–5 epochs, then unfreeze. Stabilises early training with pretrained weights.
 2. **Scheduler: OneCycleLR** — faster convergence, potentially better final accuracy in fewer epochs.
 3. **Loss: add Boundary Loss term** — distance-based loss to directly optimise boundary accuracy for HC measurement.
 4. **Augmentation: ElasticTransform + Speckle Noise** — domain-specific augmentations for ultrasound.
 5. **Post-processing: connected component filtering + threshold tuning** — free inference-time gains with no retraining.
-6. **Training: enable mixed precision** — faster iteration cycles to test more configurations.
-7. **Input resolution: 224 × 320** — more spatial detail for marginal accuracy gain.
+6. **Input resolution: 224 × 320** — more spatial detail for marginal accuracy gain.
 
 ## Experiments
 
@@ -305,3 +302,7 @@ ______________________________________________________________________
     - For Focal and Dice + Focal, alpha ranked `0.25 > 0.5 > 0.75`.
     - Tversky and Focal Tversky were the weakest overall, with Tversky slightly better than Focal Tversky.
     - For Tversky-style losses, settings with `alpha > beta` performed better.
+- derived label update:
+  - The fixed 5% positive-pixel rule was replaced by a two-stage rule in `head_segmentation_module.py`.
+  - Classify as positive only if the predicted mask covers at least 1% of pixels and the mean confidence over the predicted region is at least 0.75.
+  - Mask binarisation for this rule still uses a threshold of 0.5.
