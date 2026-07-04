@@ -2,13 +2,12 @@
 
 defaults:
   - head_segmentation.yaml
+  - override /model/criterion@model.criterion: dice_ce
 
 model:
   model:
     _target_: segmentation_models_pytorch.Unet
     encoder_name: tu-tf_efficientnetv2_s
     decoder_attention_type: scse
-
-logger:
-  wandb:
-    group: "attention_unet"
+  criterion:
+    smooth: 1e-6

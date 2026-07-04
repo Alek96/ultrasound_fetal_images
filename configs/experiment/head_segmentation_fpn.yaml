@@ -2,12 +2,13 @@
 
 defaults:
   - head_segmentation.yaml
+  - override /model/criterion@model.criterion: dice_focal
 
 model:
   model:
     _target_: segmentation_models_pytorch.FPN
     encoder_name: tu-tf_efficientnetv2_s
-
-logger:
-  wandb:
-    group: "fpn"
+  criterion:
+    alpha: 0.25
+    gamma: 2.0
+    smooth: 1e-6

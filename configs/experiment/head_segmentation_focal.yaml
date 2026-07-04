@@ -1,9 +1,0 @@
-# @package _global_
-
-defaults:
-  - head_segmentation.yaml
-  - override /model/criterion@model.criterion: focal
-
-logger:
-  wandb:
-    group: "focal"

@@ -284,7 +284,9 @@ ______________________________________________________________________
 - predict label based on pixel percentage and mean confidence
 - test-20 - do not use suspected images. best score test/dice 0.97773, test/label/acc 0.99934
   - attention - 4 3 4 1 = 12 - X
-  - fpn - 1 2 3 3 = 9 - ?
-  - manet - 2 1 2 2 = 7 - ?
+  - fpn - 1 2 3 3 1 = 10 - ?
+  - manet - 2 1 2 2 2 = 9 - ?
   - deep - 3 4 1 4 = 12 - X
-- test-21 - logs sweep
+- test-21 - loss sweep. best score test/dice 0.97815, test/label/acc 0.99938
+  - fpn dice_focal 0.25 - 1
+  - manet dice_ce 1e-6 - 2

@@ -2,12 +2,11 @@
 
 defaults:
   - head_segmentation.yaml
+  - override /model/criterion@model.criterion: dice_ce
 
 model:
   model:
     _target_: segmentation_models_pytorch.MAnet
     encoder_name: tu-tf_efficientnetv2_s
-
-logger:
-  wandb:
-    group: "manet"
+  criterion:
+    smooth: 1e-6
