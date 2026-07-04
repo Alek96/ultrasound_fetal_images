@@ -36,9 +36,13 @@ callbacks:
 
 model:
   model:
-    _target_: segmentation_models_pytorch.Unet
-    encoder_name: tu-mobilenetv4_conv_small
+    _target_: segmentation_models_pytorch.FPN
+    encoder_name: tu-tf_efficientnetv2_s
   lr: 1e-03
+  criterion:
+    alpha: 0.25
+    gamma: 2.0
+    smooth: 1e-6
   optimizer:
     weight_decay: 1e-5
     amsgrad: True

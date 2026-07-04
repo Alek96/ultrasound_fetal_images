@@ -19,6 +19,7 @@ from src.data.components.transforms import (
     RandomCutout,
     RandomPercentCrop,
     Resize,
+    Speckle,
     VerticalFlip,
     cutout,
     grid_distortion,
@@ -32,6 +33,10 @@ from src.data.components.transforms import (
 
 def _uint8_img(c: int = 3, h: int = 64, w: int = 64) -> torch.Tensor:
     return torch.randint(0, 256, (c, h, w), dtype=torch.uint8)
+
+
+def _float_img(c: int = 3, h: int = 64, w: int = 64) -> torch.Tensor:
+    return torch.rand(c, h, w)
 
 
 def _tv_img(c: int = 3, h: int = 64, w: int = 64) -> tv_tensors.Image:
@@ -275,14 +280,73 @@ class TestSpeckleNoise:
     def test_output_dtype_is_uint8(self):
         assert speckle_noise(_uint8_img()).dtype == torch.uint8
 
-    def test_output_values_in_valid_range(self):
-        result = speckle_noise(_uint8_img(), std=0.5)
+    def test_uint8_output_values_in_valid_range(self):
+        result = speckle_noise(_uint8_img(), sigma=0.5)
         assert int(result.min()) >= 0
         assert int(result.max()) <= 255
+
+    def test_float_branch_preserves_dtype_and_range(self):
+        result = speckle_noise(_float_img(), sigma=0.5)
+        assert result.dtype == torch.float32
+        assert float(result.min()) >= 0.0
+        assert float(result.max()) <= 1.0
+
+    def test_no_clip_can_exceed_range(self):
+        img = torch.ones(1, 32, 32)
+        torch.manual_seed(0)
+        result = speckle_noise(img, sigma=1.0, clip=False)
+        assert float(result.max()) > 1.0
 
     def test_output_shape_preserved(self):
         img = _uint8_img(c=3, h=48, w=48)
         assert speckle_noise(img).shape == img.shape
+
+    def test_negative_sigma_raises(self):
+        with pytest.raises(ValueError):
+            speckle_noise(_uint8_img(), sigma=-0.1)
+
+    def test_unsupported_dtype_raises(self):
+        with pytest.raises(ValueError):
+            speckle_noise(torch.zeros(1, 8, 8, dtype=torch.int64))
+
+
+# ---------------------------------------------------------------------------
+# Speckle
+# ---------------------------------------------------------------------------
+
+
+class TestSpeckle:
+    def test_image_is_augmented_and_stays_image(self):
+        torch.manual_seed(0)
+        img = _tv_img()
+        out = Speckle(sigma=0.5)(img)
+        assert isinstance(out, tv_tensors.Image)
+        assert out.shape == img.shape
+
+    def test_mask_is_passed_through_unchanged(self):
+        mask = _tv_mask()
+        out = Speckle(sigma=0.5)(mask)
+        assert isinstance(out, tv_tensors.Mask)
+        assert torch.equal(out, mask)
+
+    def test_image_and_mask_joint_call(self):
+        torch.manual_seed(0)
+        img = _tv_img()
+        mask = tv_tensors.Mask(torch.randint(0, 2, (1, 64, 64), dtype=torch.uint8))
+        out_img, out_mask = Speckle(sigma=0.5)(img, mask)
+        assert isinstance(out_img, tv_tensors.Image)
+        assert isinstance(out_mask, tv_tensors.Mask)
+        assert torch.equal(out_mask, mask)
+
+    def test_plain_tensor_treated_as_image(self):
+        img = _float_img(1, 32, 32)
+        out = Speckle(sigma=0.5)(img)
+        assert isinstance(out, torch.Tensor)
+        assert out.shape == img.shape
+
+    def test_negative_sigma_raises(self):
+        with pytest.raises(ValueError):
+            Speckle(sigma=-0.1)
 
 
 # ---------------------------------------------------------------------------

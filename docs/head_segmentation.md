@@ -306,3 +306,8 @@ ______________________________________________________________________
   - The fixed 5% positive-pixel rule was replaced by a two-stage rule in `head_segmentation_module.py`.
   - Classify as positive only if the predicted mask covers at least 1% of pixels and the mean confidence over the predicted region is at least 0.75.
   - Mask binarisation for this rule still uses a threshold of 0.5.
+- test-22 
+  - Augmentation: ElasticTransform (`head_segmentation_elastic`, `alpha=50.0, sigma=5.0`, applied jointly to image and mask before ToDtype).
+  - Augmentation: GaussianBlur (`head_segmentation_gaussian_blur`, `kernel_size=5, sigma=[0.1, 2.0]`, image-only before ToDtype).
+  - Augmentation: Speckle Noise (`head_segmentation_speckle`, multiplicative, `sigma` sampled from `[0, 0.1]`, applied to the float image after ToDtype and before Normalize).
+  - Augmentation: Random Brightness/Contrast (`head_segmentation_brightness_contrast`, single `ColorJitter(brightness=0.2, contrast=0.2)`, image-only before ToDtype).

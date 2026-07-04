@@ -14,6 +14,17 @@ from torchvision import tv_tensors
 
 
 def _flatten_inputs(inputs: Any):
+    """Collapse single-element input tuples down to the bare element.
+
+    Tuples with more than one element are returned unchanged, while a tuple wrapping a single
+    value (possibly nested) is unwrapped recursively so callers receive the value directly.
+
+    Args:
+        inputs (Any): A value or a (possibly nested) tuple of values.
+
+    Returns:
+        Any: The original tuple when it holds multiple elements, otherwise the single wrapped value.
+    """
     if isinstance(inputs, tuple):
         if len(inputs) > 1:
             return inputs
@@ -23,6 +34,14 @@ def _flatten_inputs(inputs: Any):
 
 
 def _wrap_inputs(inputs: Any):
+    """Normalise inputs to a tuple.
+
+    Args:
+        inputs (Any): A single value or a tuple of values.
+
+    Returns:
+        tuple: The inputs as a tuple, wrapping a single value in a length-1 tuple.
+    """
     inputs = _flatten_inputs(inputs)
     if isinstance(inputs, tuple):
         return inputs
@@ -30,6 +49,18 @@ def _wrap_inputs(inputs: Any):
 
 
 def get_image_shape(*inputs: Any):
+    """Return the spatial shape ``(H, W)`` of the image among the given inputs.
+
+    Args:
+        *inputs (Any): One or more tensors. The first ``tv_tensors.Image`` (or a bare tensor)
+            is used to read the spatial dimensions.
+
+    Returns:
+        torch.Size: The trailing ``(H, W)`` dimensions of the image.
+
+    Raises:
+        TypeError: If no supported image-like input is found.
+    """
     inputs = _flatten_inputs(inputs)
     if isinstance(inputs, Sequence):
         for i in inputs:
@@ -42,6 +73,20 @@ def get_image_shape(*inputs: Any):
 
 
 class PadToAspectRatio(torch.nn.Module):
+    """Pad an image (and mask) to match a target aspect ratio before resizing.
+
+    Padding is added symmetrically to the shorter dimension so the resulting aspect ratio matches
+    ``size``. This avoids the anisotropic distortion a direct resize would introduce, preserving the
+    geometry of shapes such as the elliptical fetal head. Applied jointly to all inputs.
+
+    Args:
+        size (Sequence[int]): Target ``(height, width)`` whose ratio the input is padded to match.
+        fill (fill type or dict): Pixel fill value for the padded area, or a per-type mapping.
+            Default is ``0``.
+        padding_mode (str): One of ``"constant"``, ``"edge"``, ``"reflect"``, ``"symmetric"``.
+            Default is ``"constant"``.
+    """
+
     def __init__(
         self,
         size: Sequence[int],
@@ -56,6 +101,14 @@ class PadToAspectRatio(torch.nn.Module):
         self.aspect_ratio = self.height / self.width
 
     def forward(self, *inputs: Any):
+        """
+        Args:
+            *inputs (Any): Image and/or mask tensors to pad jointly.
+
+        Returns:
+            Tensor or tuple: The inputs padded to the target aspect ratio (unchanged if it already
+            matches).
+        """
         original_height, original_width = get_image_shape(*inputs)
         # Calculate the current aspect ratio of the image
         current_aspect_ratio = original_height / original_width
@@ -100,6 +153,21 @@ class PadToAspectRatio(torch.nn.Module):
 
 
 class Resize(torch.nn.Module):
+    """Resize inputs with a per-``tv_tensor``-type interpolation mode.
+
+    Unlike a plain resize, ``interpolation`` may be a mapping from tensor type to interpolation
+    mode, allowing e.g. bilinear resampling for images while masks use nearest-neighbour to keep
+    their labels intact. The tv_tensor subclass and metadata are preserved on the output.
+
+    Args:
+        size (Sequence[int]): Target ``(height, width)``.
+        interpolation (InterpolationMode | int | dict): A single interpolation mode applied to all
+            inputs, or a mapping from tensor type to mode (with an ``"others"`` fallback). Default is
+            ``InterpolationMode.BILINEAR``.
+        antialias (bool | None): Whether to apply anti-aliasing when downsampling. Default is
+            ``True``.
+    """
+
     def __init__(
         self,
         size: Sequence[int],
@@ -114,6 +182,14 @@ class Resize(torch.nn.Module):
         self.antialias = antialias
 
     def forward(self, *inputs: Any):
+        """
+        Args:
+            *inputs (Any): Image and/or mask tensors to resize, each with its type-appropriate
+                interpolation mode.
+
+        Returns:
+            Tensor or tuple: The resized inputs, re-wrapped as their original tv_tensor types.
+        """
         outputs = []
         for inp in inputs:
             interpolation = self._get_interpolation_mode(inp)
@@ -141,6 +217,15 @@ class Resize(torch.nn.Module):
 
 
 class HorizontalFlip(torch.nn.Module):
+    """Deterministically flip an image horizontally based on a fixed flag.
+
+    Unlike ``RandomHorizontalFlip``, the flip is not random: it is applied whenever ``flip`` is
+    ``True`` and skipped otherwise, which is useful for reproducing a specific augmentation.
+
+    Args:
+        flip (bool): Whether to apply the horizontal flip. Default is ``True``.
+    """
+
     def __init__(self, flip: bool = True) -> None:
         super().__init__()
         self.flip = flip
@@ -160,6 +245,15 @@ class HorizontalFlip(torch.nn.Module):
 
 
 class VerticalFlip(torch.nn.Module):
+    """Deterministically flip an image vertically based on a fixed flag.
+
+    Unlike ``RandomVerticalFlip``, the flip is not random: it is applied whenever ``flip`` is
+    ``True`` and skipped otherwise, which is useful for reproducing a specific augmentation.
+
+    Args:
+        flip (bool): Whether to apply the vertical flip. Default is ``True``.
+    """
+
     def __init__(self, flip: bool = True) -> None:
         super().__init__()
         self.flip = flip
@@ -179,6 +273,20 @@ class VerticalFlip(torch.nn.Module):
 
 
 class Affine(torch.nn.Module):
+    """Apply a deterministic affine transform (rotation, translation, scale, shear).
+
+    Unlike ``RandomAffine``, the transform parameters are fixed rather than sampled, making the
+    result reproducible. ``translate`` is expressed as fractions of the image width/height. Any
+    parameter left as ``None`` defaults to the identity for that component.
+
+    Args:
+        degrees (float | None): Rotation angle in degrees. Default is ``0.0``.
+        translate (tuple[float, float] | None): Horizontal and vertical translation as fractions of
+            the image size. Default is ``[0, 0]``.
+        scale (float | None): Isotropic scaling factor. Default is ``1.0``.
+        shear (list[float] | None): Shear angles in degrees. Default is ``[0.0, 0.0]``.
+    """
+
     def __init__(
         self,
         degrees: float | None = None,
@@ -273,6 +381,18 @@ class RandomPercentCrop(torch.nn.Module):
 
 
 class RandomCutout(torch.nn.Module):
+    """Randomly cut out (zero-fill) square regions from an image with a given probability.
+
+    With probability ``p`` the image is left untouched; otherwise ``n_holes`` square patches of side
+    ``length`` are masked out. Forces the model to rely on non-local context rather than a single
+    discriminative region.
+
+    Args:
+        n_holes (int): Number of square regions to cut out. Default is ``1``.
+        length (int): Side length in pixels of each cut-out square. Default is ``10``.
+        p (float): Probability of applying the cutout. Default is ``0.5``.
+    """
+
     def __init__(self, n_holes: int = 1, length: int = 10, p: float = 0.5) -> None:
         super().__init__()
         self.n_holes = n_holes
@@ -296,6 +416,17 @@ class RandomCutout(torch.nn.Module):
 
 
 def cutout(img: Tensor, n_holes: int = 1, length: int = 10, fill: None | list[float] = None):
+    """Mask out one or more square regions of an image with a per-channel fill value.
+
+    Args:
+        img (Tensor): Image tensor of shape ``(C, H, W)``.
+        n_holes (int): Number of square regions to cut out. Default is ``1``.
+        length (int): Side length in pixels of each cut-out square. Default is ``10``.
+        fill (list[float] | None): Per-channel fill value for the cut-out regions. Defaults to zeros.
+
+    Returns:
+        Tensor: The image with the selected square regions filled.
+    """
     c, h, w = img.shape
     mask = torch.zeros((h, w), dtype=torch.bool)
     fill = fill if fill is not None else torch.zeros(c)
@@ -320,6 +451,21 @@ def cutout(img: Tensor, n_holes: int = 1, length: int = 10, fill: None | list[fl
 
 
 def elastic_transform(img, magnitude, scale):
+    """Apply a smooth non-rigid (elastic) deformation whose strength is set by magnitude and scale.
+
+    ``sigma`` is derived from the image width divided by ``scale`` and ``alpha`` is scaled by
+    ``magnitude``, so larger ``magnitude`` yields stronger displacement while ``scale`` controls the
+    smoothness of the deformation field.
+
+    Args:
+        img (Tensor): Image tensor of shape ``(C, H, W)``.
+        magnitude (float): Deformation strength; higher values displace pixels more.
+        scale (float): Divisor of the image width used to derive the Gaussian ``sigma``; higher
+            values give a finer, smoother field.
+
+    Returns:
+        Tensor: The elastically deformed image.
+    """
     # 0-100 / 5
     # 0-400 / 10
     sigma = img.size(2) / scale
@@ -328,16 +474,111 @@ def elastic_transform(img, magnitude, scale):
 
 
 def grid_distortion(img, magnitude, num_steps=5):
+    """Apply albumentations grid distortion to a CHW image tensor.
+
+    The tensor is converted to HWC NumPy for albumentations and converted back to a CHW tensor on
+    return.
+
+    Args:
+        img (Tensor): Image tensor of shape ``(C, H, W)``.
+        magnitude (float): Distortion limit passed to ``albumentations.GridDistortion``.
+        num_steps (int): Number of grid cells per axis. Default is ``5``.
+
+    Returns:
+        Tensor: The grid-distorted image as a ``(C, H, W)`` tensor.
+    """
     img = img.cpu().detach().numpy().transpose(1, 2, 0)  # HWC
     img = A.GridDistortion(num_steps=num_steps, distort_limit=magnitude, normalized=False, p=1.0)(image=img)["image"]
     img = torch.from_numpy(img.transpose(2, 0, 1))  # CHW
     return img
 
 
-def speckle_noise(img: Tensor, mean: float = 0, std: float = 0.1):
-    gauss = torch.empty(img.shape).normal_(mean=mean, std=std)
-    img = img + img * gauss
-    return img.round().clip(min=0, max=255).type(torch.uint8)
+class Speckle(torch.nn.Module):
+    """Apply multiplicative (speckle) noise to image tensors.
+
+    The noise standard deviation is sampled uniformly from ``[0, sigma]`` on every call, so the
+    augmentation strength varies per sample from none up to ``sigma`` (matching the range-style
+    semantics of ``RandomAffine``). ``tv_tensors.Mask`` inputs are passed through untouched; every
+    other input (including plain, unwrapped tensors) is treated as an image and noised.
+
+    Args:
+        sigma (float): Maximum standard deviation of the sampled normal distribution. The actual
+            per-call value is drawn from ``[0, sigma]``. Default is ``0.1``.
+        mean (float): Mean of the sampled normal distribution. Default is ``0.0``.
+        clip (bool): Whether to clip values back to the valid range after adding noise. Default
+            is ``True``.
+    """
+
+    def __init__(self, sigma: float = 0.1, mean: float = 0.0, clip: bool = True) -> None:
+        super().__init__()
+        if sigma < 0:
+            raise ValueError(f"sigma shouldn't be negative. Got {sigma}")
+        self.sigma = sigma
+        self.mean = mean
+        self.clip = clip
+
+    def forward(self, *inputs: Any):
+        """
+        Args:
+            *inputs (Tensor): Images and/or masks. ``tv_tensors.Mask`` inputs are left unchanged.
+
+        Returns:
+            Tensor or tuple: Inputs with speckle noise applied to non-mask tensors.
+        """
+        sigma = float(torch.empty(()).uniform_(0.0, self.sigma).item())
+
+        outputs = []
+        for inp in inputs:
+            if isinstance(inp, tv_tensors.Mask):
+                outputs.append(inp)
+            else:
+                out = speckle_noise(inp, mean=self.mean, sigma=sigma, clip=self.clip)
+                if isinstance(inp, tv_tensors.TVTensor):
+                    out = tv_tensors.wrap(out, like=inp)
+                outputs.append(out)
+
+        return _flatten_inputs(tuple(outputs))
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(sigma={self.sigma}, mean={self.mean}, clip={self.clip})"
+
+
+def speckle_noise(image: Tensor, mean: float = 0.0, sigma: float = 0.1, clip: bool = True) -> Tensor:
+    """Add multiplicative (speckle) noise to an image: ``image + image * N(mean, sigma)``.
+
+    Speckle is signal-dependent noise, the physically realistic model for ultrasound image
+    formation. The implementation mirrors ``torchvision`` ``gaussian_noise_image`` by branching
+    on the input dtype so it works for both float ``[0, 1]`` and ``uint8 [0, 255]`` tensors.
+
+    Args:
+        image (Tensor): Image to be noised. Expected to be float (in ``[0, 1]``) or ``uint8``.
+        mean (float): Mean of the sampled normal distribution. Default is ``0.0``.
+        sigma (float): Standard deviation of the sampled normal distribution. Default is ``0.1``.
+        clip (bool): Whether to clip the values back to the valid range after adding noise.
+            ``[0, 1]`` for float inputs and ``[0, 255]`` for ``uint8`` inputs. Default is ``True``.
+
+    Returns:
+        Tensor: Speckle-noised image with the same dtype as the input.
+    """
+    if sigma < 0:
+        raise ValueError(f"sigma shouldn't be negative. Got {sigma}")
+
+    if image.is_floating_point():
+        noise = mean + torch.randn_like(image) * sigma
+        out = image + image * noise
+        if clip:
+            out = torch.clamp(out, 0, 1)
+        return out
+
+    elif image.dtype == torch.uint8:
+        noise = mean + torch.randn_like(image, dtype=torch.float32) * sigma
+        out = image + image * noise
+        if clip:
+            out = torch.clamp(out, 0, 255)
+        return out.round().to(torch.uint8)
+
+    else:
+        raise ValueError(f"Input tensor is expected to be in uint8 or float dtype, got dtype={image.dtype}")
 
 
 def _apply_op(
@@ -431,12 +672,19 @@ def _apply_op(
     elif transform_id == "GridDistortion":
         return grid_distortion(img, magnitude=magnitude, num_steps=5)
     elif transform_id == "Speckle":
-        return speckle_noise(img, mean=0, std=magnitude)
+        return speckle_noise(img, mean=0, sigma=magnitude)
     else:
         raise ValueError(f"No transform available for {transform_id}")
 
 
 class RandAugmentPolicy(Enum):
+    """Selectable RandAugment augmentation-space policies.
+
+    Each member selects which operations populate the RandAugment sampling space. ``RAND_AUGMENT`` is
+    the base torchvision space; the other members extend it with an extra operation (e.g. inversion,
+    gamma, cutout, random erasing, elastic deformation, grid distortion, or speckle noise).
+    """
+
     RAND_AUGMENT = "RandAugment"
     RAND_AUGMENT_INVERT = "RandAugmentInvert"
     RAND_AUGMENT_GAMMA = "RandAugmentGamma"
@@ -475,6 +723,16 @@ class RandAugment(torch.nn.Module):
         interpolation: TF.InterpolationMode = TF.InterpolationMode.NEAREST,
         fill: list[float] | None = None,
     ) -> None:
+        """
+        Args:
+            policy (RandAugmentPolicy): Which augmentation-space policy to sample operations from.
+                Default is ``RandAugmentPolicy.RAND_AUGMENT``.
+            num_ops (int): Number of augmentation transformations to apply sequentially.
+            magnitude (int): Magnitude for all the transformations.
+            num_magnitude_bins (int): The number of different magnitude values.
+            interpolation (InterpolationMode): Interpolation mode used for geometric operations.
+            fill (list[float] | None): Pixel fill value for areas outside the transformed image.
+        """
         super().__init__()
         self.policy = policy
         self.num_ops = num_ops
@@ -572,19 +830,46 @@ class RandAugment(torch.nn.Module):
 
 
 class LabelEncoder(torch.nn.Module):
+    """Encode a string class label into its integer index as a tensor.
+
+    Args:
+        labels (list[str]): Ordered list of class names; a label's position defines its index.
+    """
+
     def __init__(self, labels: list[str]):
         super().__init__()
         self.labels = labels
 
     def forward(self, target: str) -> torch.Tensor:
+        """
+        Args:
+            target (str): The class label to encode.
+
+        Returns:
+            torch.Tensor: A scalar tensor holding the label's index in ``labels``.
+        """
         target = self.labels.index(target)
         return torch.as_tensor(target)
 
 
 class OneHotEncoder(torch.nn.Module):
+    """One-hot encode an integer class target.
+
+    Args:
+        labels (int | list[str]): The number of classes, or a list of class names whose length is
+            used as the number of classes.
+    """
+
     def __init__(self, labels: int | list[str]):
         super().__init__()
         self.labels = labels if isinstance(labels, int) else len(labels)
 
     def forward(self, target: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            target (torch.Tensor): Integer class index (or indices) to encode.
+
+        Returns:
+            torch.Tensor: The one-hot representation as a float tensor.
+        """
         return F.one_hot(target, num_classes=self.labels).float()
