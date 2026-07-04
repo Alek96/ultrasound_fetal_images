@@ -10,12 +10,27 @@
 #  seed=2314826881 \
 #  cleanup_mode=none
 
-#for i in {1..100}; do
-#  echo "test ${i}"
-#  python src/head_segmentation_train.py experiment=head_segmentation \
-#    tags='["test-05"]' \
-#    +logger.wandb.notes="t ${i}"
-#done
+for i in {1..10}; do
+  echo "test elastic ${i}"
+  python src/head_segmentation_train.py experiment=head_segmentation_elastic \
+    tags='["test-22"]' \
+    +logger.wandb.notes="t ${i}"
+
+  echo "test gaussian_blur ${i}"
+  python src/head_segmentation_train.py experiment=head_segmentation_gaussian_blur \
+    tags='["test-22"]' \
+    +logger.wandb.notes="t ${i}"
+
+  echo "test speckle ${i}"
+  python src/head_segmentation_train.py experiment=head_segmentation_speckle \
+    tags='["test-22"]' \
+    +logger.wandb.notes="t ${i}"
+
+  echo "test brightness_contrast ${i}"
+  python src/head_segmentation_train.py experiment=head_segmentation_brightness_contrast \
+    tags='["test-22"]' \
+    +logger.wandb.notes="t ${i}"
+done
 
 
 #weights=("1e-2" "1e-3" "1e-4" "1e-5")
@@ -38,103 +53,6 @@
 #  done
 #done
 
-
-
-
-# dice_ce       -> smooth=1e-6, 1
-# focal         -> alpha: 0.25 0.5 0.75
-# dice_focal    -> alpha: 0.25 0.5 0.75
-# tversky       -> alpha: 0.6, beta: 0.4 -> alpha: 0.7, beta: 0.3
-# focal_tversky -> alpha: 0.6, beta: 0.4 -> alpha: 0.7, beta: 0.3
-
-
-models=("manet" "fpn")
-num_models=${#models[@]}
-
-dice_smooth=("1e-6" "1.0")
-num_dice_smooth=${#dice_smooth[@]}
-
-focal_alpha=("0.25" "0.50" "0.75")
-num_focal_alpha=${#focal_alpha[@]}
-
-tversky_alpha=("0.5" "0.6" "0.7" "0.4" "0.3")
-tversky_beta=("0.5" "0.4" "0.3" "0.6" "0.7")
-num_tversky_alpha=${#tversky_alpha[@]}
-
-tests=10
-
-
-
-for (( t=1; t<=tests; t++ )); do
-  for (( m=0; m<num_models; m++ )); do
-    # ${models[$m]} is the model name
-
-    for (( s=0; s<num_dice_smooth; s++ )); do
-      # ${dice_smooth[$s]}
-
-      echo "test ${models[$m]} dice_ce ${dice_smooth[$s]} ${t}"
-      python src/head_segmentation_train.py experiment="head_segmentation_${models[$m]}" \
-        +model/criterion@model.criterion=dice_ce \
-        model.criterion.smooth="${dice_smooth[$s]}" \
-        tags='["test-21"]' \
-        +logger.wandb.notes="t ${t}" \
-        logger.wandb.group="${models[$m]} dice_ce ${dice_smooth[$s]}"
-    done
-
-    for (( a=0; a<num_focal_alpha; a++ )); do
-      # ${focal_alpha[$a]}
-
-      echo "test ${models[$m]} focal ${focal_alpha[$a]} ${t}"
-      python src/head_segmentation_train.py experiment="head_segmentation_${models[$m]}" \
-        +model/criterion@model.criterion=focal \
-        model.criterion.alpha="${focal_alpha[$a]}" \
-        tags='["test-21"]' \
-        +logger.wandb.notes="t ${t}" \
-        logger.wandb.group="${models[$m]} focal ${focal_alpha[$a]}"
-    done
-
-    for (( a=0; a<num_focal_alpha; a++ )); do
-      # ${focal_alpha[$a]}
-
-      echo "test ${models[$m]} dice_focal ${focal_alpha[$a]} ${t}"
-      python src/head_segmentation_train.py experiment="head_segmentation_${models[$m]}" \
-        +model/criterion@model.criterion=dice_focal \
-        model.criterion.alpha="${focal_alpha[$a]}" \
-        tags='["test-21"]' \
-        +logger.wandb.notes="t ${t}" \
-        logger.wandb.group="${models[$m]} dice_focal ${focal_alpha[$a]}"
-    done
-
-    for (( a=0; a<num_tversky_alpha; a++ )); do
-      # ${tversky_alpha[$a]}
-      # ${tversky_beta[$a]}
-
-      echo "test ${models[$m]} tversky ${tversky_alpha[$a]}-${tversky_beta[$a]} ${t}"
-      python src/head_segmentation_train.py experiment="head_segmentation_${models[$m]}" \
-        +model/criterion@model.criterion=tversky \
-        model.criterion.alpha="${tversky_alpha[$a]}" \
-        model.criterion.beta="${tversky_beta[$a]}" \
-        tags='["test-21"]' \
-        +logger.wandb.notes="t ${t}" \
-        logger.wandb.group="${models[$m]} tversky ${tversky_alpha[$a]}-${tversky_beta[$a]}"
-    done
-
-    for (( a=0; a<num_tversky_alpha; a++ )); do
-      # ${tversky_alpha[$a]}
-      # ${tversky_beta[$a]}
-
-      echo "test ${models[$m]} focal_tversky ${tversky_alpha[$a]}-${tversky_beta[$a]} ${t}"
-      python src/head_segmentation_train.py experiment="head_segmentation_${models[$m]}" \
-        +model/criterion@model.criterion=focal_tversky \
-        model.criterion.alpha="${tversky_alpha[$a]}" \
-        model.criterion.beta="${tversky_beta[$a]}" \
-        tags='["test-21"]' \
-        +logger.wandb.notes="t ${t}" \
-        logger.wandb.group="${models[$m]} focal_tversky ${tversky_alpha[$a]}-${tversky_beta[$a]}"
-    done
-
-  done
-done
 
 #for i in {1..1}; do
 #  echo "test FPN ${i}"
