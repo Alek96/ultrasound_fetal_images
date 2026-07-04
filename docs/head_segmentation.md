@@ -60,15 +60,16 @@ ______________________________________________________________________
 
 ## 2. Loss Function
 
-| Technique                      | Status | Description                                                                                                                                                                                                                                                        | Result                                                                  |
-| ------------------------------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
-| BinaryDice only                | 🧪     | Dice loss alone. Optimises region overlap but can be noisy for very small foreground regions due to lack of per-pixel gradient signal.                                                                                                                             | Available as `BinaryDiceLoss`. Less stable training than combined loss. |
-| BinaryDice + BCE (combined)    | ✅     | Sum of Dice loss and BCE-with-logits. Dice handles class imbalance by optimising overlap directly; BCE adds stable per-pixel gradients that prevent training collapse.                                                                                             | `BinaryDiceCrossEntropyLoss`, smooth=1e-6.                              |
-| Dice + BCE with pos_weight     | 📋     | Uses the existing `pos_weight` parameter in BCEWithLogitsLoss to upweight foreground pixels in the BCE component. Simple way to address pixel-level class imbalance without changing loss architecture.                                                            | —                                                                       |
-| Focal Loss                     | 📋     | Down-weights well-classified (easy) pixels, focusing training on hard examples near boundaries. Useful when background overwhelms foreground in the loss.                                                                                                          | —                                                                       |
-| Dice + Focal (combined)        | 📋     | Replaces BCE with Focal in the combined loss. Keeps Dice's overlap objective while adding hard-example mining — potentially better boundary learning.                                                                                                              | —                                                                       |
-| Boundary Loss (distance-based) | 📋     | Computes loss using the distance transform of the ground-truth boundary. Directly optimises boundary accuracy — critical for downstream head circumference measurement. Complementary to Dice; typically added as a weighted term after initial Dice-only warm-up. | —                                                                       |
-| Tversky Loss                   | 📋     | Generalisation of Dice with separate alpha/beta parameters to weight FP and FN independently. Allows explicit tuning of the precision/recall trade-off at the loss level.                                                                                          | —                                                                       |
+| Technique                      | Status | Description                                                                                                                                                                                                                                                        | Result                                                                                                   |
+| ------------------------------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| BinaryDice only                | 🧪     | Dice loss alone. Optimises region overlap but can be noisy for very small foreground regions due to lack of per-pixel gradient signal.                                                                                                                             | Less stable training than the stronger combined losses.                                                  |
+| BinaryDice + BCE (combined)    | ✅     | Sum of Dice loss and BCE-with-logits. Dice handles class imbalance by optimising overlap directly; BCE adds stable per-pixel gradients that prevent training collapse.                                                                                             | Very strong overall. Best for MAnet and Attention U-Net. `smooth=1e-6` performed better than `smooth=1`. |
+| Dice + BCE with pos_weight     | 📋     | Uses the existing `pos_weight` parameter in BCEWithLogitsLoss to upweight foreground pixels in the BCE component. Simple way to address pixel-level class imbalance without changing loss architecture.                                                            | —                                                                                                        |
+| Focal Loss                     | 🧪     | Down-weights well-classified (easy) pixels, focusing training on hard examples near boundaries. Useful when background overwhelms foreground in the loss.                                                                                                          | Good, but worse than Dice + Focal. Alpha ranking: `0.25 > 0.5 > 0.75`.                                   |
+| Dice + Focal (combined)        | ✅     | Replaces BCE with Focal in the combined loss. Keeps Dice's overlap objective while adding hard-example mining — potentially better boundary learning.                                                                                                              | Best for FPN. Same alpha trend as Focal: `0.25 > 0.5 > 0.75`.                                            |
+| Boundary Loss (distance-based) | 📋     | Computes loss using the distance transform of the ground-truth boundary. Directly optimises boundary accuracy — critical for downstream head circumference measurement. Complementary to Dice; typically added as a weighted term after initial Dice-only warm-up. | —                                                                                                        |
+| Tversky Loss                   | 🧪     | Generalisation of Dice with separate alpha/beta parameters to weight FP and FN independently. Allows explicit tuning of the precision/recall trade-off at the loss level.                                                                                          | Among the weakest overall, but slightly better than Focal Tversky. `alpha > beta` worked better.         |
+| Focal Tversky                  | 🧪     | Focal variant of Tversky that adds extra emphasis on hard examples via a modulation term. Intended to focus optimisation on difficult boundary or minority-region errors.                                                                                          | Among the weakest overall. Worse than plain Tversky. `alpha > beta` still worked better.                 |
 
 ______________________________________________________________________
 
@@ -245,14 +246,13 @@ ______________________________________________________________________
 
 ## Recommended Next Experiments (priority order)
 
-01. **Loss: Dice + Focal** — replace BCE with Focal for hard-example mining at boundaries.
-02. **Encoder freezing** — freeze encoder for 3–5 epochs, then unfreeze. Stabilises early training with pretrained weights.
-03. **Scheduler: OneCycleLR** — faster convergence, potentially better final accuracy in fewer epochs.
-04. **Loss: add Boundary Loss term** — distance-based loss to directly optimise boundary accuracy for HC measurement.
-05. **Augmentation: ElasticTransform + Speckle Noise** — domain-specific augmentations for ultrasound.
-06. **Post-processing: connected component filtering + threshold tuning** — free inference-time gains with no retraining.
-07. **Training: enable mixed precision** — faster iteration cycles to test more configurations.
-08. **Input resolution: 224 × 320** — more spatial detail for marginal accuracy gain.
+1.**Encoder freezing** — freeze encoder for 3–5 epochs, then unfreeze. Stabilises early training with pretrained weights.
+2. **Scheduler: OneCycleLR** — faster convergence, potentially better final accuracy in fewer epochs.
+3. **Loss: add Boundary Loss term** — distance-based loss to directly optimise boundary accuracy for HC measurement.
+4. **Augmentation: ElasticTransform + Speckle Noise** — domain-specific augmentations for ultrasound.
+5. **Post-processing: connected component filtering + threshold tuning** — free inference-time gains with no retraining.
+6. **Training: enable mixed precision** — faster iteration cycles to test more configurations.
+7. **Input resolution: 224 × 320** — more spatial detail for marginal accuracy gain.
 
 ## Experiments
 
@@ -297,3 +297,11 @@ ______________________________________________________________________
 - test-21 - loss sweep. best score test/dice 0.97815, test/label/acc 0.99938
   - fpn dice_focal 0.25 - 1
   - manet dice_ce 1e-6 - 2
+  - summary:
+    - BinaryDice + BCE was a very strong loss overall and was the best choice for MAnet and Attention U-Net.
+    - For BinaryDice + BCE, `smooth=1e-6` worked better than `smooth=1`.
+    - Dice + Focal was the best loss for FPN.
+    - Focal alone was good, but Dice + Focal worked better.
+    - For Focal and Dice + Focal, alpha ranked `0.25 > 0.5 > 0.75`.
+    - Tversky and Focal Tversky were the weakest overall, with Tversky slightly better than Focal Tversky.
+    - For Tversky-style losses, settings with `alpha > beta` performed better.
