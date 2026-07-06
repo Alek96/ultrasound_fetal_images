@@ -1894,14 +1894,14 @@ hydra-core = ">=1.0.0"
 
 [[package]]
 name = "hydra-core"
-version = "1.3.3"
+version = "1.3.4"
 description = "A framework for elegantly configuring complex applications"
 optional = false
 python-versions = "*"
 groups = ["main"]
 files = [
-    {file = "hydra_core-1.3.3-py3-none-any.whl", hash = "sha256:cf349fc393f486f250e5825592c3d0a50c0af3effd726cf8dd5b637a7cb464e3"},
-    {file = "hydra_core-1.3.3.tar.gz", hash = "sha256:b7477ee21f08b62f71bf0126d44695c048dc7e9c0cc79e2d593b707cb1e44048"},
+    {file = "hydra_core-1.3.4-py3-none-any.whl", hash = "sha256:e58683692904a09f1fdfffa1a9b86bfd94e215b59f1ee17e7cd7d92738090d33"},
+    {file = "hydra_core-1.3.4.tar.gz", hash = "sha256:ad0f7b05a0242255a8984d5a4ed2f6847f7b783ed727368a2c0155ec52d6c34c"},
 ]
 
 [package.dependencies]
@@ -6661,4 +6661,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "3.12.*"
-content-hash = "3b8353668020715ea16d776333143e923af6d3c6015273ec7d680b5d813564c3"
+content-hash = "68a21f6eb441a027b6925cf817533aee37118c9aa352e6022d324b8fe8d9f289"
