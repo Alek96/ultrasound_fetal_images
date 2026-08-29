@@ -69,11 +69,10 @@ class HeadSegmentationLitModule(LightningModule):
 
         # loss function
         self.criterion_fn = criterion()
-        self.dice = BinaryDiceScore()
 
         # metric
         self.train_loss = MeanMetric()
-        self.train_dice = MeanMetric()
+        self.train_dice = BinaryDiceScore()
         self.train_label_f1 = F1Score(task="binary")
         self.train_label_acc = Accuracy(task="binary")
         self.train_pixel_f1 = F1Score(task="binary")
@@ -83,7 +82,7 @@ class HeadSegmentationLitModule(LightningModule):
         self.train_pixel_recall = Recall(task="binary")
 
         self.val_loss = MeanMetric()
-        self.val_dice = MeanMetric()
+        self.val_dice = BinaryDiceScore()
         self.val_dice_best = MaxMetric()
         self.val_label_f1 = F1Score(task="binary")
         self.val_label_f1_best = MaxMetric()
@@ -101,7 +100,7 @@ class HeadSegmentationLitModule(LightningModule):
         self.val_pixel_recall_best = MaxMetric()
 
         self.test_loss = MeanMetric()
-        self.test_dice = MeanMetric()
+        self.test_dice = BinaryDiceScore()
         self.test_label_f1 = F1Score(task="binary")
         self.test_label_acc = Accuracy(task="binary")
         self.test_label_cm = ConfusionMatrix(task="binary", normalize="none")
@@ -169,11 +168,10 @@ class HeadSegmentationLitModule(LightningModule):
         :param batch_idx: The index of the current batch.
         """
         loss, logits, prediction_mask, masks, prediction_label, labels = self.model_step(batch)
-        dice = self.dice(prediction_mask, masks)
 
         # update and log metrics
         self.train_loss(loss, weight=logits.shape[0])
-        self.train_dice(dice, weight=logits.shape[0])
+        self.train_dice(prediction_mask, masks)
         self.train_label_f1(prediction_label, labels)
         self.train_label_acc(prediction_label, labels)
         self.train_pixel_f1(prediction_mask, masks)
@@ -211,11 +209,10 @@ class HeadSegmentationLitModule(LightningModule):
         :param dataloader_idx: The index of the current dataloader.
         """
         loss, logits, prediction_mask, masks, prediction_label, labels = self.model_step(batch)
-        dice = self.dice(prediction_mask, masks)
 
         # update and log metrics
         self.val_loss(loss, weight=logits.shape[0])
-        self.val_dice(dice, weight=logits.shape[0])
+        self.val_dice(prediction_mask, masks)
         self.val_label_f1(prediction_label, labels)
         self.val_label_acc(prediction_label, labels)
         self.val_pixel_f1(prediction_mask, masks)
@@ -269,11 +266,10 @@ class HeadSegmentationLitModule(LightningModule):
         :param batch_idx: The index of the current batch.
         """
         loss, logits, prediction_mask, masks, prediction_label, labels = self.model_step(batch)
-        dice = self.dice(prediction_mask, masks)
 
         # update and log metrics
         self.test_loss(loss, weight=logits.shape[0])
-        self.test_dice(dice, weight=logits.shape[0])
+        self.test_dice(prediction_mask, masks)
         self.test_label_f1(prediction_label, labels)
         self.test_label_acc(prediction_label, labels)
         self.test_label_cm.update(prediction_label, labels)

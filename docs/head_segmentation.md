@@ -31,14 +31,14 @@ ______________________________________________________________________
 
 ### 1.1 Segmentation Model
 
-| Technique                         | Status | Description                                                                                                                                                     | Result                                                                                       |
-| --------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| U-Net                             | 🧪     | Encoder–decoder with skip connections. Proven baseline for medical image segmentation — skip connections preserve spatial detail lost during downsampling.      | Solid baseline, but worse overall than FPN, MAnet, and Attention U-Net. Better than U-Net++. |
-| U-Net++                           | 🧪     | Nested dense skip connections between encoder and decoder. Can improve fine-grained boundary recovery by reusing intermediate features at multiple resolutions. | Tested, but overall performance was among the weakest.                                       |
-| DeepLabV3+                        | 🧪     | Atrous spatial pyramid pooling (ASPP) captures multi-scale context without losing resolution. Good when the object of interest appears at varying scales.       | Tested, but overall performance was not among the strongest.                                 |
-| Attention U-Net                   | 🧪     | Adds attention gates to standard U-Net skip connections. Suppresses irrelevant encoder features, focusing the decoder on the target region.                     | Sometimes the best model on individual runs, but slightly worse overall than FPN and MAnet.  |
-| FPN (Feature Pyramid Network)     | ✅     | Lightweight top-down decoder that merges multi-scale features. Faster inference than U-Net; worth testing for speed vs. accuracy trade-off.                     | One of the best-performing architectures overall, depending on the run.                      |
-| MAnet (Multi-scale Attention Net) | ✅     | Attention-guided multi-scale decoder from SMP. Designed specifically for medical image segmentation tasks.                                                      | One of the best-performing architectures overall, depending on the run.                      |
+| Technique                         | Status | Description                                                                                                                                                     | Result                                                                                                                                                                                |
+| --------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| U-Net                             | 🧪     | Encoder–decoder with skip connections. Proven baseline for medical image segmentation — skip connections preserve spatial detail lost during downsampling.      | Solid baseline, but worse overall than FPN, MAnet, and Attention U-Net. Better than U-Net++.                                                                                          |
+| U-Net++                           | 🧪     | Nested dense skip connections between encoder and decoder. Can improve fine-grained boundary recovery by reusing intermediate features at multiple resolutions. | Tested, but overall performance was among the weakest.                                                                                                                                |
+| DeepLabV3+                        | 🧪     | Atrous spatial pyramid pooling (ASPP) captures multi-scale context without losing resolution. Good when the object of interest appears at varying scales.       | Tested, but overall performance was not among the strongest.                                                                                                                          |
+| Attention U-Net                   | 🧪     | Adds attention gates to standard U-Net skip connections. Suppresses irrelevant encoder features, focusing the decoder on the target region.                     | Ranked second behind FPN in the architecture sweep, ahead of MAnet and DeepLabV3+, though the top architectures were within ~0.001 Dice. Sometimes the best model on individual runs. |
+| FPN (Feature Pyramid Network)     | ✅     | Lightweight top-down decoder that merges multi-scale features. Faster inference than U-Net; worth testing for speed vs. accuracy trade-off.                     | One of the best-performing architectures overall, depending on the run.                                                                                                               |
+| MAnet (Multi-scale Attention Net) | 🧪     | Attention-guided multi-scale decoder from SMP. Designed specifically for medical image segmentation tasks.                                                      | Competitive but ranked last of the four architectures in the sweep (behind FPN, Attention U-Net, and DeepLabV3+); strongest when paired with Dice + BCE.                              |
 
 ### 1.2 Encoder (Backbone)
 
@@ -281,17 +281,14 @@ ______________________________________________________________________
 - test-18 - reassign Axial, Brain, Other images to head. best score test/dice 0.9762, test/label/acc 0.99757
 - test-19 - reassign Axial, Brain, Other images to head 2. best score test/dice 0.9762, test/label/acc 0.99757
 - predict label based on pixel percentage and mean confidence
-- test-20 - do not use suspected images. best score test/dice 0.97773, test/label/acc 0.99934
-  - attention - 4 3 4 1 = 12 - X
-  - fpn - 1 2 3 3 1 = 10 - ?
-  - manet - 2 1 2 2 2 = 9 - ?
-  - deep - 3 4 1 4 = 12 - X
+- test-20 - do not use suspected images. best score test/dice 0.97596, test/label/acc 0.99914
+  - architecture ranking (best test/dice): FPN 0.97596 > Attention U-Net 0.97536 > DeepLabV3+ 0.97516 > MAnet 0.97484 — all within ~0.001.
   - summary:
     - EfficientNet-V2-S was the best encoder overall across the tested backbones.
     - It was also faster than ConvNeXt-Tiny and ConvNeXt-V2-Tiny in these experiments.
     - MobileNetV4-Conv-Small remains a strong alternative when speed is a higher priority.
     - ConvNeXt-V2-Tiny performed better than ConvNeXt-Tiny.
-- test-21 - loss sweep. best score test/dice 0.97815, test/label/acc 0.99938
+- test-21 - loss sweep. best score test/dice 0.97737, test/label/acc 0.99938
   - fpn dice_focal 0.25 - 1
   - manet dice_ce 1e-6 - 2
   - summary:
@@ -306,7 +303,9 @@ ______________________________________________________________________
   - The fixed 5% positive-pixel rule was replaced by a two-stage rule in `head_segmentation_module.py`.
   - Classify as positive only if the predicted mask covers at least 1% of pixels and the mean confidence over the predicted region is at least 0.75.
   - Mask binarisation for this rule still uses a threshold of 0.5.
-- test-22 
+- test-22 - augmentation sweep (FPN). best score test/dice 0.97705, test/label/acc 0.99836
+  - best test/dice per augmentation: GaussianBlur 0.97705 (mild), Speckle 0.97702, Brightness/Contrast 0.97673, Elastic 0.97632.
+  - none beat the test-21 FPN baseline (0.97737); best results came at mild intensities.
   - Augmentation: ElasticTransform (`head_segmentation_elastic`, `alpha=50.0, sigma=5.0`, applied jointly to image and mask before ToDtype).
   - Augmentation: GaussianBlur (`head_segmentation_gaussian_blur`, `kernel_size=5, sigma=[0.1, 2.0]`, image-only before ToDtype).
   - Augmentation: Speckle Noise (`head_segmentation_speckle`, multiplicative, `sigma` sampled from `[0, 0.1]`, applied to the float image after ToDtype and before Normalize).

@@ -2,6 +2,7 @@
 
 import pytest
 import torch
+from torchmetrics import F1Score
 
 from src.models.components.loss import (
     BinaryDiceCrossEntropyLoss,
@@ -50,21 +51,71 @@ class TestWeightedMSELoss:
 class TestBinaryDiceScore:
     def test_perfect_prediction(self):
         score_fn = BinaryDiceScore()
-        t = torch.ones(1, 4, 4)
-        assert score_fn(t, t).item() == pytest.approx(1.0, abs=1e-5)
+        t = torch.ones(1, 1, 4, 4)
+        score_fn.update(t, t)
+        assert score_fn.compute().item() == pytest.approx(1.0, abs=1e-5)
 
     def test_no_overlap(self):
-        score_fn = BinaryDiceScore(smooth=0.0)
-        inputs = torch.zeros(1, 4, 4)
-        targets = torch.ones(1, 4, 4)
-        assert score_fn(inputs, targets).item() == pytest.approx(0.0, abs=1e-5)
+        score_fn = BinaryDiceScore()
+        inputs = torch.zeros(1, 1, 4, 4)
+        targets = torch.ones(1, 1, 4, 4)
+        score_fn.update(inputs, targets)
+        assert score_fn.compute().item() == pytest.approx(0.0, abs=1e-5)
 
     def test_output_in_range(self):
         score_fn = BinaryDiceScore()
-        inputs = torch.rand(1, 8, 8)
-        targets = (torch.rand(1, 8, 8) > 0.5).float()
-        score = score_fn(inputs, targets).item()
+        inputs = torch.rand(2, 1, 8, 8)
+        targets = (torch.rand(2, 1, 8, 8) > 0.5).float()
+        score_fn.update(inputs, targets)
+        score = score_fn.compute().item()
         assert 0.0 <= score <= 1.0
+
+    def test_accepts_channelless_input(self):
+        """The metric must accept both [B, 1, H, W] and [B, H, W] shapes."""
+        score_fn = BinaryDiceScore()
+        t = torch.ones(2, 4, 4)
+        score_fn.update(t, t)
+        assert score_fn.compute().item() == pytest.approx(1.0, abs=1e-5)
+
+    def test_equals_pixel_f1(self):
+        """On binary masks Dice == foreground F1; assert exact match incl. a
+        partial final batch and an empty-mask sample (regression for the old
+        batch-averaging bug)."""
+        dice = BinaryDiceScore()
+        f1 = F1Score(task="binary")
+        for n in [8, 8, 3]:
+            preds = torch.rand(n, 1, 16, 16)
+            targets = (torch.rand(n, 1, 16, 16) > 0.5).float()
+            if n == 3:
+                targets[0] = 0.0  # empty-mask sample
+            dice.update(preds, targets)
+            f1.update(preds, targets)
+        assert dice.compute().item() == pytest.approx(f1.compute().item(), abs=1e-6)
+
+    def test_global_not_batch_average(self):
+        """Global Dice must differ from a naive per-batch mean of Dice ratios.
+
+        Batch A is easy (perfect); batch B has a tiny prediction over a large
+        target. The per-batch mean would be ~0.5+, whereas the correct global
+        Dice pools counts and is much lower.
+        """
+        dice = BinaryDiceScore()
+        # Batch A: perfect overlap, small region.
+        a_pred = torch.zeros(1, 1, 10, 10)
+        a_target = torch.zeros(1, 1, 10, 10)
+        a_pred[..., 0, 0] = 1.0
+        a_target[..., 0, 0] = 1.0
+        # Batch B: predict nothing over a fully-positive target.
+        b_pred = torch.zeros(1, 1, 10, 10)
+        b_target = torch.ones(1, 1, 10, 10)
+        dice.update(a_pred, a_target)
+        dice.update(b_pred, b_target)
+        # Global: numerator=2*1, denominator=(1)+(1+100)=102 -> 2/102.
+        expected = 2.0 / 102.0
+        naive_batch_mean = (1.0 + 0.0) / 2.0
+        score = dice.compute().item()
+        assert score == pytest.approx(expected, abs=1e-4)
+        assert abs(score - naive_batch_mean) > 0.4
 
 
 # ---------------------------------------------------------------------------

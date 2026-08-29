@@ -1,6 +1,8 @@
 import torch
 import torch.nn.functional as F
 from torch import Tensor
+from torchmetrics import Metric
+from torchmetrics.segmentation import DiceScore
 from torchvision.ops import focal_loss, sigmoid_focal_loss
 
 
@@ -37,38 +39,76 @@ class WeightedMSELoss(torch.nn.Module):
         return torch.mean(loss)
 
 
-class BinaryDiceScore(torch.nn.Module):
+class BinaryDiceScore(Metric):
     """Hard (thresholded) binary Dice similarity coefficient, used as a metric.
 
-    Binarises the inputs at ``0.5`` before computing ``2 * |X ∩ Y| / (|X| + |Y|)``.
-    Returns a similarity score in ``[0, 1]`` (1 = perfect overlap), unlike the Dice
-    *loss* which returns ``1 - dice``.
+    Thin wrapper around `torchmetrics.segmentation.DiceScore` that accepts the
+    same input format as the other binary torchmetrics used in this project (for
+    example `torchmetrics.F1Score` with ``task="binary"``): predicted
+    probabilities/scores of shape ``[B, 1, H, W]`` or ``[B, H, W]`` and a matching
+    ground-truth mask. Inputs are binarised at ``threshold`` (default ``0.5``) and the
+    channel dimension is squeezed before being forwarded to ``DiceScore`` as index
+    tensors.
 
-    :param smooth: Smoothing constant added to numerator and denominator to avoid
-        division by zero.
+    Being a proper stateful metric, it accumulates the Dice numerator/denominator
+    **globally** across all batches and computes the score once (via ``compute()``).
+    This matches how `torchmetrics.F1Score` is aggregated and, on binary masks, yields
+    exactly the same value as the foreground pixel F1 — unlike a per-batch mean of Dice
+    ratios, which is biased.
+
+    ``include_background=False`` keeps only the foreground class, so ``average="micro"``
+    and ``average="macro"`` are equivalent; ``"macro"`` is used to avoid a torchmetrics
+    deprecation warning. Returns a similarity score in ``[0, 1]`` (1 = perfect overlap),
+    unlike the Dice *loss* which returns ``1 - dice``.
+
+    :param threshold: Binarisation threshold applied to the predictions.
     """
+
+    is_differentiable: bool = False
+    higher_is_better: bool = True
+    full_state_update: bool = False
 
     def __init__(
         self,
-        smooth: float = 1e-6,
+        threshold: float = 0.5,
+        **kwargs,
     ):
-        super().__init__()
-        self.smooth = smooth
+        super().__init__(**kwargs)
+        self.threshold = threshold
+        self._dice = DiceScore(
+            num_classes=2,
+            include_background=False,
+            average="macro",
+            aggregation_level="global",
+            input_format="index",
+        )
 
-    def forward(self, inputs: Tensor, targets: Tensor) -> Tensor:
-        """Compute the hard binary Dice score.
+    @staticmethod
+    def _to_index(tensor: Tensor) -> Tensor:
+        """Squeeze an optional channel dimension, returning an index tensor ``[B, H, W]``."""
+        if tensor.ndim == 4 and tensor.shape[1] == 1:
+            tensor = tensor.squeeze(1)
+        return tensor.long()
 
-        :param inputs: Predicted probabilities or scores; binarised at ``0.5``.
-        :param targets: Ground-truth binary mask.
-        :return: Scalar Dice score in ``[0, 1]``.
+    def update(self, inputs: Tensor, targets: Tensor) -> None:
+        """Update the metric state with a new batch.
+
+        :param inputs: Predicted probabilities or scores; binarised at ``threshold``.
+            Shape ``[B, 1, H, W]`` or ``[B, H, W]``.
+        :param targets: Ground-truth binary mask, same accepted shapes.
         """
-        inputs = inputs.contiguous().view(-1)
-        targets = targets.contiguous().view(-1)
+        preds = self._to_index(inputs > self.threshold)
+        target = self._to_index(targets)
+        self._dice.update(preds, target)
 
-        inputs = (inputs > 0.5).int()
-        intersection = (inputs * targets).sum()
-        dice = (2.0 * intersection + self.smooth) / (inputs.sum() + targets.sum() + self.smooth)
-        return dice
+    def compute(self) -> Tensor:
+        """Compute the global binary Dice score in ``[0, 1]``."""
+        return self._dice.compute()
+
+    def reset(self) -> None:
+        """Reset the accumulated metric state."""
+        self._dice.reset()
+        super().reset()
 
 
 class BinaryDiceLoss(torch.nn.Module):
