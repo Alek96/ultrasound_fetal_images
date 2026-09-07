@@ -41,7 +41,7 @@ rich = "^15.0.0"           # beautiful text formatting in terminal
 pytest = "^9.1.1"          # tests
 pytest-cov = "^7.1.0"
 sh = { version = "^2.4.0", markers = "sys_platform == 'linux' or sys_platform == 'darwin'" }
-gdown = "^6.1.0"
+gdown = "^6.1.1"
 fastapi = "^0.141.1"
 ipympl = "^0.10.0"
 
