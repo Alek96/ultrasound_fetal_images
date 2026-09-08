@@ -143,6 +143,25 @@ class TestCalculatePrediction:
         assert prediction_mask.shape == (_B, 1, _H, _W)
         assert prediction_label.shape == (_B,)
 
+    def test_batch_matches_individual_predictions(self) -> None:
+        """Each sample must be scored only against its own mask, so evaluating a batch
+        must give exactly the same labels as evaluating each image on its own.
+        """
+        torch.manual_seed(0)
+        logits = torch.randn(5, 1, 40, 40) * 4.0
+        # Make one sample a large, low-confidence blob and one a confident head.
+        logits[1] = -10.0
+        logits[1, 0, :20, :20] = 1.0  # sigmoid ~0.73 -> below the confidence gate
+        logits[2] = -10.0
+        logits[2, 0, :20, :20] = 10.0  # confident detection
+
+        _, batched = HeadSegmentationLitModule.calculate_prediction(logits)
+        individual = torch.cat(
+            [HeadSegmentationLitModule.calculate_prediction(logits[i : i + 1])[1] for i in range(logits.shape[0])]
+        )
+
+        assert torch.equal(batched, individual)
+
 
 # ---------------------------------------------------------------------------
 # forward and model_step

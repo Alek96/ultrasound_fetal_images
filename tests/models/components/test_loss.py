@@ -49,11 +49,17 @@ class TestWeightedMSELoss:
 
 
 class TestBinaryDiceScore:
-    def test_perfect_prediction(self):
+    def test_perfect_foreground_prediction(self):
         score_fn = BinaryDiceScore()
         t = torch.ones(1, 1, 4, 4)
         score_fn.update(t, t)
         assert score_fn.compute().item() == pytest.approx(1.0, abs=1e-5)
+
+    def test_perfect_background_prediction(self):
+        score_fn = BinaryDiceScore()
+        t = torch.zeros(1, 1, 4, 4)
+        score_fn.update(t, t)
+        assert score_fn.compute().item() == pytest.approx(0.0, abs=1e-5)
 
     def test_no_overlap(self):
         score_fn = BinaryDiceScore()
@@ -70,6 +76,31 @@ class TestBinaryDiceScore:
         score = score_fn.compute().item()
         assert 0.0 <= score <= 1.0
 
+    def test_empty_prediction_and_target_is_zero(self):
+        """No foreground at all makes Dice a 0/0 ratio; it must not return NaN."""
+        score_fn = BinaryDiceScore()
+        t = torch.zeros(2, 1, 8, 8)
+        score_fn.update(t, t)
+        score = score_fn.compute()
+        assert torch.isfinite(score)
+        assert score.item() == pytest.approx(0.0)
+
+    def test_no_update_is_zero(self):
+        score = BinaryDiceScore().compute()
+        assert torch.isfinite(score)
+        assert score.item() == pytest.approx(0.0)
+
+    def test_reset_clears_state(self):
+        score_fn = BinaryDiceScore()
+        score_fn.update(torch.ones(1, 1, 4, 4), torch.ones(1, 1, 4, 4))
+        score_fn.reset()
+        assert score_fn.compute().item() == pytest.approx(0.0)
+
+    def test_shape_mismatch_raises(self):
+        score_fn = BinaryDiceScore()
+        with pytest.raises(AssertionError):
+            score_fn.update(torch.ones(2, 1, 4, 4), torch.ones(2, 4, 4))
+
     def test_accepts_channelless_input(self):
         """The metric must accept both [B, 1, H, W] and [B, H, W] shapes."""
         score_fn = BinaryDiceScore()
@@ -79,8 +110,8 @@ class TestBinaryDiceScore:
 
     def test_equals_pixel_f1(self):
         """On binary masks Dice == foreground F1; assert exact match incl. a
-        partial final batch and an empty-mask sample (regression for the old
-        batch-averaging bug)."""
+        partial final batch and an empty-mask sample.
+        """
         dice = BinaryDiceScore()
         f1 = F1Score(task="binary")
         for n in [8, 8, 3]:
@@ -89,8 +120,16 @@ class TestBinaryDiceScore:
             if n == 3:
                 targets[0] = 0.0  # empty-mask sample
             dice.update(preds, targets)
-            f1.update(preds, targets)
+            f1.update(preds, targets.int())
         assert dice.compute().item() == pytest.approx(f1.compute().item(), abs=1e-6)
+
+    def test_call_returns_batch_value_but_accumulates_globally(self):
+        """forward() returns the current batch score while the state stays global."""
+        dice = BinaryDiceScore()
+        perfect = torch.ones(1, 1, 10, 10)
+        assert dice(perfect, perfect).item() == pytest.approx(1.0, abs=1e-5)
+        assert dice(torch.zeros(1, 1, 10, 10), torch.ones(1, 1, 10, 10)).item() == pytest.approx(0.0, abs=1e-5)
+        assert dice.compute().item() == pytest.approx(200.0 / 300.0, abs=1e-5)
 
     def test_global_not_batch_average(self):
         """Global Dice must differ from a naive per-batch mean of Dice ratios.

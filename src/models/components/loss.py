@@ -2,7 +2,6 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor
 from torchmetrics import Metric
-from torchmetrics.segmentation import DiceScore
 from torchvision.ops import focal_loss, sigmoid_focal_loss
 
 
@@ -42,24 +41,21 @@ class WeightedMSELoss(torch.nn.Module):
 class BinaryDiceScore(Metric):
     """Hard (thresholded) binary Dice similarity coefficient, used as a metric.
 
-    Thin wrapper around `torchmetrics.segmentation.DiceScore` that accepts the
-    same input format as the other binary torchmetrics used in this project (for
-    example `torchmetrics.F1Score` with ``task="binary"``): predicted
+    Accepts the same input format as the other binary torchmetrics used in this
+    project (for example `torchmetrics.F1Score` with ``task="binary"``): predicted
     probabilities/scores of shape ``[B, 1, H, W]`` or ``[B, H, W]`` and a matching
-    ground-truth mask. Inputs are binarised at ``threshold`` (default ``0.5``) and the
-    channel dimension is squeezed before being forwarded to ``DiceScore`` as index
-    tensors.
+    ground-truth mask. Inputs are binarised at ``threshold`` (default ``0.5``).
 
-    Being a proper stateful metric, it accumulates the Dice numerator/denominator
-    **globally** across all batches and computes the score once (via ``compute()``).
-    This matches how `torchmetrics.F1Score` is aggregated and, on binary masks, yields
-    exactly the same value as the foreground pixel F1 — unlike a per-batch mean of Dice
-    ratios, which is biased.
+    The Dice numerator/denominator are kept as registered metric states and summed
+    globally across all batches, so the score is computed once over the whole dataset
+    (via ``compute()``). On binary masks this yields exactly the same value as the
+    foreground pixel F1 — unlike a per-batch mean of Dice ratios, which is biased.
 
-    ``include_background=False`` keeps only the foreground class, so ``average="micro"``
-    and ``average="macro"`` are equivalent; ``"macro"`` is used to avoid a torchmetrics
-    deprecation warning. Returns a similarity score in ``[0, 1]`` (1 = perfect overlap),
-    unlike the Dice *loss* which returns ``1 - dice``.
+    When neither the predictions nor the targets contain any foreground pixel the Dice
+    ratio is undefined (``0 / 0``); this implementation returns ``0.0`` for that case.
+
+    Returns a similarity score in ``[0, 1]`` (1 = perfect overlap), unlike the Dice
+    *loss* which returns ``1 - dice``.
 
     :param threshold: Binarisation threshold applied to the predictions.
     """
@@ -68,6 +64,9 @@ class BinaryDiceScore(Metric):
     higher_is_better: bool = True
     full_state_update: bool = False
 
+    intersection: Tensor
+    total: Tensor
+
     def __init__(
         self,
         threshold: float = 0.5,
@@ -75,40 +74,32 @@ class BinaryDiceScore(Metric):
     ):
         super().__init__(**kwargs)
         self.threshold = threshold
-        self._dice = DiceScore(
-            num_classes=2,
-            include_background=False,
-            average="macro",
-            aggregation_level="global",
-            input_format="index",
-        )
-
-    @staticmethod
-    def _to_index(tensor: Tensor) -> Tensor:
-        """Squeeze an optional channel dimension, returning an index tensor ``[B, H, W]``."""
-        if tensor.ndim == 4 and tensor.shape[1] == 1:
-            tensor = tensor.squeeze(1)
-        return tensor.long()
+        self.add_state("intersection", default=torch.tensor(0.0), dist_reduce_fx="sum")
+        self.add_state("total", default=torch.tensor(0.0), dist_reduce_fx="sum")
 
     def update(self, inputs: Tensor, targets: Tensor) -> None:
         """Update the metric state with a new batch.
 
         :param inputs: Predicted probabilities or scores; binarised at ``threshold``.
             Shape ``[B, 1, H, W]`` or ``[B, H, W]``.
-        :param targets: Ground-truth binary mask, same accepted shapes.
+        :param targets: Ground-truth binary mask, same shape as ``inputs``.
         """
-        preds = self._to_index(inputs > self.threshold)
-        target = self._to_index(targets)
-        self._dice.update(preds, target)
+        assert inputs.shape == targets.shape, f"Shape mismatch: inputs {inputs.shape} != targets {targets.shape}"
+
+        preds = inputs > self.threshold
+        target = targets > 0
+
+        self.intersection = self.intersection + 2 * torch.sum(preds & target)
+        self.total = self.total + torch.sum(preds) + torch.sum(target)
 
     def compute(self) -> Tensor:
-        """Compute the global binary Dice score in ``[0, 1]``."""
-        return self._dice.compute()
+        """Compute the global binary Dice score in ``[0, 1]``.
 
-    def reset(self) -> None:
-        """Reset the accumulated metric state."""
-        self._dice.reset()
-        super().reset()
+        Returns ``0.0`` when neither the predictions nor the targets contain foreground.
+        """
+        if self.total == 0:
+            return torch.zeros((), dtype=self.intersection.dtype, device=self.intersection.device)
+        return self.intersection / self.total
 
 
 class BinaryDiceLoss(torch.nn.Module):

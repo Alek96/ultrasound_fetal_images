@@ -288,6 +288,38 @@ def find_angle(mask: Tensor) -> torch.Tensor:
     return angle.round().int()
 
 
+def mask_to_crop_box(mask: Tensor) -> tuple[int, int, int, int] | None:
+    """Compute the bounding box of a binary mask with **exclusive** right/bottom bounds.
+
+    Unlike ``torchvision.ops.masks_to_boxes``, which returns the coordinates of the last
+    foreground pixel, ``x2``/``y2`` are exclusive here, so the box can be passed straight
+    to ``crop`` and stays valid for single-row/single-column masks.
+
+    Args:
+        mask: Binary mask of shape ``(H, W)`` or ``(1, H, W)``. Non-zero values are
+            treated as foreground.
+
+    Returns:
+        ``(x1, y1, x2, y2)`` with ``x2``/``y2`` exclusive, or ``None`` if the mask
+        contains no foreground pixel.
+    """
+    if mask.dim() == 3 and mask.shape[0] == 1:
+        mask = mask.squeeze(0)
+
+    assert mask.dim() == 2, f"Expected a 2D tensor, but got {mask.dim()} dimensions"
+
+    y, x = torch.where(mask != 0)
+    if y.numel() == 0:
+        return None
+
+    y1 = int(y.min())
+    y2 = int(y.max()) + 1  # exclusive
+    x1 = int(x.min())
+    x2 = int(x.max()) + 1  # exclusive
+
+    return x1, y1, x2, y2
+
+
 def crop(image: Tensor, x1: int, y1: int, x2: int, y2: int, pad: int = 10) -> Tensor:
     """Crop a ``(C, H, W)`` tensor to the bounding box ``[x1, y1, x2, y2]``.
 

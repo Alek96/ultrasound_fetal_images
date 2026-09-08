@@ -222,7 +222,12 @@ class HeadSegmentationDataset(Dataset):
         if isinstance(idx, torch.Tensor):
             idx = idx.item()
 
-        if not pd.isna(self.labels.Segmentation_path[idx]):
+        if self.labels.Brain_plane[idx] == 1:
+            if pd.isna(self.labels.Segmentation_path[idx]):
+                raise ValueError(
+                    f"Missing 'Segmentation_path' for brain plane at index {idx} "
+                    f"({self.labels.Ultrasound_path[idx]})"
+                )
             img_path = os.path.join(self.dataset_dir, self.labels.Segmentation_path[idx])
             image = read_image(img_path)
             image = image[:1, :, :]  # single-channel for mask

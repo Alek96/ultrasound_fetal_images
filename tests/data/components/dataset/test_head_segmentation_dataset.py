@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
+import pandas as pd
 import pytest
 import torch
 import torchvision.transforms.v2 as T
@@ -94,3 +95,40 @@ def test_get_image_iterator(data_path: Path) -> None:
     assert len(images) == len(ds)
     assert isinstance(images[0], tv_tensors.Image)
     assert images[0].shape == (3, 661, 959)
+
+
+class TestMissingSegmentationPath:
+    """A row without a mask is only valid for negative (non-brain) samples."""
+
+    @staticmethod
+    def _dataset(data_path: Path, tmp_path: Path, brain_plane: int) -> HeadSegmentationSamplesDataset:
+        """Copy the sample manifest into tmp_path and drop the first row's mask."""
+        dataset_name = "FETAL_HEAD_SEGMENTATION_SAMPLES"
+        source_dir = data_path / dataset_name
+        target_dir = tmp_path / dataset_name
+        target_dir.mkdir(parents=True, exist_ok=True)
+
+        labels = pd.read_csv(source_dir / "data.csv", dtype={"Patient_num": str})
+        labels = labels.head(1).copy()
+        labels.loc[0, "Segmentation_path"] = pd.NA
+        labels.loc[0, "Brain_plane"] = brain_plane
+        # Point at the real image so only the mask lookup is exercised.
+        labels.loc[0, "Ultrasound_path"] = str(source_dir / labels.loc[0, "Ultrasound_path"])
+        labels.to_csv(target_dir / "data.csv", index=False)
+
+        return HeadSegmentationSamplesDataset(data_dir=str(tmp_path))
+
+    def test_positive_row_without_mask_raises(self, data_path: Path, tmp_path: Path) -> None:
+        ds = self._dataset(data_path, tmp_path, brain_plane=1)
+
+        with pytest.raises(ValueError, match="Missing 'Segmentation_path'"):
+            ds.get_mask(0)
+
+    def test_negative_row_without_mask_returns_empty_mask(self, data_path: Path, tmp_path: Path) -> None:
+        ds = self._dataset(data_path, tmp_path, brain_plane=0)
+
+        mask = ds.get_mask(0)
+
+        assert isinstance(mask, tv_tensors.Mask)
+        assert mask.shape == (1, 661, 959)
+        assert int(mask.sum()) == 0

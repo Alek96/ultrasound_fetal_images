@@ -141,9 +141,8 @@ class HeadSegmentationLitModule(LightningModule):
         prediction_mask = torch.sigmoid(logits)  # [B, 1, H, W], values 0-1
 
         binary_mask = (prediction_mask > 0.5).int()  # [B, 1, H, W], values 0 or 1
-        binary_mask = binary_mask.squeeze(1)  # [B, H, W]
         total_pixels = binary_mask.shape[-2] * binary_mask.shape[-1]  # H * W
-        ones_counts = binary_mask.sum(dim=(1, 2))  # [B]
+        ones_counts = binary_mask.sum(dim=(1, 2, 3))  # [B]
         ones_percent = ones_counts.float() / total_pixels  # [B]
         percentage_prediction = (ones_percent >= 0.01).int()  # [B], 1 if >=1% ones, else 0
 

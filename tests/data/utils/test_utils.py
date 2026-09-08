@@ -23,6 +23,7 @@ from src.data.utils.utils import (
     find_angle,
     get_dice_score,
     group_split,
+    mask_to_crop_box,
     read_image_tensor,
     save_image_tensor,
     show_numpy_images,
@@ -577,3 +578,64 @@ class TestCrop:
         """Cropping the full extent with pad=0 must return an identical tensor."""
         out = crop(sample_image, x1=0, y1=0, x2=_IMG_W, y2=_IMG_H, pad=0)
         assert torch.equal(out, sample_image)
+
+
+# ---------------------------------------------------------------------------
+# mask_to_crop_box
+# ---------------------------------------------------------------------------
+
+
+class TestMaskToCropBox:
+    @staticmethod
+    def _mask(h: int = _IMG_H, w: int = _IMG_W) -> torch.Tensor:
+        return torch.zeros(h, w)
+
+    def test_empty_mask_returns_none(self):
+        assert mask_to_crop_box(self._mask()) is None
+
+    def test_single_pixel_is_a_valid_box(self):
+        mask = self._mask()
+        mask[7, 9] = 1
+        assert mask_to_crop_box(mask) == (9, 7, 10, 8)
+
+    def test_box_bounds_are_exclusive(self, sample_image):
+        """The box must cover the whole foreground when passed to crop()."""
+        mask = self._mask()
+        mask[5:12, 3:20] = 1
+        box = mask_to_crop_box(mask)
+        assert box == (3, 5, 20, 12)
+        assert torch.equal(crop(sample_image, *box, pad=0), sample_image[:, 5:12, 3:20])
+
+    def test_thin_horizontal_mask(self):
+        mask = self._mask()
+        mask[4, 2:11] = 1
+        assert mask_to_crop_box(mask) == (2, 4, 11, 5)
+
+    def test_thin_vertical_mask(self):
+        mask = self._mask()
+        mask[2:11, 4] = 1
+        assert mask_to_crop_box(mask) == (4, 2, 5, 11)
+
+    def test_mask_touching_bottom_right_border(self, sample_image):
+        mask = self._mask()
+        mask[_IMG_H - 1, _IMG_W - 1] = 1
+        box = mask_to_crop_box(mask)
+        assert box == (_IMG_W - 1, _IMG_H - 1, _IMG_W, _IMG_H)
+        assert crop(sample_image, *box, pad=0).shape == (_IMG_C, 1, 1)
+
+    def test_full_image_mask(self):
+        assert mask_to_crop_box(torch.ones(_IMG_H, _IMG_W)) == (0, 0, _IMG_W, _IMG_H)
+
+    def test_accepts_channel_dimension(self):
+        mask = self._mask().unsqueeze(0)
+        mask[0, 5:12, 3:20] = 1
+        assert mask_to_crop_box(mask) == (3, 5, 20, 12)
+
+    def test_rejects_unexpected_shape(self):
+        with pytest.raises(AssertionError):
+            mask_to_crop_box(torch.zeros(3, _IMG_H, _IMG_W))
+
+    def test_non_binary_values_are_foreground(self):
+        mask = self._mask()
+        mask[6, 8] = 255
+        assert mask_to_crop_box(mask) == (8, 6, 9, 7)
