@@ -1675,14 +1675,14 @@ tqdm = ["tqdm"]
 
 [[package]]
 name = "gdown"
-version = "6.1.1"
+version = "6.2.0"
 description = "Google Drive Public File/Folder Downloader"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "gdown-6.1.1-py3-none-any.whl", hash = "sha256:3f269042526d398bbcdedf8cf97b059640a716824438828c46c0f01f2281d680"},
-    {file = "gdown-6.1.1.tar.gz", hash = "sha256:34cd14ac1280bc9085266e4771df2a3bea125e7853313d902e976640068389d5"},
+    {file = "gdown-6.2.0-py3-none-any.whl", hash = "sha256:72541f5671dff3f412b8a66e2b995895c9df0569284cc135b64745e501667f55"},
+    {file = "gdown-6.2.0.tar.gz", hash = "sha256:0bbf25d3761262263a2d9d4a6cb26ebc7e0f225ad8f13483209992508bccdc54"},
 ]
 
 [package.dependencies]
@@ -1690,6 +1690,9 @@ beautifulsoup4 = "*"
 filelock = "*"
 requests = {version = "*", extras = ["socks"]}
 tqdm = "*"
+
+[package.extras]
+secretstorage = ["secretstorage"]
 
 [[package]]
 name = "greenlet"
@@ -6944,4 +6947,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "3.12.*"
-content-hash = "2a5c595ffa9aae578834ae09caff1e891dabe8ca4e5785b1950b05e4347dc027"
+content-hash = "26742aa48eaf58ef6b0d75e25a507893de69b265461e5d9b0436c6c49aeb1ff4"
