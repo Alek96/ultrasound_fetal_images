@@ -5724,28 +5724,28 @@ test = ["Cython", "array-api-strict (>=2.3.1)", "asv", "gmpy2", "hypothesis (>=6
 
 [[package]]
 name = "segmentation-models-pytorch"
-version = "0.5.0"
+version = "0.6.0"
 description = "Image segmentation models with pre-trained backbones. PyTorch."
 optional = false
-python-versions = ">=3.9"
+python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "segmentation_models_pytorch-0.5.0-py3-none-any.whl", hash = "sha256:c34e09047771aa4dd8878b4f899e8125700cd1f8f7db16e58c37204154151a05"},
-    {file = "segmentation_models_pytorch-0.5.0.tar.gz", hash = "sha256:cabba8aced6ef7bdcd6288dd9e1dc2840848aa819d539c455bd07aeceb2fdf96"},
+    {file = "segmentation_models_pytorch-0.6.0-py3-none-any.whl", hash = "sha256:c46162221b5abe3bc296b222fbea8aa80d0b56e7130f7ddef654f707804534e2"},
+    {file = "segmentation_models_pytorch-0.6.0.tar.gz", hash = "sha256:5f90a7a43fac608f85a9dce66f65297d887605da9c2caafb44aa875c30180424"},
 ]
 
 [package.dependencies]
 huggingface-hub = ">=0.24"
-numpy = ">=1.19.3"
-pillow = ">=8"
+numpy = ">=1.21.2"
+pillow = ">=8.4"
 safetensors = ">=0.3.1"
 timm = ">=0.9"
-torch = ">=1.8"
-torchvision = ">=0.9"
+torch = ">=1.11"
+torchvision = ">=0.12"
 tqdm = ">=4.42.1"
 
 [package.extras]
-docs = ["autodocsumm", "huggingface-hub", "six", "sphinx", "sphinx-book-theme"]
+docs = ["huggingface-hub", "six", "sphinx", "sphinx-book-theme"]
 test = ["gitpython", "packaging", "pytest", "pytest-cov", "pytest-xdist", "ruff (>=0.9)", "setuptools"]
 
 [[package]]
@@ -7048,4 +7048,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "3.12.*"
-content-hash = "f803e09709a52717e12c87787f92554cf4634e36ae151ffd3ae059e848cf696f"
+content-hash = "4105b28bb0dc32a90703971d0662817deda6710d5ccdadf96962212030613e3b"
