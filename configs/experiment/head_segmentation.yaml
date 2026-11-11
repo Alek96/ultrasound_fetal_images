@@ -38,6 +38,7 @@ model:
   model:
     _target_: segmentation_models_pytorch.Unet
     encoder_name: tu-mobilenetv4_conv_small
+    encoder_weights: true
   lr: 1e-03
   criterion:
     smooth: 1e-6
