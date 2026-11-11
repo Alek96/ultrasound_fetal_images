@@ -4,33 +4,46 @@
 #  debug=fdr
 
 #python src/head_segmentation_train.py experiment=head_segmentation \
+#  debug=fdr \
+#  trainer.accelerator="gpu"
+
+#python src/head_segmentation_train.py experiment=head_segmentation \
 #  tags='["test10", "rerun"]' \
 #  +logger.wandb.notes="rerun" \
 #  logger.wandb.group="MobileNetV4" \
 #  seed=2314826881 \
 #  cleanup_mode=none
 
+
 for i in {1..10}; do
-  echo "test elastic ${i}"
-  python src/head_segmentation_train.py experiment=head_segmentation_elastic \
-    tags='["test-22"]' \
-    +logger.wandb.notes="t ${i}"
-
-  echo "test gaussian_blur ${i}"
-  python src/head_segmentation_train.py experiment=head_segmentation_gaussian_blur \
-    tags='["test-22"]' \
-    +logger.wandb.notes="t ${i}"
-
-  echo "test speckle ${i}"
-  python src/head_segmentation_train.py experiment=head_segmentation_speckle \
-    tags='["test-22"]' \
-    +logger.wandb.notes="t ${i}"
-
-  echo "test brightness_contrast ${i}"
-  python src/head_segmentation_train.py experiment=head_segmentation_brightness_contrast \
-    tags='["test-22"]' \
-    +logger.wandb.notes="t ${i}"
+  echo "test Brain ${i}"
+  python src/head_segmentation_train.py experiment=head_segmentation \
+    tags='["test-23"]' \
+    +logger.wandb.notes="t ${i}" \
+    logger.wandb.group="Brain"
 done
+
+#for i in {1..10}; do
+#  echo "test elastic ${i}"
+#  python src/head_segmentation_train.py experiment=head_segmentation_elastic \
+#    tags='["test-22"]' \
+#    +logger.wandb.notes="t ${i}"
+#
+#  echo "test gaussian_blur ${i}"
+#  python src/head_segmentation_train.py experiment=head_segmentation_gaussian_blur \
+#    tags='["test-22"]' \
+#    +logger.wandb.notes="t ${i}"
+#
+#  echo "test speckle ${i}"
+#  python src/head_segmentation_train.py experiment=head_segmentation_speckle \
+#    tags='["test-22"]' \
+#    +logger.wandb.notes="t ${i}"
+#
+#  echo "test brightness_contrast ${i}"
+#  python src/head_segmentation_train.py experiment=head_segmentation_brightness_contrast \
+#    tags='["test-22"]' \
+#    +logger.wandb.notes="t ${i}"
+#done
 
 
 #weights=("1e-2" "1e-3" "1e-4" "1e-5")
