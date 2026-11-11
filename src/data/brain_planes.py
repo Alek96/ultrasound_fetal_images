@@ -77,7 +77,6 @@ class BrainPlanesDataModule(LightningDataModule):
         else:
             self.train_transforms = T.Compose(
                 [
-                    T.Grayscale(),
                     PadToAspectRatio(input_size),
                     # RandomPercentCrop(max_percent=20),
                     T.Resize(input_size),
@@ -99,7 +98,6 @@ class BrainPlanesDataModule(LightningDataModule):
         else:
             self.test_transforms = T.Compose(
                 [
-                    T.Grayscale(),
                     PadToAspectRatio(input_size),
                     T.Resize(input_size),
                     T.ToDtype(dtype=torch.float32, scale=True),

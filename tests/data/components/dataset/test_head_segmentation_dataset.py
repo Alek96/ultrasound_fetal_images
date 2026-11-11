@@ -32,10 +32,10 @@ def test_len(data_path: Path, subset: Literal["train", "val", "test"] | None, se
 @pytest.mark.parametrize(
     "subset, image_shape, mask_shape, expected_label",
     [
-        ("train", (3, 661, 959), (1, 661, 959), 1),
+        ("train", (1, 661, 959), (1, 661, 959), 1),
         ("val", (1, 381, 647), (1, 381, 647), 0),
         ("test", (1, 559, 745), (1, 559, 745), 0),
-        (None, (3, 661, 959), (1, 661, 959), 1),
+        (None, (1, 661, 959), (1, 661, 959), 1),
     ],
 )
 def test_getitem(
@@ -50,6 +50,16 @@ def test_getitem(
     assert mask.shape == mask_shape
     assert label.shape == ()
     assert int(label) == expected_label
+
+
+def test_mask_is_binary_with_foreground(data_path: Path) -> None:
+    """Masks are drawn in red on black; decoding must keep the red channel so the mask is not emptied."""
+    ds = HeadSegmentationSamplesDataset(data_dir=str(data_path), subset="train")
+
+    _, mask, label = ds[0]
+    assert int(label) == 1
+    assert mask.dtype == torch.uint8
+    assert set(torch.unique(mask).tolist()) == {0, 1}
 
 
 def test_tuple_indexing(data_path: Path) -> None:
@@ -72,7 +82,7 @@ def test_transform(data_path: Path) -> None:
     image, mask, label = ds[0]
     assert isinstance(image, tv_tensors.Image)
     assert isinstance(mask, tv_tensors.Mask)
-    assert image.shape == (3, 64, 64)
+    assert image.shape == (1, 64, 64)
     assert mask.shape == (1, 64, 64)
     assert label.shape == ()
     assert int(label) == 1
@@ -94,7 +104,7 @@ def test_get_image_iterator(data_path: Path) -> None:
 
     assert len(images) == len(ds)
     assert isinstance(images[0], tv_tensors.Image)
-    assert images[0].shape == (3, 661, 959)
+    assert images[0].shape == (1, 661, 959)
 
 
 class TestMissingSegmentationPath:

@@ -100,7 +100,6 @@ data:
   sampler: "under"
   sampler_max_sizes: [[-1, -1, -1, 500]]
   train_transforms:
-    - _target_: torchvision.transforms.Grayscale
     - _target_: src.data.components.transforms.PadToAspectRatio
       size: ${data.input_size}
       fill: 0
@@ -153,7 +152,6 @@ data:
     #  std: 0.226
 
   test_transforms:
-    - _target_: torchvision.transforms.Grayscale
     - _target_: src.data.components.transforms.PadToAspectRatio
       size: ${data.input_size}
       fill: 0

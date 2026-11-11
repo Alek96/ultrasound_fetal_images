@@ -73,7 +73,6 @@ class HeadSegmentationDataModule(LightningDataModule):
         else:
             self.train_transforms = T.Compose(
                 [
-                    T.Grayscale(),
                     # RandomPercentCrop(max_percent=20),
                     PadToAspectRatio(input_size),
                     T.Resize(input_size, interpolation=T.InterpolationMode.NEAREST),
@@ -102,7 +101,6 @@ class HeadSegmentationDataModule(LightningDataModule):
         else:
             self.test_transforms = T.Compose(
                 [
-                    T.Grayscale(),
                     PadToAspectRatio(input_size),
                     T.Resize(input_size, interpolation=T.InterpolationMode.NEAREST),
                     T.ToDtype(

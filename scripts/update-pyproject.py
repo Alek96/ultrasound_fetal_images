@@ -51,7 +51,7 @@ def replace_version(line, packages):
             new_version = packages[name]
             # Replace only if version differs
             if new_version != old_version:
-                line = f'{name} = "{up_sign}{new_version}{line[old_version_end:]}'
+                line = f'{name} = "{up_sign or ""}{new_version}{line[old_version_end:]}'
     return line
 
 

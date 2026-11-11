@@ -38,6 +38,7 @@ model:
   model:
     _target_: segmentation_models_pytorch.FPN
     encoder_name: tu-tf_efficientnetv2_s
+    encoder_weights: true
   lr: 1e-03
   criterion:
     _target_: src.models.components.loss.BinaryDiceFocalLoss

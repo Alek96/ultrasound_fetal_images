@@ -30,10 +30,10 @@ def test_len(data_path: Path, subset: Literal["train", "val", "test"] | None, se
 @pytest.mark.parametrize(
     "subset, image_shape, expected_label",
     [
-        ("train", (3, 377, 648), "Not A Brain"),
+        ("train", (1, 377, 648), "Not A Brain"),
         ("val", (1, 381, 647), "Not A Brain"),
         ("test", (1, 559, 745), "Not A Brain"),
-        (None, (3, 377, 648), "Not A Brain"),
+        (None, (1, 377, 648), "Not A Brain"),
     ],
 )
 def test_getitem(
@@ -64,7 +64,7 @@ def test_transform(data_path: Path) -> None:
 
     image, label = ds[0]
     assert isinstance(image, torch.Tensor)
-    assert image.shape == (3, 64, 64)
+    assert image.shape == (1, 64, 64)
     assert label == "Not A Brain"
 
     img_only = ds[0, 0]
