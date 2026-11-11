@@ -12,7 +12,7 @@ import torchvision.transforms.v2.functional as TF
 from sklearn.model_selection import GroupShuffleSplit
 from torch import Tensor
 from torch.utils.data import Dataset
-from torchvision.io import read_image
+from torchcodec.decoders import decode_image
 
 from src import utils
 from src.data.components.dataset import Subset
@@ -33,12 +33,8 @@ def group_split(
 
 
 def read_image_tensor(image_path: str | Path):
-    image = read_image(image_path)
-    if image.shape[0] == 1:
-        image = image.repeat(3, 1, 1)
-    elif image.shape[0] == 4:
-        image = image[:3, :, :]
-    return image
+    """Read an image as a 3-channel RGB ``uint8`` tensor (grayscale is replicated, alpha is dropped)."""
+    return decode_image(image_path, mode="RGB")
 
 
 def save_image_tensor(image: Tensor, output_path: str | Path):

@@ -4,8 +4,6 @@ sample: false
 input_size: [55, 80]
 
 train_transforms:
-  - _target_: torchvision.transforms.v2.Grayscale
-
   - _target_: src.data.components.transforms.PadToAspectRatio
     size: ${data.input_size}
     fill:
@@ -83,7 +81,6 @@ train_transforms:
   #  std: 0.226
 
 test_transforms:
-  - _target_: torchvision.transforms.v2.Grayscale
   - _target_: src.data.components.transforms.PadToAspectRatio
     size: ${data.input_size}
     fill:

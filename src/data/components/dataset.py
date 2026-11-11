@@ -11,8 +11,8 @@ import PIL
 import torch
 import torchvision.transforms.v2.functional as TF
 from torch.utils.data import Dataset
+from torchcodec.decoders import decode_image
 from torchvision import tv_tensors
-from torchvision.io import read_image
 
 
 class Subset(Dataset):
@@ -121,9 +121,7 @@ class FetalPlanesDataset(Dataset):
             idx = idx.item()
 
         img_path = os.path.join(self.img_dir, self.img_labels.Image_name[idx] + ".png")
-        image = read_image(img_path)
-        if image.shape[0] == 4:
-            image = image[:3, :, :]
+        image = decode_image(img_path, mode="GRAY")
 
         if self.transform:
             image = self.transform(image)
@@ -212,9 +210,7 @@ class HeadSegmentationDataset(Dataset):
             idx = idx.item()
 
         img_path = os.path.join(self.dataset_dir, self.labels.Ultrasound_path[idx])
-        image = read_image(img_path)
-        if image.shape[0] == 4:
-            image = image[:3, :, :]
+        image = decode_image(img_path, mode="GRAY")
 
         return tv_tensors.Image(image)
 
@@ -224,7 +220,7 @@ class HeadSegmentationDataset(Dataset):
 
         if not pd.isna(self.labels.Segmentation_path[idx]):
             img_path = os.path.join(self.dataset_dir, self.labels.Segmentation_path[idx])
-            image = read_image(img_path)
+            image = decode_image(img_path, mode="RGB")
             image = image[:1, :, :]  # single-channel for mask
             image = image // 255
         else:
@@ -331,9 +327,7 @@ class FetalBrainPlanesDataset(Dataset):
         else:
             img_path = os.path.join(self.img_dir, self.img_labels.Image_crop_name[idx] + ".png")
 
-        image = read_image(img_path)
-        if image.shape[0] == 4:
-            image = image[:3, :, :]
+        image = decode_image(img_path, mode="GRAY")
 
         if self.transform:
             image = self.transform(image)
@@ -685,7 +679,7 @@ class VideosSsimFrameDataset(Dataset):
             raise IndexError(f"Video index {idx} out of range")
 
         image_path = self.images[idx]
-        image = read_image(str(image_path))
+        image = decode_image(image_path, mode="GRAY")
         if self.transform:
             image = self.transform(image)
         return image
@@ -832,7 +826,7 @@ class USVideosDataset(Dataset):
             raise IndexError(f"list index {idx} out of range")
 
         img_path, label = self.items[idx]
-        image = read_image(img_path)
+        image = decode_image(img_path, mode="GRAY")
         if self.transform:
             image = self.transform(image)
         if self.target_transform:

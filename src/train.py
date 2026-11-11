@@ -1,5 +1,6 @@
 import os
 import shutil
+from pathlib import Path
 from typing import Any
 
 import hydra
@@ -89,13 +90,21 @@ def train(cfg: DictConfig) -> tuple[dict[str, Any], dict[str, Any]]:
 
     if cfg.get("find_lr"):
         log.info("Run learning Rate Finder")
+        lr_find_dir = Path(cfg.paths.output_dir)
         trainer: Trainer = Trainer(
             max_epochs=1,
             accelerator=cfg.trainer.accelerator if cfg.trainer.get("accelerator") else None,
+            default_root_dir=lr_find_dir,
         )
         tuner: Tuner = Tuner(trainer)
         # Run learning rate finder
-        lr_finder = tuner.lr_find(model=model, datamodule=datamodule, min_lr=1e-10, num_training=200)
+        try:
+            lr_finder = tuner.lr_find(model=model, datamodule=datamodule, min_lr=1e-10, num_training=200)
+        finally:
+            # Lightning removes its temporary `.lr_find_<uuid>.ckpt` only if restoring it succeeds, which can fail
+            # (https://github.com/Lightning-AI/pytorch-lightning/issues/21401), so clean up leftovers ourselves.
+            for ckpt in lr_find_dir.glob(".lr_find_*.ckpt"):
+                ckpt.unlink(missing_ok=True)
         # Plot results
         fig = lr_finder.plot(suggest=True)
         log_to_wandb(lambda: {"trainer/samples": wandb.Image(fig)}, loggers=logger)

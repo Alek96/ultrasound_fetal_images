@@ -5,7 +5,6 @@ defaults:
 
 data:
   train_transforms:
-    - _target_: torchvision.transforms.Grayscale
     - _target_: torchvision.transforms.Resize
       size: ${data.input_size}
       antialias: true

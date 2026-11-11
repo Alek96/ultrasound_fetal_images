@@ -68,7 +68,6 @@ class PlotWronglyAssignedClasses(PlotExtras):
         else:
             self.transforms = T.Compose(
                 [
-                    T.Grayscale(),
                     PadToAspectRatio(input_size),
                     Resize(input_size, interpolation=T.InterpolationMode.NEAREST),
                     T.ToDtype(
@@ -215,7 +214,6 @@ class PlotVideosProbabilities(PlotExtras):
             dataset_name=video_dataset_dir,
             transform=T.Compose(
                 [
-                    T.Grayscale(),
                     PadToAspectRatio(input_size),
                     T.Resize(input_size, antialias=False),
                     T.ConvertImageDtype(torch.float32),

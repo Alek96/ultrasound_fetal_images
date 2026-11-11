@@ -10,6 +10,7 @@ python = ">=3.12,<3.13"
 # --------- pytorch --------- #
 torch = "2.15.0"
 torchvision = "0.29.2"
+torchcodec = "^0.17.0"
 lightning = "^2.6.6"
 torchmetrics = "^1.9.0"
 segmentation-models-pytorch = "^0.6.0"

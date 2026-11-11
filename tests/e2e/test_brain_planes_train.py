@@ -123,6 +123,36 @@ def test_train_find_lr(cfg_brain_planes_train: DictConfig) -> None:
     train(cfg_brain_planes_train)
 
 
+def test_train_find_lr_removes_leftover_checkpoint(
+    cfg_brain_planes_train: DictConfig, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The temporary `.lr_find_*.ckpt` is removed even when the LR finder fails before Lightning cleans it up.
+
+    :param cfg_brain_planes_train: A DictConfig containing a valid training configuration.
+    :param tmp_path: The temporary output directory used by the config.
+    :param monkeypatch: Pytest monkeypatch fixture.
+    """
+    from lightning.pytorch.tuner import Tuner
+
+    root_dir = Path(os.getcwd())
+    leftovers_before = set(root_dir.glob(".lr_find_*.ckpt"))
+
+    def failing_lr_find(self, *args, **kwargs):
+        Path(self._trainer.default_root_dir, ".lr_find_test.ckpt").touch()
+        raise RuntimeError("lr_find failed")
+
+    monkeypatch.setattr(Tuner, "lr_find", failing_lr_find)
+
+    HydraConfig().set_config(cfg_brain_planes_train)
+    with open_dict(cfg_brain_planes_train):
+        cfg_brain_planes_train.find_lr = True
+    with pytest.raises(RuntimeError, match="lr_find failed"):
+        train(cfg_brain_planes_train)
+
+    assert not list(tmp_path.glob(".lr_find_*.ckpt"))
+    assert set(root_dir.glob(".lr_find_*.ckpt")) == leftovers_before
+
+
 @pytest.mark.slow
 def test_train_label_smoothing(cfg_brain_planes_train: DictConfig) -> None:
     """Run for 1 train, val and test step with label smoothing enabled.
