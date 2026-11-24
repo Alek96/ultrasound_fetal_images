@@ -1321,14 +1321,14 @@ tileiras = ["nvidia-cuda-nvcc (==13.2.86.*) ; sys_platform == \"linux\" and (pla
 
 [[package]]
 name = "cwevals"
-version = "0.0.1b1"
+version = "0.0.1b3"
 description = "The official Python library for the CoreWeave Evaluations API"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "cwevals-0.0.1b1-py3-none-any.whl", hash = "sha256:6936baf0ccdc5d9092abd5c2ab628cedcdae9bb72edfdf730f7aaac19118855a"},
-    {file = "cwevals-0.0.1b1.tar.gz", hash = "sha256:2ae997369ff44941925e4db1bd07eb4e13c05de412e615636fd12881d63f8a13"},
+    {file = "cwevals-0.0.1b3-py3-none-any.whl", hash = "sha256:3ff43ebab38a553877da8951305924a39a6f30809aae7f567de9ed1104d7ef15"},
+    {file = "cwevals-0.0.1b3.tar.gz", hash = "sha256:2647ffa8338634db70e9cbd1d9232f0a62f2b7d7b2c5d8a2f0bb750d4aeced45"},
 ]
 
 [package.dependencies]
@@ -1810,24 +1810,6 @@ urllib3 = "*"
 
 [package.extras]
 secretstorage = ["secretstorage"]
-
-[[package]]
-name = "googleapis-common-protos"
-version = "1.76.0"
-description = "Common protobufs used in Google APIs"
-optional = false
-python-versions = ">=3.10"
-groups = ["main"]
-files = [
-    {file = "googleapis_common_protos-1.76.0-py3-none-any.whl", hash = "sha256:59e13344a9f3651aa201a03e2bee815a3bf43a4baf1f9ff8a9b62a840ce25fac"},
-    {file = "googleapis_common_protos-1.76.0.tar.gz", hash = "sha256:71db0e44a1d4c2dd024ebad44ca67129cc1e2892e4861df466764749d5ef8642"},
-]
-
-[package.dependencies]
-protobuf = ">=6.33.5,<8.0.0"
-
-[package.extras]
-grpc = ["grpcio (>=1.59.0,<2.0.0)"]
 
 [[package]]
 name = "h11"
@@ -4047,44 +4029,6 @@ files = [
 typing-extensions = ">=4.5.0"
 
 [[package]]
-name = "opentelemetry-exporter-http-transport"
-version = "0.66b2"
-description = "OpenTelemetry Exporters HTTP transport"
-optional = false
-python-versions = ">=3.10"
-groups = ["main"]
-files = [
-    {file = "opentelemetry_exporter_http_transport-0.66b2-py3-none-any.whl", hash = "sha256:fd5f5b490c099acda1cd7b909d5e8981436bf18cc8c6098d302d114c271720e9"},
-    {file = "opentelemetry_exporter_http_transport-0.66b2.tar.gz", hash = "sha256:66d6ed810a515432c8891da9a834464332fd70badeca45bdeeae81b4280c903b"},
-]
-
-[package.dependencies]
-opentelemetry-api = ">=1.15,<2.0"
-requests = {version = ">=2.25,<3.0", optional = true, markers = "extra == \"requests\""}
-
-[package.extras]
-requests = ["requests (>=2.25,<3.0)"]
-urllib3 = ["urllib3 (>=1.26)"]
-
-[[package]]
-name = "opentelemetry-exporter-otlp-common"
-version = "0.66b2"
-description = "OpenTelemetry OTLP HTTP export utilities"
-optional = false
-python-versions = ">=3.10"
-groups = ["main"]
-files = [
-    {file = "opentelemetry_exporter_otlp_common-0.66b2-py3-none-any.whl", hash = "sha256:ace86efb75489f925f1ef809856ae5f0c7db534e4afdc624530222228b1236a5"},
-    {file = "opentelemetry_exporter_otlp_common-0.66b2.tar.gz", hash = "sha256:06f5a9b88638e310efa1f1d206cdf6b75393e112aba4e174a963416192bd1028"},
-]
-
-[package.dependencies]
-opentelemetry-sdk = ">=1.45.2,<1.46.0"
-
-[package.extras]
-http = ["opentelemetry-exporter-http-transport (==0.66b2)"]
-
-[[package]]
 name = "opentelemetry-exporter-otlp-proto-common"
 version = "1.45.2"
 description = "OpenTelemetry Protobuf encoding"
@@ -4098,33 +4042,6 @@ files = [
 
 [package.dependencies]
 opentelemetry-proto = "1.45.2"
-
-[[package]]
-name = "opentelemetry-exporter-otlp-proto-http"
-version = "1.45.2"
-description = "OpenTelemetry Collector Protobuf over HTTP Exporter"
-optional = false
-python-versions = ">=3.10"
-groups = ["main"]
-files = [
-    {file = "opentelemetry_exporter_otlp_proto_http-1.45.2-py3-none-any.whl", hash = "sha256:6e4d025138829d0ee57946930c2ccad6491ad4d92a958e9c7eea69278fe60cfc"},
-    {file = "opentelemetry_exporter_otlp_proto_http-1.45.2.tar.gz", hash = "sha256:5984a3fb46bc4628e4e2b85d4a6e72637e03962aae6cf372791137768a4ad939"},
-]
-
-[package.dependencies]
-googleapis-common-protos = ">=1.52,<2.0"
-opentelemetry-api = ">=1.15,<2.0"
-opentelemetry-exporter-http-transport = {version = "0.66b2", extras = ["requests"]}
-opentelemetry-exporter-otlp-common = "0.66b2"
-opentelemetry-exporter-otlp-proto-common = "1.45.2"
-opentelemetry-proto = "1.45.2"
-opentelemetry-sdk = ">=1.45.2,<1.46.0"
-requests = ">=2.7,<3.0"
-typing-extensions = ">=4.5.0"
-
-[package.extras]
-gcp-auth = ["opentelemetry-exporter-credential-provider-gcp (>=0.59b0)"]
-requests = ["opentelemetry-exporter-http-transport[requests] (==0.66b2)", "requests (>=2.7,<3.0)"]
 
 [[package]]
 name = "opentelemetry-proto"
@@ -6898,28 +6815,28 @@ python-discovery = ">=1.6.1"
 
 [[package]]
 name = "wandb"
-version = "0.31.0"
+version = "0.31.2"
 description = "A CLI and library for interacting with the Weights & Biases API."
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "wandb-0.31.0-py3-none-macosx_13_0_arm64.whl", hash = "sha256:28389f1c932b5d3fc11293fd50c24f308c6a1e1dd952783b96d9703062302bb5"},
-    {file = "wandb-0.31.0-py3-none-macosx_13_0_x86_64.whl", hash = "sha256:654ef6d854516888091aff582a243714b02cefb09c4a0e1186cc6a7c9f93de50"},
-    {file = "wandb-0.31.0-py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:0cbd8986ca56115897defcfd8ad8def1a871b99d1e8bde4f106633dc9969b7a3"},
-    {file = "wandb-0.31.0-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:009bcf370598d5e7a3d3bb66e33510f78c17fcc0505f8aa7ecf51dbc4378f979"},
-    {file = "wandb-0.31.0-py3-none-musllinux_1_2_aarch64.whl", hash = "sha256:cb20ed655fb6e301b27f9974ae639176ec3a0e81aa9135d107491d618206ad5f"},
-    {file = "wandb-0.31.0-py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:df16a46cd6468e6580783b02560c79991c181f63a4691949020fff1b4ac87072"},
-    {file = "wandb-0.31.0-py3-none-win_amd64.whl", hash = "sha256:488f8ef63cae217ba220e6d8c163ee8c5b98320ee1866ce774c4da0847235f02"},
-    {file = "wandb-0.31.0-py3-none-win_arm64.whl", hash = "sha256:d155662ab444ab0cd12afa87943a147193e9b9301134b0b34e8c97c68a4bbba5"},
-    {file = "wandb-0.31.0.tar.gz", hash = "sha256:dcdaa635576ff17b18a757b39fc22b0db3d1c6e01d5ce090fe80f6adc776028d"},
+    {file = "wandb-0.31.2-py3-none-macosx_13_0_arm64.whl", hash = "sha256:8e4afd2684847f747a3b4b745191659d5bd9fa0ba478cde9f45e165cb1e3dcdf"},
+    {file = "wandb-0.31.2-py3-none-macosx_13_0_x86_64.whl", hash = "sha256:4dce3c91cb58c09610f20f2558cb296ed75ec8ea207b69689fb7676e9eb4a8c7"},
+    {file = "wandb-0.31.2-py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:809f513214589958fddc3e86b98694009ff1222f16445c6b1509aa10ef84931c"},
+    {file = "wandb-0.31.2-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:d47d0c5ebcb5f91e4acb5e1546a8f553fa9e5590629c2fe24e666b98dc5ca3fb"},
+    {file = "wandb-0.31.2-py3-none-musllinux_1_2_aarch64.whl", hash = "sha256:0a0227581a6f412430ce2b70d4932259f1423fa5034ca4a6789a8904a1142ab4"},
+    {file = "wandb-0.31.2-py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:ba2bc69e062c1b4d7898cd8ff7b579bf261d2895ebced84e95467958dab1c122"},
+    {file = "wandb-0.31.2-py3-none-win_amd64.whl", hash = "sha256:07e67ac5c14aa43d6dea150a6100df479b47f9092c384b730b1f3407d1fdd542"},
+    {file = "wandb-0.31.2-py3-none-win_arm64.whl", hash = "sha256:81663b302e0f4e6092f8131543819d268f1cc7edfbeb0a9f989e835a54430927"},
+    {file = "wandb-0.31.2.tar.gz", hash = "sha256:27b093559e0d46600df5f06416d4b2491ae35eae5f9a60bc5d8f8df1284a882a"},
 ]
 
 [package.dependencies]
 click = ">=8.2.0"
-cwevals = "0.0.1b1"
+cwevals = "0.0.1b3"
 opentelemetry-api = ">=1.43.0"
-opentelemetry-exporter-otlp-proto-http = ">=1.43.0"
+opentelemetry-exporter-otlp-proto-common = ">=1.43.0"
 opentelemetry-sdk = ">=1.43.0"
 packaging = "*"
 platformdirs = "*"
@@ -7432,4 +7349,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.13"
-content-hash = "9fd493251b5d2318196fae72de9ae7f43476770ed71a376f12aea81e98675d41"
+content-hash = "262ecbed99b5c8d5845c188315353930da82a8769c150dc38daac6f7eedf1dac"
